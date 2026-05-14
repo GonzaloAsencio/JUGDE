@@ -140,3 +140,38 @@ def test_pipeline_latency_ms_populated():
 
     assert isinstance(result.latency_ms, int)
     assert result.latency_ms >= 0
+
+
+def test_pipeline_citation_preview_truncated_to_200_chars():
+    """content_preview must be exactly content[:200] even when chunk.content exceeds 200 chars."""
+    from tests.conftest import FakeEmbedder
+
+    long_content = "r" * 500
+    chunk = _make_chunk(content=long_content)
+    settings = _fake_settings()
+
+    with patch("app.rag.pipeline.vector_search", return_value=[chunk]):
+        with patch("app.rag.pipeline.call_gemini", return_value="Answer."):
+            from app.rag.pipeline import answer_question
+            result = answer_question(
+                "Any question?", FakeEmbedder(), MagicMock(), MagicMock(), settings
+            )
+
+    assert len(result.citations[0].content_preview) <= 200
+    assert result.citations[0].content_preview == long_content[:200]
+
+
+def test_pipeline_propagates_generation_timeout():
+    """answer_question must propagate GenerationTimeout without swallowing it."""
+    from tests.conftest import FakeEmbedder
+
+    chunk = _make_chunk()
+    settings = _fake_settings()
+
+    with patch("app.rag.pipeline.vector_search", return_value=[chunk]):
+        with patch("app.rag.pipeline.call_gemini", side_effect=GenerationTimeout("timeout")):
+            from app.rag.pipeline import answer_question
+            with pytest.raises(GenerationTimeout):
+                answer_question(
+                    "What is a rule?", FakeEmbedder(), MagicMock(), MagicMock(), settings
+                )
