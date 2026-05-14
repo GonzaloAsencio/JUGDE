@@ -12,9 +12,9 @@ class Settings(BaseSettings):
     corpus_version: str | None = None
     gemini_model: str = "gemini-2.5-flash"
     gemini_temperature: float = 0.1
-    gemini_timeout_s: float = 10.0
+    gemini_timeout_s: float = 30.0
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
 
 @lru_cache
