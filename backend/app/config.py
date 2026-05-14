@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     model_name: str = "BAAI/bge-m3"
     embedding_dim: int = 1024
     corpus_version: str | None = None
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-2.0-flash"
     gemini_temperature: float = 0.1
     gemini_timeout_s: float = 30.0
 
