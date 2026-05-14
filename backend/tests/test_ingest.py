@@ -92,10 +92,11 @@ def test_make_chunk_has_required_keys():
     }
 
 
-def test_make_chunk_id_format():
+def test_make_chunk_id_is_valid_uuid():
     chunk = _make_chunk("hello", "sec", "par", "rulebook", "mydoc")
-    assert chunk["id"].startswith("mydoc_")
-    assert len(chunk["id"]) == len("mydoc_") + 16  # prefix + 16-char hash
+    import uuid as _uuid
+    parsed = _uuid.UUID(chunk["id"])  # raises ValueError if invalid
+    assert parsed.version == 5
 
 
 def test_make_chunk_is_deterministic():

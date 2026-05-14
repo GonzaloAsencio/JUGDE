@@ -12,6 +12,7 @@ import os
 import re
 import sys
 import time
+import uuid
 from pathlib import Path
 
 import psycopg2
@@ -88,10 +89,13 @@ def _chunk_section(section: dict, source_type: str, source_document: str) -> lis
     return chunks
 
 
+_CHUNK_NAMESPACE = uuid.UUID("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+
+
 def _make_chunk(content: str, section: str, parent_section: str, source_type: str, source_document: str) -> dict:
-    content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
+    chunk_id = str(uuid.uuid5(_CHUNK_NAMESPACE, f"{source_document}:{content}"))
     return {
-        "id": f"{source_document}_{content_hash}",
+        "id": chunk_id,
         "content": content,
         "source_type": source_type,
         "source_document": source_document,
