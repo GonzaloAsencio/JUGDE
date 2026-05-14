@@ -1,0 +1,97 @@
+{
+  "version": "1.0.0",
+  "created": "2026-05-14",
+  "description": "Eval set for Riftbound Judge AI RAG pipeline. 10 curated questions with canonical answers derived from the official rulebook and errata.",
+  "questions": [
+    {
+      "id": "eval-001",
+      "question": "How many copies of the same card can I include in my main deck?",
+      "canonical_answer": "You may include up to 3 copies of the same named card in your main deck. This limit includes your Chosen Champion.",
+      "source": "rulebook",
+      "rule_reference": "103.2.b",
+      "tags": ["deck-construction", "copies"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "eval-002",
+      "question": "What determines which cards are legal in my deck?",
+      "canonical_answer": "Your deck's Domain Identity is determined by the domains of your Champion Legend. Cards must belong to a domain that is part of your Champion Legend's domain identity to be included in your deck.",
+      "source": "rulebook",
+      "rule_reference": "103.1.b",
+      "tags": ["deck-construction", "domain-identity"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "eval-003",
+      "question": "If a card's text directly contradicts the rules, which one takes priority?",
+      "canonical_answer": "Card text supersedes rules text. Whenever a card fundamentally contradicts the rules, the card's indication is what is true.",
+      "source": "rulebook",
+      "rule_reference": "002",
+      "tags": ["golden-rule", "card-text"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "eval-004",
+      "question": "Do units enter the board ready or exhausted?",
+      "canonical_answer": "Units enter the board exhausted. This can be altered by Accelerate or similar game effects.",
+      "source": "rulebook",
+      "rule_reference": "143.4",
+      "tags": ["units", "exhausted", "keywords"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "eval-005",
+      "question": "When is damage removed from units?",
+      "canonical_answer": "Damage is healed from units at two specific times: at the end of each player's turn, and during a Combat Cleanup.",
+      "source": "rulebook",
+      "rule_reference": "143.3.b",
+      "tags": ["units", "damage", "combat"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-006",
+      "question": "What happens to unspent Energy and Power at the end of a turn?",
+      "canonical_answer": "Every player's Rune Pool empties at the end of each player's draw phase and at the end of each player's turn. Any unspent Energy or Power is lost.",
+      "source": "rulebook",
+      "rule_reference": "166",
+      "tags": ["runes", "rune-pool", "energy", "power"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-007",
+      "question": "If one card allows an action and another card forbids the same action, which card wins?",
+      "canonical_answer": "Cards that forbid actions or effects supersede cards that allow or permit that same action or effect. This is the 'Can't beats Can' rule.",
+      "source": "rulebook",
+      "rule_reference": "054",
+      "tags": ["silver-rule", "card-interaction", "cant-beats-can"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-008",
+      "question": "How many Signature cards can a deck include, and what restriction applies to them?",
+      "canonical_answer": "A deck may only contain a sum total of 3 Signature cards. All of those Signature cards must have the Champion tag that corresponds to the deck's Champion Legend.",
+      "source": "rulebook",
+      "rule_reference": "103.2.d",
+      "tags": ["deck-construction", "signature-cards"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-009",
+      "question": "If I have extra copies of my Chosen Champion in my deck during the game, do they count as my Chosen Champion?",
+      "canonical_answer": "Yes. A player's Chosen Champion is both the specific card chosen during deck building and any Champion Unit with the same name as that card during the course of play. Any additional copies in the main deck, hand, trash, or on the board also count as the player's Chosen Champion.",
+      "source": "rulebook",
+      "rule_reference": "103.2.a.3",
+      "tags": ["chosen-champion", "deck-construction"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-010",
+      "question": "What is the current errata text for Dark Child, Starter?",
+      "canonical_answer": "The current errata text for Dark Child, Starter is: 'At the end of your turn, ready up to 2 runes.'",
+      "source": "errata",
+      "rule_reference": "errata/origins/dark-child-starter",
+      "tags": ["errata", "origins", "specific-card"],
+      "difficulty": "hard"
+    }
+  ]
+}
