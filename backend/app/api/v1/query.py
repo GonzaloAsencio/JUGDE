@@ -4,6 +4,7 @@ import psycopg2
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.config import get_settings
+from app.middleware.rate_limit import limiter
 from app.rag.generation import GenerationError, GenerationTimeout
 from app.rag.pipeline import answer_question
 from app.rag.schemas import QueryRequest, QueryResponse
@@ -26,6 +27,7 @@ def get_gemini_client(request: Request):
 
 
 @router.post("/query", response_model=QueryResponse)
+@limiter.limit("10/minute;100/day")
 def query(
     body: QueryRequest,
     request: Request,
