@@ -34,6 +34,8 @@ def _fake_settings(corpus_version: str = "v1"):
     s = MagicMock()
     s.corpus_version = corpus_version
     s.top_k = 5
+    s.top_k_fetch = 15
+    s.rrf_k = 60
     s.gemini_temperature = 0.1
     s.gemini_timeout_s = 10.0
     return s
