@@ -9,6 +9,7 @@ from app.api.v1.query import router as query_router
 from app.cache import close_redis, init_redis
 from app.config import get_settings
 from app.db import close_pool, get_conn, init_pool
+from app.health import router as health_router
 from app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from app.observability import get_logger, init_observability
 from app.rag.embedder import Embedder
@@ -116,3 +117,4 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.include_router(query_router, prefix="/api/v1")
+app.include_router(health_router)
