@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,12 +26,12 @@ export function CitationCard({ citation }: CitationCardProps) {
 
       <p className="text-sm text-muted-foreground line-clamp-2">{citation.content_preview}</p>
 
-      <a
+      <Link
         href={href}
         className="flex items-center gap-1 text-xs text-primary hover:underline mt-auto"
       >
         View <ExternalLink size={12} />
-      </a>
+      </Link>
     </Card>
   );
 }
