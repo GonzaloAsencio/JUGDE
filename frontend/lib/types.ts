@@ -9,11 +9,15 @@ export interface QueryResponse {
   answer: string;
   citations: Citation[];
   latency_ms: number;
+  cache_hit?: boolean;
 }
 
-export interface QueryError {
+export type ErrorType = 'rate_limit' | 'timeout' | 'server' | 'network' | 'validation' | 'unknown';
+
+export interface ApiError {
+  type: ErrorType;
   message: string;
-  status?: number;
+  retryAfter?: number;
 }
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
