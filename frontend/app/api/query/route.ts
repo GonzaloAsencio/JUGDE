@@ -27,6 +27,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(data);
     }
 
+    if (upstream.status === 429) {
+      const err = await upstream.json().catch(() => ({ detail: 'Rate limit exceeded.' }));
+      const retryAfter = upstream.headers.get('Retry-After');
+      const headers: Record<string, string> = {};
+      if (retryAfter) headers['Retry-After'] = retryAfter;
+      return NextResponse.json(err, { status: 429, headers });
+    }
+
     if (upstream.status === 504) {
       return NextResponse.json({ detail: 'The judge took too long. Try again.' }, { status: 504 });
     }

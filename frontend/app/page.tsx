@@ -14,7 +14,7 @@ const EXAMPLES = [
 ];
 
 export default function JudgePage() {
-  const { question, answer, citations, loading, error, setQuestion, submit } = useQueryStore();
+  const { question, answer, citations, loading, error, setQuestion, submit, reset } = useQueryStore();
 
   const handleSelect = (q: string) => {
     setQuestion(q);
@@ -43,7 +43,7 @@ export default function JudgePage() {
 
       {(loading || answer || error) && (
         <div className="space-y-4">
-          <AnswerDisplay answer={answer} loading={loading} error={error} />
+          <AnswerDisplay answer={answer} loading={loading} error={error} onRetry={submit} />
           {answer && <ConfidenceBadge citations={citations} />}
           {answer && <CitationsList citations={citations} />}
         </div>

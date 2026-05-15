@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { postQuery } from '@/lib/api';
-import type { Citation } from '@/lib/types';
+import { ApiErrorInstance, postQuery } from '@/lib/api';
+import type { ApiError, Citation } from '@/lib/types';
 
 interface QueryState {
   question: string;
@@ -8,7 +8,7 @@ interface QueryState {
   citations: Citation[];
   latencyMs: number | null;
   loading: boolean;
-  error: string | null;
+  error: ApiError | null;
   setQuestion: (q: string) => void;
   submit: () => Promise<void>;
   reset: () => void;
@@ -32,8 +32,14 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       const data = await postQuery(question.trim());
       set({ answer: data.answer, citations: data.citations, latencyMs: data.latency_ms, loading: false });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Something went wrong.';
-      set({ error: msg, loading: false });
+      if (err instanceof ApiErrorInstance) {
+        set({
+          error: { type: err.type, message: err.message, retryAfter: err.retryAfter },
+          loading: false,
+        });
+      } else {
+        set({ error: { type: 'unknown', message: 'Something went wrong.' }, loading: false });
+      }
     }
   },
 

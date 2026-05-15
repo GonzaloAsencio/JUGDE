@@ -1,22 +1,21 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AnswerSkeleton } from '@/components/AnswerSkeleton';
+import { ErrorDisplay } from '@/components/ErrorDisplay';
+import type { ApiError } from '@/lib/types';
 
 interface AnswerDisplayProps {
   answer: string | null;
   loading: boolean;
-  error: string | null;
+  error: ApiError | null;
+  onRetry?: () => void;
 }
 
-export function AnswerDisplay({ answer, loading, error }: AnswerDisplayProps) {
+export function AnswerDisplay({ answer, loading, error, onRetry }: AnswerDisplayProps) {
   if (loading) return <AnswerSkeleton />;
 
   if (error) {
-    return (
-      <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-destructive text-sm">
-        {error}
-      </div>
-    );
+    return <ErrorDisplay error={error} onRetry={onRetry ?? (() => {})} />;
   }
 
   if (answer) {
