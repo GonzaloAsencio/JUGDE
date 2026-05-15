@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-2.0-flash"
     gemini_temperature: float = 0.1
     gemini_timeout_s: float = 30.0
+    top_k_fetch: int = 15
+    rrf_k: int = 60
+    enable_reranker: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
