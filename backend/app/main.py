@@ -5,6 +5,7 @@ import google.generativeai as genai
 from fastapi import FastAPI
 
 from app.api.v1.query import router as query_router
+from app.cache import close_redis, init_redis
 from app.config import get_settings
 from app.db import close_pool, get_conn, init_pool
 from app.rag.embedder import Embedder
@@ -65,7 +66,11 @@ async def lifespan(app: FastAPI):
                 f"Gemini ping failed — invalid API key or unreachable: {e}"
             ) from e
 
-    # 7-8. Store everything on app.state
+    # 7. Init Redis cache (optional — skipped if env vars absent)
+    if settings.upstash_redis_url and settings.upstash_redis_token:
+        init_redis(settings.upstash_redis_url, settings.upstash_redis_token)
+
+    # 8-9. Store everything on app.state
     app.state.embedder = embedder
     app.state.db_pool = pool
     app.state.gemini_client = gemini_client
@@ -79,7 +84,8 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # 9. Teardown
+    # 10. Teardown
+    close_redis()
     close_pool(app.state.db_pool)
     logger.info("DB pool closed.")
 
