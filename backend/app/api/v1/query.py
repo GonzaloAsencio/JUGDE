@@ -28,12 +28,15 @@ def get_gemini_client(request: Request):
 @router.post("/query", response_model=QueryResponse)
 def query(
     body: QueryRequest,
+    request: Request,
     embedder=Depends(get_embedder),
     pool=Depends(get_db_pool),
     gemini=Depends(get_gemini_client),
     settings=Depends(get_settings),
 ) -> QueryResponse:
     """POST /query — embed → retrieve → generate."""
+    if request.app.state.corpus_version is None:
+        raise HTTPException(status_code=503, detail="Corpus not loaded. Run ingest pipeline first.")
     try:
         return answer_question(body.question, embedder, pool, gemini, settings)
     except GenerationTimeout as e:

@@ -33,12 +33,10 @@ async def lifespan(app: FastAPI):
                 cur.execute("SELECT MAX(corpus_version) FROM corpus_chunks")
                 row = cur.fetchone()
                 if row is None or row[0] is None:
-                    close_pool(pool)
-                    raise RuntimeError(
-                        "No corpus loaded: corpus_chunks table is empty. "
-                        "Run the ingest pipeline first."
-                    )
-                corpus_version = row[0]
+                    logger.warning("corpus_chunks is empty — queries will return 503 until ingest runs.")
+                    corpus_version = None
+                else:
+                    corpus_version = row[0]
         logger.info("Resolved corpus_version from DB: %s", corpus_version)
 
     # 4. Load embedder (~5-10s intentional)
