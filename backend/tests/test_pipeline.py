@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from app.rag.generation import GenerationTimeout, build_prompt
+from app.rag.generation import GenerationTimeout, build_prompt  # noqa: F401
 from app.rag.retrieval import Chunk
 from app.rag.schemas import Citation, QueryRequest, QueryResponse
 
