@@ -34,6 +34,32 @@ def test_make_cache_key_differs_by_question():
     assert key1 != key2
 
 
+def test_make_cache_key_differs_by_card_mentions():
+    key1 = make_cache_key("who is zara?", "v1", ["CardA"])
+    key2 = make_cache_key("who is zara?", "v1", ["CardB"])
+    assert key1 != key2
+
+
+def test_make_cache_key_card_mentions_sorted():
+    """Order of card_mentions must not affect the key."""
+    key1 = make_cache_key("who is zara?", "v1", ["CardA", "CardB"])
+    key2 = make_cache_key("who is zara?", "v1", ["CardB", "CardA"])
+    assert key1 == key2
+
+
+def test_make_cache_key_empty_mentions_equals_none():
+    """Explicitly empty list and None should produce the same key."""
+    key1 = make_cache_key("who is zara?", "v1", [])
+    key2 = make_cache_key("who is zara?", "v1", None)
+    assert key1 == key2
+
+
+def test_make_cache_key_mentions_differ_from_no_mentions():
+    key1 = make_cache_key("who is zara?", "v1", ["CardA"])
+    key2 = make_cache_key("who is zara?", "v1")
+    assert key1 != key2
+
+
 def test_make_cache_key_is_hex_string():
     key = make_cache_key("test question", "v1")
     assert len(key) == 64

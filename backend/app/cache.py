@@ -26,14 +26,18 @@ def close_redis() -> None:
     _redis_client = None
 
 
-def make_cache_key(question: str, corpus_version: str) -> str:
+def make_cache_key(question: str, corpus_version: str, card_mentions: list[str] | None = None) -> str:
     """Derive a deterministic cache key.
 
-    Key = SHA-256( lowercase(strip(question)) + "|" + corpus_version )
-    card_mentions intentionally excluded in v1 (see ADR-8).
+    Key = SHA-256({"q": normalize(question), "cv": corpus_version, "m": sorted(card_mentions)})
     """
     normalized = question.strip().lower()
-    payload = json.dumps({"q": normalized, "cv": corpus_version}, ensure_ascii=False, sort_keys=True)
+    mentions = sorted(card_mentions) if card_mentions else []
+    payload = json.dumps(
+        {"q": normalized, "cv": corpus_version, "m": mentions},
+        ensure_ascii=False,
+        sort_keys=True,
+    )
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
