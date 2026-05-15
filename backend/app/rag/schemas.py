@@ -43,3 +43,4 @@ class QueryResponse(BaseModel):
     citations: list[Citation]
     latency_ms: int
     cache_hit: bool = False
+    confidence: float = 0.0

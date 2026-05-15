@@ -21,13 +21,14 @@ async def answer_question(
     db_pool,
     gemini,
     settings: Settings,
+    card_mentions: list[str] | None = None,
 ) -> QueryResponse:
     """Orchestrate embed -> retrieve -> generate with cache, tracing, and post-gen validation."""
     t0 = time.time()
     query_id = str(uuid.uuid4())
 
     corpus_version = settings.corpus_version or "latest"
-    cache_key = make_cache_key(question, corpus_version)
+    cache_key = make_cache_key(question, corpus_version, card_mentions)
 
     # Cache check — runs after Pydantic validation + rate limit (see ADR-1)
     cached_raw = await get_cached(cache_key)
@@ -35,14 +36,16 @@ async def answer_question(
         try:
             cached_data = json.loads(cached_raw)
             latency_ms = round((time.time() - t0) * 1000)
+            cached_response = QueryResponse(**{**cached_data, "cache_hit": True, "latency_ms": latency_ms})
             logger.info(
                 "query.complete",
                 query_id=query_id,
                 latency_ms=latency_ms,
                 cache_hit=True,
                 model=settings.gemini_model,
+                confidence=cached_response.confidence,
             )
-            return QueryResponse(**{**cached_data, "cache_hit": True, "latency_ms": latency_ms})
+            return cached_response
         except Exception:
             pass  # Corrupt cache entry — fall through to generation
 
@@ -65,12 +68,14 @@ async def answer_question(
             latency_ms=latency_ms,
             cache_hit=False,
             model=settings.gemini_model,
+            confidence=0.0,
         )
         return QueryResponse(
             answer=_NO_INFO_ANSWER,
             citations=[],
             latency_ms=latency_ms,
             cache_hit=False,
+            confidence=0.0,
         )
 
     prompt = build_prompt(question, chunks)
@@ -97,17 +102,20 @@ async def answer_question(
 
     latency_ms = round((time.time() - t0) * 1000)
 
+    confidence = round(citations[0].similarity, 4) if citations else 0.0
+
     response = QueryResponse(
         answer=answer,
         citations=citations,
         latency_ms=latency_ms,
         cache_hit=False,
+        confidence=confidence,
     )
 
     # Store in cache (non-blocking; errors are swallowed in set_cached)
     await set_cached(
         cache_key,
-        json.dumps({"answer": answer, "citations": [c.model_dump() for c in citations]}),
+        json.dumps({"answer": answer, "citations": [c.model_dump() for c in citations], "confidence": confidence}),
         ttl=settings.cache_ttl_s,
     )
 
@@ -117,6 +125,7 @@ async def answer_question(
         latency_ms=latency_ms,
         cache_hit=False,
         model=settings.gemini_model,
+        confidence=confidence,
     )
 
     return response
