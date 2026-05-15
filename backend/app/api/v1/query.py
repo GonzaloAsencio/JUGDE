@@ -1,15 +1,14 @@
-import logging
-
 import psycopg2
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.config import get_settings
 from app.middleware.rate_limit import limiter
+from app.observability import get_logger
 from app.rag.generation import GenerationError, GenerationTimeout
 from app.rag.pipeline import answer_question
 from app.rag.schemas import QueryRequest, QueryResponse
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -42,14 +41,14 @@ async def query(
     try:
         return await answer_question(body.question, embedder, pool, gemini, settings)
     except GenerationTimeout as e:
-        logger.warning("Gemini timeout: %s", e)
+        logger.warning("Gemini timeout", error=str(e))
         raise HTTPException(status_code=504, detail="Generation timeout") from e
     except GenerationError as e:
-        logger.error("Gemini error: %s", e)
+        logger.error("Gemini error", error=str(e))
         raise HTTPException(status_code=502, detail="Generation service error") from e
     except psycopg2.OperationalError as e:
-        logger.error("DB unavailable: %s", e)
+        logger.error("DB unavailable", error=str(e))
         raise HTTPException(status_code=503, detail="Database unavailable") from e
     except Exception as e:
-        logger.exception("Unexpected error in query handler")
+        logger.error("Unexpected error in query handler", error=str(e))
         raise HTTPException(status_code=500, detail="Internal server error") from e

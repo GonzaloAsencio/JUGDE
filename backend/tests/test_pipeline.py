@@ -84,7 +84,7 @@ def test_query_request_too_short():
 
 def test_query_request_too_long():
     with pytest.raises(ValidationError):
-        QueryRequest(question="x" * 1001)  # 1001 chars, max_length=1000
+        QueryRequest(question="x" * 501)  # 501 chars, max_length=500
 
 
 def test_query_response_schema():
@@ -104,7 +104,7 @@ def test_query_response_schema():
 # answer_question tests
 # ---------------------------------------------------------------------------
 
-def test_pipeline_empty_chunks_returns_fallback():
+async def test_pipeline_empty_chunks_returns_fallback():
     """When vector_search returns [], the answer is the fallback message and citations=[]."""
     from tests.conftest import FakeEmbedder
 
@@ -113,17 +113,19 @@ def test_pipeline_empty_chunks_returns_fallback():
     settings = _fake_settings()
 
     with patch("app.rag.pipeline.hybrid_search", return_value=[]):
-        from app.rag.pipeline import answer_question
-        result = answer_question(
-            "What is a rule?", fake_embedder, MagicMock(), fake_gemini, settings
-        )
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                result = await answer_question(
+                    "What is a rule?", fake_embedder, MagicMock(), fake_gemini, settings
+                )
 
     assert result.citations == []
     assert "No tengo información" in result.answer
     fake_gemini.generate_content.assert_not_called()
 
 
-def test_pipeline_latency_ms_populated():
+async def test_pipeline_latency_ms_populated():
     """latency_ms must be a non-negative integer in the response."""
     from tests.conftest import FakeEmbedder
 
@@ -135,16 +137,18 @@ def test_pipeline_latency_ms_populated():
     chunk = _make_chunk()
     with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
         with patch("app.rag.pipeline.call_gemini", return_value="An answer."):
-            from app.rag.pipeline import answer_question
-            result = answer_question(
-                "How does it work?", fake_embedder, MagicMock(), fake_gemini, settings
-            )
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    result = await answer_question(
+                        "How does it work?", fake_embedder, MagicMock(), fake_gemini, settings
+                    )
 
     assert isinstance(result.latency_ms, int)
     assert result.latency_ms >= 0
 
 
-def test_pipeline_citation_preview_truncated_to_200_chars():
+async def test_pipeline_citation_preview_truncated_to_200_chars():
     """content_preview must be exactly content[:200] even when chunk.content exceeds 200 chars."""
     from tests.conftest import FakeEmbedder
 
@@ -154,16 +158,18 @@ def test_pipeline_citation_preview_truncated_to_200_chars():
 
     with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
         with patch("app.rag.pipeline.call_gemini", return_value="Answer."):
-            from app.rag.pipeline import answer_question
-            result = answer_question(
-                "Any question?", FakeEmbedder(), MagicMock(), MagicMock(), settings
-            )
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    result = await answer_question(
+                        "Any question?", FakeEmbedder(), MagicMock(), MagicMock(), settings
+                    )
 
     assert len(result.citations[0].content_preview) <= 200
     assert result.citations[0].content_preview == long_content[:200]
 
 
-def test_pipeline_propagates_generation_timeout():
+async def test_pipeline_propagates_generation_timeout():
     """answer_question must propagate GenerationTimeout without swallowing it."""
     from tests.conftest import FakeEmbedder
 
@@ -172,8 +178,10 @@ def test_pipeline_propagates_generation_timeout():
 
     with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
         with patch("app.rag.pipeline.call_gemini", side_effect=GenerationTimeout("timeout")):
-            from app.rag.pipeline import answer_question
-            with pytest.raises(GenerationTimeout):
-                answer_question(
-                    "What is a rule?", FakeEmbedder(), MagicMock(), MagicMock(), settings
-                )
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    with pytest.raises(GenerationTimeout):
+                        await answer_question(
+                            "What is a rule?", FakeEmbedder(), MagicMock(), MagicMock(), settings
+                        )
