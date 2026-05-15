@@ -110,7 +110,7 @@ def test_pipeline_empty_chunks_returns_fallback():
     fake_gemini = MagicMock()  # should NOT be called
     settings = _fake_settings()
 
-    with patch("app.rag.pipeline.vector_search", return_value=[]):
+    with patch("app.rag.pipeline.hybrid_search", return_value=[]):
         from app.rag.pipeline import answer_question
         result = answer_question(
             "What is a rule?", fake_embedder, MagicMock(), fake_gemini, settings
@@ -131,7 +131,7 @@ def test_pipeline_latency_ms_populated():
     settings = _fake_settings()
 
     chunk = _make_chunk()
-    with patch("app.rag.pipeline.vector_search", return_value=[chunk]):
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
         with patch("app.rag.pipeline.call_gemini", return_value="An answer."):
             from app.rag.pipeline import answer_question
             result = answer_question(
@@ -150,7 +150,7 @@ def test_pipeline_citation_preview_truncated_to_200_chars():
     chunk = _make_chunk(content=long_content)
     settings = _fake_settings()
 
-    with patch("app.rag.pipeline.vector_search", return_value=[chunk]):
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
         with patch("app.rag.pipeline.call_gemini", return_value="Answer."):
             from app.rag.pipeline import answer_question
             result = answer_question(
@@ -168,7 +168,7 @@ def test_pipeline_propagates_generation_timeout():
     chunk = _make_chunk()
     settings = _fake_settings()
 
-    with patch("app.rag.pipeline.vector_search", return_value=[chunk]):
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
         with patch("app.rag.pipeline.call_gemini", side_effect=GenerationTimeout("timeout")):
             from app.rag.pipeline import answer_question
             with pytest.raises(GenerationTimeout):

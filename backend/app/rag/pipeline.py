@@ -3,7 +3,7 @@ import time
 from app.config import Settings
 from app.rag.embedder import Embedder
 from app.rag.generation import build_prompt, call_gemini
-from app.rag.retrieval import vector_search
+from app.rag.retrieval import hybrid_search
 from app.rag.schemas import Citation, QueryResponse
 
 _NO_INFO_ANSWER = "No tengo información suficiente para responder esa pregunta con las reglas disponibles."
@@ -22,7 +22,12 @@ def answer_question(
     embedding = embedder.encode(question)
 
     corpus_version = settings.corpus_version or "latest"
-    chunks = vector_search(db_pool, embedding, corpus_version, settings.top_k)
+    chunks = hybrid_search(
+        db_pool, embedding, question, corpus_version,
+        top_k=settings.top_k,
+        top_k_fetch=settings.top_k_fetch,
+        rrf_k=settings.rrf_k,
+    )
 
     elapsed_ms = round((time.time() - t0) * 1000)
 

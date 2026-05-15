@@ -24,7 +24,7 @@ def _make_chunk() -> Chunk:
 
 def test_happy_path(client: TestClient):
     """POST with valid question returns 200, non-empty answer, and citations list."""
-    with patch("app.rag.pipeline.vector_search", return_value=[_make_chunk()]):
+    with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
         with patch("app.rag.pipeline.call_gemini", return_value="Here is the answer."):
             resp = client.post("/api/v1/query", json={"question": "How does double-tap work?"})
 
@@ -51,7 +51,7 @@ def test_empty_question_returns_422(client: TestClient):
 
 def test_timeout_returns_504(timeout_client: TestClient):
     """When Gemini raises GenerationTimeout, the endpoint returns 504."""
-    with patch("app.rag.pipeline.vector_search", return_value=[_make_chunk()]):
+    with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
         resp = timeout_client.post(
             "/api/v1/query", json={"question": "What happens on timeout?"}
         )
