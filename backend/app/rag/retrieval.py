@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from psycopg2.pool import SimpleConnectionPool
 
 from app.db import get_conn
+from app.observability import observe_or_noop
 
 
 @dataclass(frozen=True)
@@ -132,7 +133,7 @@ def _rrf_fuse(
     return [chunks_by_id[cid] for cid in sorted_ids[:top_k]]
 
 
-def hybrid_search(
+def _hybrid_search_impl(
     pool: SimpleConnectionPool,
     embedding: list[float],
     query_text: str,
@@ -141,9 +142,9 @@ def hybrid_search(
     top_k_fetch: int = 15,
     rrf_k: int = 60,
 ) -> list[Chunk]:
-    """Run vector_search and fts_search sequentially with top_k_fetch each,
-    fuse with _rrf_fuse, return top_k. Same return shape as vector_search.
-    """
     vec_results = vector_search(pool, embedding, corpus_version, top_k=top_k_fetch)
     fts_results = fts_search(pool, query_text, corpus_version, top_k=top_k_fetch)
     return _rrf_fuse(vec_results, fts_results, rrf_k, top_k)
+
+
+hybrid_search = observe_or_noop(_hybrid_search_impl, name="retrieval")
