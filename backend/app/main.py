@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 
-import google.generativeai as genai
 from fastapi import FastAPI
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -67,6 +66,7 @@ async def lifespan(app: FastAPI):
 
     # 5. Init LLM client
     if settings.llm_provider == "gemini":
+        import google.generativeai as genai
         genai.configure(api_key=settings.gemini_api_key)
         llm_client = genai.GenerativeModel(settings.gemini_model)
         logger.info("Gemini client initialized.")
