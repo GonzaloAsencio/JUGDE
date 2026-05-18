@@ -48,3 +48,7 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# AI tooling (local only)
+.claude/
+.atl/
