@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 class GenerationTimeout(Exception):
-    """Raised when the Gemini API call exceeds the configured timeout."""
+    """Raised when the LLM API call exceeds the configured timeout."""
 
 
 class GenerationError(Exception):
-    """Raised when the Gemini API returns an error."""
+    """Raised when the LLM API returns an error."""
 
 
 _HARDENED_PROMPT_GUARD = """\
@@ -46,37 +46,28 @@ _SAFE_FALLBACK = (
 _LEAK_PATTERN = re.compile(r"system\s+prompt", re.IGNORECASE)
 
 
-def build_prompt(question: str, chunks: list[Chunk]) -> str:
-    """Pure function: build the full prompt string for Gemini."""
-    lines = [_SYSTEM_INSTRUCTION, "=== CONTEXTO ==="]
-
+def _build_context_block(question: str, chunks: list[Chunk]) -> str:
+    lines = ["=== CONTEXTO ==="]
     for i, chunk in enumerate(chunks, 1):
         lines.append(
             f'[#{i}] section: "{chunk.section}" (source: {chunk.source_type})\n{chunk.content}'
         )
-
-    lines.append("")
-    lines.append("=== PREGUNTA ===")
-    lines.append(question)
-    lines.append("")
-    lines.append("=== RESPUESTA ===")
-
+    lines.extend(["", "=== PREGUNTA ===", question, "", "=== RESPUESTA ==="])
     return "\n".join(lines)
 
 
-def call_gemini(
+def build_prompt(question: str, chunks: list[Chunk]) -> str:
+    """Pure function: build the full prompt string for Gemini."""
+    return "\n".join([_SYSTEM_INSTRUCTION, _build_context_block(question, chunks)])
+
+
+def _call_gemini(
     client: genai.GenerativeModel,
     prompt: str,
     *,
     temperature: float = 0.1,
     timeout_s: float = 10.0,
 ) -> str:
-    """Call Gemini and return the answer text.
-
-    Raises:
-        GenerationTimeout: if the API call exceeds timeout_s.
-        GenerationError: if the API returns an error.
-    """
     generation_config = genai.types.GenerationConfig(temperature=temperature)
     request_options = {"timeout": timeout_s}
 
@@ -94,6 +85,50 @@ def call_gemini(
         if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:
             raise GenerationTimeout("Gemini API call timed out") from e
         raise GenerationError(f"Gemini API error: {e}") from e
+
+
+def _call_openai_compat(question: str, chunks: list[Chunk], settings) -> str:
+    import openai
+
+    client = openai.OpenAI(
+        base_url=settings.llm_base_url,
+        api_key=settings.llm_api_key,
+    )
+    try:
+        response = client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {"role": "system", "content": _SYSTEM_INSTRUCTION},
+                {"role": "user", "content": _build_context_block(question, chunks)},
+            ],
+            temperature=settings.gemini_temperature,
+            timeout=settings.gemini_timeout_s,
+        )
+        choices = response.choices
+        if not choices:
+            raise GenerationError("OpenAI-compat returned empty choices — check LLM_MODEL matches the loaded model name")
+        content = choices[0].message.content
+        if content is None:
+            raise GenerationError("OpenAI-compat returned null content — model may not support chat completions")
+        return content
+    except Exception as e:
+        error_str = str(e).lower()
+        if "timeout" in error_str or "timed out" in error_str:
+            raise GenerationTimeout("OpenAI-compat API call timed out") from e
+        raise GenerationError(f"OpenAI-compat API error: {e}") from e
+
+
+def call_llm(question: str, chunks: list[Chunk], settings, gemini_client=None) -> str:
+    """Call the configured LLM provider and return the answer text."""
+    if settings.llm_provider == "openai_compat":
+        return _call_openai_compat(question, chunks, settings)
+    prompt = build_prompt(question, chunks)
+    return _call_gemini(
+        gemini_client,
+        prompt,
+        temperature=settings.gemini_temperature,
+        timeout_s=settings.gemini_timeout_s,
+    )
 
 
 def post_gen_validate(

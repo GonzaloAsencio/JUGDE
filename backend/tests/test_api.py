@@ -25,7 +25,7 @@ def _make_chunk() -> Chunk:
 def test_happy_path(client: TestClient):
     """POST with valid question returns 200, non-empty answer, and citations list."""
     with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
-        with patch("app.rag.pipeline.call_gemini", return_value="Here is the answer."):
+        with patch("app.rag.pipeline.call_llm", return_value="Here is the answer."):
             resp = client.post("/api/v1/query", json={"question": "How does double-tap work?"})
 
     assert resp.status_code == 200

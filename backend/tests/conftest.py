@@ -32,14 +32,14 @@ class FakeGeminiTimeout:
 
 def _make_client(gemini_override=None):
     """Build a TestClient with all heavy startup steps mocked out."""
-    from app.api.v1.query import get_db_pool, get_embedder, get_gemini_client
+    from app.api.v1.query import get_db_pool, get_embedder, get_llm_client
     from app.main import app
 
     gemini = gemini_override if gemini_override is not None else FakeGeminiClient()
 
     app.dependency_overrides[get_embedder] = lambda: FakeEmbedder()
     app.dependency_overrides[get_db_pool] = lambda: FakePool()
-    app.dependency_overrides[get_gemini_client] = lambda: gemini
+    app.dependency_overrides[get_llm_client] = lambda: gemini
 
     # Patch lifespan-level heavy operations so TestClient startup doesn't fail
     patches = [
@@ -92,12 +92,12 @@ def _fake_settings():
 
 @pytest.fixture
 def client():
-    from app.api.v1.query import get_db_pool, get_embedder, get_gemini_client
+    from app.api.v1.query import get_db_pool, get_embedder, get_llm_client
     from app.main import app
 
     app.dependency_overrides[get_embedder] = lambda: FakeEmbedder()
     app.dependency_overrides[get_db_pool] = lambda: FakePool()
-    app.dependency_overrides[get_gemini_client] = lambda: FakeGeminiClient()
+    app.dependency_overrides[get_llm_client] = lambda: FakeGeminiClient()
 
     with (
         patch("app.main.init_pool", return_value=MagicMock()),
@@ -116,12 +116,12 @@ def client():
 @pytest.fixture
 def timeout_client():
     """Client whose Gemini dependency raises GenerationTimeout."""
-    from app.api.v1.query import get_db_pool, get_embedder, get_gemini_client
+    from app.api.v1.query import get_db_pool, get_embedder, get_llm_client
     from app.main import app
 
     app.dependency_overrides[get_embedder] = lambda: FakeEmbedder()
     app.dependency_overrides[get_db_pool] = lambda: FakePool()
-    app.dependency_overrides[get_gemini_client] = lambda: FakeGeminiTimeout()
+    app.dependency_overrides[get_llm_client] = lambda: FakeGeminiTimeout()
 
     with (
         patch("app.main.init_pool", return_value=MagicMock()),

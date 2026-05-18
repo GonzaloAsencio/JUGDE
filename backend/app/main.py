@@ -65,26 +65,30 @@ async def lifespan(app: FastAPI):
     embedder = Embedder.load(settings.model_name)
     logger.info("Embedder loaded.")
 
-    # 5. Init Gemini client
-    genai.configure(api_key=settings.gemini_api_key)
-    gemini_client = genai.GenerativeModel(settings.gemini_model)
-    logger.info("Gemini client initialized.")
+    # 5. Init LLM client
+    if settings.llm_provider == "gemini":
+        genai.configure(api_key=settings.gemini_api_key)
+        llm_client = genai.GenerativeModel(settings.gemini_model)
+        logger.info("Gemini client initialized.")
 
-    # 6. Ping Gemini to validate API key (rate limit errors are warnings, not fatal)
-    try:
-        gemini_client.generate_content(
-            "ping",
-            generation_config=genai.types.GenerationConfig(max_output_tokens=5),
-        )
-        logger.info("Gemini ping successful.")
-    except Exception as e:
-        if "429" in str(e) or "quota" in str(e).lower() or "rate" in str(e).lower():
-            logger.warning("Gemini ping hit rate limit (429) -- API key is valid, continuing.")
-        else:
-            close_pool(pool)
-            raise RuntimeError(
-                f"Gemini ping failed -- invalid API key or unreachable: {e}"
-            ) from e
+        # 6. Ping Gemini to validate API key (rate limit errors are warnings, not fatal)
+        try:
+            llm_client.generate_content(
+                "ping",
+                generation_config=genai.types.GenerationConfig(max_output_tokens=5),
+            )
+            logger.info("Gemini ping successful.")
+        except Exception as e:
+            if "429" in str(e) or "quota" in str(e).lower() or "rate" in str(e).lower():
+                logger.warning("Gemini ping hit rate limit (429) -- API key is valid, continuing.")
+            else:
+                close_pool(pool)
+                raise RuntimeError(
+                    f"Gemini ping failed -- invalid API key or unreachable: {e}"
+                ) from e
+    else:
+        llm_client = None
+        logger.info("LLM provider: openai_compat — skipping Gemini init.", base_url=settings.llm_base_url, model=settings.llm_model)
 
     # 7. Init Redis cache (optional -- skipped if env vars absent)
     if settings.upstash_redis_url and settings.upstash_redis_token:
@@ -93,7 +97,7 @@ async def lifespan(app: FastAPI):
     # 8-9. Store everything on app.state
     app.state.embedder = embedder
     app.state.db_pool = pool
-    app.state.gemini_client = gemini_client
+    app.state.llm_client = llm_client
     app.state.corpus_version = corpus_version
     app.state.settings = settings
 

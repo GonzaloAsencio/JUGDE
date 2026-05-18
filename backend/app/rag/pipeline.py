@@ -6,7 +6,7 @@ from app.cache import get_cached, make_cache_key, set_cached
 from app.config import Settings
 from app.observability import get_logger
 from app.rag.embedder import Embedder
-from app.rag.generation import build_prompt, call_gemini, post_gen_validate
+from app.rag.generation import call_llm, post_gen_validate
 from app.rag.retrieval import hybrid_search
 from app.rag.schemas import Citation, QueryResponse
 
@@ -19,7 +19,7 @@ async def answer_question(
     question: str,
     embedder: Embedder,
     db_pool,
-    gemini,
+    llm_client,
     settings: Settings,
     card_mentions: list[str] | None = None,
 ) -> QueryResponse:
@@ -42,7 +42,7 @@ async def answer_question(
                 query_id=query_id,
                 latency_ms=latency_ms,
                 cache_hit=True,
-                model=settings.gemini_model,
+                model=settings.llm_model or settings.gemini_model,
                 confidence=cached_response.confidence,
             )
             return cached_response
@@ -67,7 +67,7 @@ async def answer_question(
             query_id=query_id,
             latency_ms=latency_ms,
             cache_hit=False,
-            model=settings.gemini_model,
+            model=settings.llm_model or settings.gemini_model,
             confidence=0.0,
         )
         return QueryResponse(
@@ -78,13 +78,7 @@ async def answer_question(
             confidence=0.0,
         )
 
-    prompt = build_prompt(question, chunks)
-    answer = call_gemini(
-        gemini,
-        prompt,
-        temperature=settings.gemini_temperature,
-        timeout_s=settings.gemini_timeout_s,
-    )
+    answer = call_llm(question, chunks, settings, gemini_client=llm_client)
 
     citations = [
         Citation(
@@ -124,7 +118,7 @@ async def answer_question(
         query_id=query_id,
         latency_ms=latency_ms,
         cache_hit=False,
-        model=settings.gemini_model,
+        model=settings.llm_model or settings.gemini_model,
         confidence=confidence,
     )
 

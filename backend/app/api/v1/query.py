@@ -21,8 +21,8 @@ def get_db_pool(request: Request):
     return request.app.state.db_pool
 
 
-def get_gemini_client(request: Request):
-    return request.app.state.gemini_client
+def get_llm_client(request: Request):
+    return request.app.state.llm_client
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -32,19 +32,19 @@ async def query(
     request: Request,
     embedder=Depends(get_embedder),
     pool=Depends(get_db_pool),
-    gemini=Depends(get_gemini_client),
+    llm_client=Depends(get_llm_client),
     settings=Depends(get_settings),
 ) -> QueryResponse:
     """POST /query — embed -> retrieve -> generate."""
     if request.app.state.corpus_version is None:
         raise HTTPException(status_code=503, detail="Corpus not loaded. Run ingest pipeline first.")
     try:
-        return await answer_question(body.question, embedder, pool, gemini, settings, body.card_mentions)
+        return await answer_question(body.question, embedder, pool, llm_client, settings, body.card_mentions)
     except GenerationTimeout as e:
-        logger.warning("Gemini timeout", error=str(e))
+        logger.warning("LLM timeout", error=str(e))
         raise HTTPException(status_code=504, detail="Generation timeout") from e
     except GenerationError as e:
-        logger.error("Gemini error", error=str(e))
+        logger.error("LLM error", error=str(e))
         raise HTTPException(status_code=502, detail="Generation service error") from e
     except psycopg2.OperationalError as e:
         logger.error("DB unavailable", error=str(e))

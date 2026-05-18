@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from app.rag.generation import GenerationTimeout, build_prompt  # noqa: F401
+from app.rag.generation import GenerationTimeout, build_prompt, call_llm  # noqa: F401
 from app.rag.retrieval import Chunk
 from app.rag.schemas import Citation, QueryRequest, QueryResponse
 
@@ -136,7 +136,7 @@ async def test_pipeline_latency_ms_populated():
 
     chunk = _make_chunk()
     with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
-        with patch("app.rag.pipeline.call_gemini", return_value="An answer."):
+        with patch("app.rag.pipeline.call_llm", return_value="An answer."):
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
@@ -157,7 +157,7 @@ async def test_pipeline_citation_preview_truncated_to_200_chars():
     settings = _fake_settings()
 
     with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
-        with patch("app.rag.pipeline.call_gemini", return_value="Answer."):
+        with patch("app.rag.pipeline.call_llm", return_value="Answer."):
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
@@ -177,7 +177,7 @@ async def test_pipeline_propagates_generation_timeout():
     settings = _fake_settings()
 
     with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
-        with patch("app.rag.pipeline.call_gemini", side_effect=GenerationTimeout("timeout")):
+        with patch("app.rag.pipeline.call_llm", side_effect=GenerationTimeout("timeout")):
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
