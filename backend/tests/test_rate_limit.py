@@ -26,7 +26,7 @@ def _make_chunk() -> Chunk:
 @pytest.fixture
 def rate_limit_client():
     """Client with rate limiting enabled and per-minute limit of 3 for tests."""
-    from app.api.v1.query import get_db_pool, get_embedder, get_gemini_client
+    from app.api.v1.query import get_db_pool, get_embedder, get_llm_client
     from app.middleware.rate_limit import limiter
     from app.main import app
 
@@ -35,7 +35,7 @@ def rate_limit_client():
 
     app.dependency_overrides[get_embedder] = lambda: FakeEmbedder()
     app.dependency_overrides[get_db_pool] = lambda: MagicMock()
-    app.dependency_overrides[get_gemini_client] = lambda: FakeGeminiClient()
+    app.dependency_overrides[get_llm_client] = lambda: FakeGeminiClient()
 
     settings = _fake_settings()
     settings.rate_limit_enabled = True
@@ -58,7 +58,7 @@ def test_rate_limit_429_on_11th_request(rate_limit_client: TestClient):
     """The 11th request within 1 minute must return 429 with Retry-After."""
     with (
         patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]),
-        patch("app.rag.pipeline.call_gemini", return_value="Answer."),
+        patch("app.rag.pipeline.call_llm", return_value="Answer."),
         patch("app.rag.pipeline.get_cached", return_value=None),
         patch("app.rag.pipeline.set_cached"),
     ):
@@ -76,7 +76,7 @@ def test_health_exempt_after_rate_limit(rate_limit_client: TestClient):
     """GET /health must succeed even when the query rate limit is exceeded."""
     with (
         patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]),
-        patch("app.rag.pipeline.call_gemini", return_value="Answer."),
+        patch("app.rag.pipeline.call_llm", return_value="Answer."),
         patch("app.rag.pipeline.get_cached", return_value=None),
         patch("app.rag.pipeline.set_cached"),
     ):

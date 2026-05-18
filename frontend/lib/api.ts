@@ -1,6 +1,6 @@
 import type { ApiError, ErrorType, QueryResponse } from './types';
 
-const CLIENT_TIMEOUT_MS = 10_000;
+const CLIENT_TIMEOUT_MS = 60_000;
 
 export class ApiErrorInstance extends Error {
   type: ErrorType;

@@ -55,15 +55,16 @@ async def health_deep(request: Request) -> dict:
     except Exception:
         checks["redis"] = False
 
-    # Gemini liveness probe
+    # LLM liveness probe (Gemini only; openai_compat skips with llm_client=None)
     try:
-        import google.generativeai as genai
+        llm_client = request.app.state.llm_client
+        if llm_client is not None:
+            import google.generativeai as genai
 
-        gemini = request.app.state.gemini_client
-        gemini.generate_content(
-            "ping",
-            generation_config=genai.types.GenerationConfig(max_output_tokens=1),
-        )
+            llm_client.generate_content(
+                "ping",
+                generation_config=genai.types.GenerationConfig(max_output_tokens=1),
+            )
         checks["llm"] = True
     except Exception as e:
         # 429 means the key is valid — not a real failure

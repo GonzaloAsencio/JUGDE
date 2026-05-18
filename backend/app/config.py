@@ -1,11 +1,12 @@
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     database_url: str
-    gemini_api_key: str
+    gemini_api_key: str | None = None
     top_k: int = 5
     model_name: str = "BAAI/bge-m3"
     embedding_dim: int = 1024
@@ -16,6 +17,26 @@ class Settings(BaseSettings):
     top_k_fetch: int = 15
     rrf_k: int = 60
     enable_reranker: bool = False
+
+    # LLM provider: "gemini" (default) | "openai_compat" (Groq, LM Studio, Ollama, etc.)
+    llm_provider: str = "gemini"
+    llm_base_url: str | None = None
+    llm_api_key: str | None = None
+    llm_model: str | None = None
+
+    @model_validator(mode="after")
+    def _check_provider_fields(self):
+        if self.llm_provider == "gemini" and not self.gemini_api_key:
+            raise ValueError("gemini_api_key is required when llm_provider=gemini")
+        if self.llm_provider == "openai_compat":
+            missing = [name for name, val in [
+                ("llm_base_url", self.llm_base_url),
+                ("llm_api_key", self.llm_api_key),
+                ("llm_model", self.llm_model),
+            ] if not val]
+            if missing:
+                raise ValueError(f"openai_compat requires: {missing}")
+        return self
 
     # Runtime environment
     app_env: str = "development"
