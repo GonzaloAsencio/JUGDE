@@ -1,0 +1,58 @@
+change: production-hardening
+status: ARCHIVED
+archived_date: 2026-05-15
+archive_location: openspec/changes/archive/2026-05-15-production-hardening
+
+phases_completed:
+  - phase: proposal
+    artifact_id: "32"
+    completed: true
+  - phase: spec
+    artifact_id: "33"
+    completed: true
+  - phase: design
+    artifact_id: "34"
+    completed: true
+  - phase: tasks
+    artifact_id: "35"
+    completed: true
+  - phase: apply
+    artifact_id: "36"
+    completed: true
+  - phase: verify
+    artifact_id: "37"
+    completed: true
+  - phase: archive
+    artifact_id: "38"
+    completed: true
+
+verification_verdict: PASS_WITH_WARNINGS
+critical_issues: 0
+warnings_fixed: 3
+suggestions: 3
+
+test_results:
+  backend: 97/97
+  frontend: 22/22
+  total: 119/119
+
+commits:
+  - count: 10
+    types:
+      - feat(hardening): 9 commits per phase
+      - fix(hardening): 1 commit post-verify (0f3ab26)
+
+specs_synced: 7
+  - response-cache
+  - rate-limiting
+  - observability
+  - input-validation
+  - prompt-injection-defense
+  - frontend-error-states
+  - health-checks
+
+files_created: 11
+files_modified: 12
+
+production_ready: true
+next_change: portfolio-polish

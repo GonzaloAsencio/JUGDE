@@ -1,3 +1,13 @@
+---
+title: Riftbound Judge AI
+emoji: 🤖
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Riftbound Judge AI
 
 An AI-powered rules judge for Riftbound TCG — ask rules questions in plain language and get grounded answers with citations from the official rulebook.
