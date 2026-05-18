@@ -1,11 +1,11 @@
 import logging
 import re
-from typing import Optional
-
-import google.api_core.exceptions as _gapi_exc
-import google.generativeai as genai
+from typing import TYPE_CHECKING, Optional
 
 from app.rag.retrieval import Chunk
+
+if TYPE_CHECKING:
+    import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +62,15 @@ def build_prompt(question: str, chunks: list[Chunk]) -> str:
 
 
 def _call_gemini(
-    client: genai.GenerativeModel,
+    client: "genai.GenerativeModel",
     prompt: str,
     *,
     temperature: float = 0.1,
     timeout_s: float = 10.0,
 ) -> str:
+    import google.api_core.exceptions as _gapi_exc
+    import google.generativeai as genai
+
     generation_config = genai.types.GenerationConfig(temperature=temperature)
     request_options = {"timeout": timeout_s}
 
