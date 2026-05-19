@@ -6,7 +6,7 @@ from app.cache import get_cached, make_cache_key, set_cached
 from app.config import Settings
 from app.observability import get_logger
 from app.rag.embedder import Embedder
-from app.rag.generation import call_llm, post_gen_validate
+from app.rag.generation import call_llm, post_gen_validate, rewrite_query_for_retrieval
 from app.rag.retrieval import hybrid_search
 from app.rag.schemas import Citation, QueryResponse
 
@@ -49,7 +49,8 @@ async def answer_question(
         except Exception:
             pass  # Corrupt cache entry — fall through to generation
 
-    embedding = embedder.encode(question)
+    retrieval_query = rewrite_query_for_retrieval(question, settings)
+    embedding = embedder.encode(retrieval_query)
 
     chunks = hybrid_search(
         db_pool, embedding, question, corpus_version,

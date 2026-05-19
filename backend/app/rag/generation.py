@@ -36,6 +36,7 @@ Reglas estrictas:
 3. Cuando una regla provenga de la errata, mencionálo explícitamente ("según la errata...").
 4. Citá las secciones relevantes al final con el formato [#N] donde N es el número del chunk.
 5. Respondé en el mismo idioma de la pregunta.
+6. Cuando la respuesta se derive encadenando reglas (A implica B, B implica C), seguí la cadena completa y llegá a la conclusión. NUNCA digas "no hay regla explícita que lo prohíba" si la prohibición puede inferirse lógicamente de las reglas presentes. Ejemplo: "entra exhausto" + "atacar requiere exhaustar" = "no puede atacar ese turno" es una conclusión válida aunque no haya una regla que lo diga literalmente.
 """ + _HARDENED_PROMPT_GUARD
 
 _SAFE_FALLBACK = (
@@ -88,6 +89,40 @@ def _call_gemini(
         if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:
             raise GenerationTimeout("Gemini API call timed out") from e
         raise GenerationError(f"Gemini API error: {e}") from e
+
+
+_REWRITE_PROMPT = """\
+You help retrieve rules from the Riftbound card game rulebook.
+Rewrite the question using official game terminology (exhausted, ready, attack, combat, unit, keyword, ability, enter the board, etc.).
+Output only the rewritten question, 1-2 sentences max.
+
+Question: {question}
+Rewritten:"""
+
+
+def rewrite_query_for_retrieval(question: str, settings) -> str:
+    """Rewrite user question in rulebook terminology to improve vector retrieval.
+
+    Falls back to the original question on any error so retrieval always proceeds.
+    """
+    if settings.llm_provider != "openai_compat":
+        return question
+    try:
+        import openai
+        client = openai.OpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key)
+        response = client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[{"role": "user", "content": _REWRITE_PROMPT.format(question=question)}],
+            temperature=0.0,
+            max_tokens=120,
+            timeout=5.0,
+        )
+        rewritten = response.choices[0].message.content
+        if rewritten:
+            return rewritten.strip()
+    except Exception:
+        pass
+    return question
 
 
 def _call_openai_compat(question: str, chunks: list[Chunk], settings) -> str:
