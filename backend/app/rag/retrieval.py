@@ -90,7 +90,7 @@ def fts_search(
     ]
 
 
-_OFFICIAL_SOURCES = frozenset({"rulebook", "tournament_rules", "patch_notes"})
+_OFFICIAL_SOURCES = frozenset({"rulebook", "tournament_rules", "patch_notes", "rules_faq"})
 _OFFICIAL_BOOST = 1.05  # official rule sources get a 5% score boost over errata
 
 
