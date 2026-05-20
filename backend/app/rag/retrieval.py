@@ -157,3 +157,42 @@ def _hybrid_search_impl(
 
 
 hybrid_search = observe_or_noop(_hybrid_search_impl, name="retrieval")
+
+
+_TAGGED_SQL = """
+SELECT id, content, section, parent_section, source_type
+FROM corpus_chunks
+WHERE corpus_version = %s
+  AND LOWER(section) ILIKE LOWER(%s)
+ORDER BY (source_type = 'rulebook') DESC
+LIMIT 2
+"""
+
+
+def tagged_lookup(
+    pool: SimpleConnectionPool,
+    tags: list[str],
+    corpus_version: str,
+) -> list[Chunk]:
+    """Direct lookup by section name. Returns chunks with similarity=1.0."""
+    if not tags:
+        return []
+    results: list[Chunk] = []
+    seen_ids: set[str] = set()
+    with get_conn(pool) as conn:
+        with conn.cursor() as cur:
+            for tag in tags:
+                cur.execute(_TAGGED_SQL, (corpus_version, f"%{tag}%"))
+                for row in cur.fetchall():
+                    chunk_id = str(row[0])
+                    if chunk_id not in seen_ids:
+                        seen_ids.add(chunk_id)
+                        results.append(Chunk(
+                            id=chunk_id,
+                            content=row[1],
+                            section=row[2],
+                            parent_section=row[3],
+                            source_type=row[4],
+                            similarity=1.0,
+                        ))
+    return results
