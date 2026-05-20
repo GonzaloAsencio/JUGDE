@@ -11,7 +11,10 @@ from app.db import close_pool, get_conn, init_pool
 from app.health import router as health_router
 from app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from app.observability import get_logger, init_observability
+import google.generativeai as genai
+
 from app.rag.embedder import Embedder
+from app.rag.provider import create_provider
 
 _settings = get_settings()
 
@@ -66,7 +69,6 @@ async def lifespan(app: FastAPI):
 
     # 5. Init LLM client
     if settings.llm_provider == "gemini":
-        import google.generativeai as genai
         genai.configure(api_key=settings.gemini_api_key)
         llm_client = genai.GenerativeModel(settings.gemini_model)
         logger.info("Gemini client initialized.")
@@ -97,7 +99,7 @@ async def lifespan(app: FastAPI):
     # 8-9. Store everything on app.state
     app.state.embedder = embedder
     app.state.db_pool = pool
-    app.state.llm_client = llm_client
+    app.state.llm_provider = create_provider(settings, llm_client)
     app.state.corpus_version = corpus_version
     app.state.settings = settings
 

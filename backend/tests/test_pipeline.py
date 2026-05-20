@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from app.rag.generation import GenerationTimeout, build_prompt, call_llm  # noqa: F401
+from app.rag.generation import GenerationTimeout, build_prompt  # noqa: F401
 from app.rag.retrieval import Chunk
 from app.rag.schemas import Citation, QueryRequest, QueryResponse
 
@@ -106,10 +106,8 @@ def test_query_response_schema():
 
 async def test_pipeline_empty_chunks_returns_fallback():
     """When vector_search returns [], the answer is the fallback message and citations=[]."""
-    from tests.conftest import FakeEmbedder
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
 
-    fake_embedder = FakeEmbedder()
-    fake_gemini = MagicMock()  # should NOT be called
     settings = _fake_settings()
 
     with patch("app.rag.pipeline.hybrid_search", return_value=[]):
@@ -117,32 +115,27 @@ async def test_pipeline_empty_chunks_returns_fallback():
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
                 result = await answer_question(
-                    "What is a rule?", fake_embedder, MagicMock(), fake_gemini, settings
+                    "What is a rule?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
                 )
 
     assert result.citations == []
     assert "No tengo información" in result.answer
-    fake_gemini.generate_content.assert_not_called()
 
 
 async def test_pipeline_latency_ms_populated():
     """latency_ms must be a non-negative integer in the response."""
-    from tests.conftest import FakeEmbedder
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
 
-    fake_embedder = FakeEmbedder()
-    fake_gemini = MagicMock()
-    fake_gemini.generate_content.return_value = MagicMock(text="An answer.")
     settings = _fake_settings()
 
     chunk = _make_chunk()
     with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
-        with patch("app.rag.pipeline.call_llm", return_value="An answer."):
-            with patch("app.rag.pipeline.get_cached", return_value=None):
-                with patch("app.rag.pipeline.set_cached"):
-                    from app.rag.pipeline import answer_question
-                    result = await answer_question(
-                        "How does it work?", fake_embedder, MagicMock(), fake_gemini, settings
-                    )
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                result = await answer_question(
+                    "How does it work?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
+                )
 
     assert isinstance(result.latency_ms, int)
     assert result.latency_ms >= 0
@@ -150,20 +143,19 @@ async def test_pipeline_latency_ms_populated():
 
 async def test_pipeline_citation_preview_truncated_to_200_chars():
     """content_preview must be exactly content[:200] even when chunk.content exceeds 200 chars."""
-    from tests.conftest import FakeEmbedder
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
 
     long_content = "r" * 500
     chunk = _make_chunk(content=long_content)
     settings = _fake_settings()
 
     with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
-        with patch("app.rag.pipeline.call_llm", return_value="Answer."):
-            with patch("app.rag.pipeline.get_cached", return_value=None):
-                with patch("app.rag.pipeline.set_cached"):
-                    from app.rag.pipeline import answer_question
-                    result = await answer_question(
-                        "Any question?", FakeEmbedder(), MagicMock(), MagicMock(), settings
-                    )
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                result = await answer_question(
+                    "Any question?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
+                )
 
     assert len(result.citations[0].content_preview) <= 200
     assert result.citations[0].content_preview == long_content[:200]
@@ -171,20 +163,19 @@ async def test_pipeline_citation_preview_truncated_to_200_chars():
 
 async def test_pipeline_propagates_generation_timeout():
     """answer_question must propagate GenerationTimeout without swallowing it."""
-    from tests.conftest import FakeEmbedder
+    from tests.conftest import FakeEmbedder, FakeLLMProviderTimeout
 
     chunk = _make_chunk()
     settings = _fake_settings()
 
     with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
-        with patch("app.rag.pipeline.call_llm", side_effect=GenerationTimeout("timeout")):
-            with patch("app.rag.pipeline.get_cached", return_value=None):
-                with patch("app.rag.pipeline.set_cached"):
-                    from app.rag.pipeline import answer_question
-                    with pytest.raises(GenerationTimeout):
-                        await answer_question(
-                            "What is a rule?", FakeEmbedder(), MagicMock(), MagicMock(), settings
-                        )
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                with pytest.raises(GenerationTimeout):
+                    await answer_question(
+                        "What is a rule?", FakeEmbedder(), MagicMock(), FakeLLMProviderTimeout(), settings
+                    )
 
 
 # ---------------------------------------------------------------------------
@@ -237,14 +228,14 @@ async def test_pipeline_tagged_chunks_prepend_before_semantic():
 
     with patch("app.rag.pipeline.tagged_lookup", return_value=[tagged_chunk]):
         with patch("app.rag.pipeline.hybrid_search", return_value=[semantic_chunk]):
-            with patch("app.rag.pipeline.call_llm", return_value="answer"):
-                with patch("app.rag.pipeline.get_cached", return_value=None):
-                    with patch("app.rag.pipeline.set_cached"):
-                        from app.rag.pipeline import answer_question
-                        result = await answer_question(
-                            "@accelerate what does it do?",
-                            FakeEmbedder(), MagicMock(), MagicMock(), _fake_settings(),
-                        )
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    from tests.conftest import FakeLLMProvider
+                    result = await answer_question(
+                        "@accelerate what does it do?",
+                        FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                    )
 
     assert result.citations[0].section == "Accelerate"
 
@@ -288,14 +279,14 @@ async def test_pipeline_auto_detects_keyword_without_tag():
 
     with patch("app.rag.pipeline.tagged_lookup", return_value=[tagged_chunk]) as mock_lookup:
         with patch("app.rag.pipeline.hybrid_search", return_value=[]):
-            with patch("app.rag.pipeline.call_llm", return_value="answer"):
-                with patch("app.rag.pipeline.get_cached", return_value=None):
-                    with patch("app.rag.pipeline.set_cached"):
-                        from app.rag.pipeline import answer_question
-                        result = await answer_question(
-                            "What does Accelerate do?",
-                            FakeEmbedder(), MagicMock(), MagicMock(), _fake_settings(),
-                        )
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    from tests.conftest import FakeLLMProvider
+                    result = await answer_question(
+                        "What does Accelerate do?",
+                        FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                    )
 
     mock_lookup.assert_called_once()
     assert result.citations[0].section == "Accelerate"
@@ -311,14 +302,14 @@ async def test_pipeline_tagged_deduplicates_with_semantic():
 
     with patch("app.rag.pipeline.tagged_lookup", return_value=[shared_chunk]):
         with patch("app.rag.pipeline.hybrid_search", return_value=[semantic_dup]):
-            with patch("app.rag.pipeline.call_llm", return_value="answer"):
-                with patch("app.rag.pipeline.get_cached", return_value=None):
-                    with patch("app.rag.pipeline.set_cached"):
-                        from app.rag.pipeline import answer_question
-                        result = await answer_question(
-                            "@accelerate",
-                            FakeEmbedder(), MagicMock(), MagicMock(), _fake_settings(),
-                        )
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    from tests.conftest import FakeLLMProvider
+                    result = await answer_question(
+                        "@accelerate",
+                        FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                    )
 
     chunk_ids = [c.chunk_id for c in result.citations]
     assert chunk_ids.count("shared_id") == 1

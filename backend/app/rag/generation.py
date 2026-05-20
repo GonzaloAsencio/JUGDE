@@ -101,18 +101,13 @@ Question: {question}
 Rewritten:"""
 
 
-def rewrite_query_for_retrieval(question: str, settings) -> str:
-    """Rewrite user question in rulebook terminology to improve vector retrieval.
-
-    Falls back to the original question on any error so retrieval always proceeds.
-    """
-    if settings.llm_provider != "openai_compat":
-        return question
+def _rewrite_openai_compat(question: str, *, base_url: str, api_key: str, model: str) -> str:
+    """Rewrite question via OpenAI-compat LLM. Falls back to original on any error."""
     try:
         import openai
-        client = openai.OpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key)
+        client = openai.OpenAI(base_url=base_url, api_key=api_key)
         response = client.chat.completions.create(
-            model=settings.llm_model,
+            model=model,
             messages=[{"role": "user", "content": _REWRITE_PROMPT.format(question=question)}],
             temperature=0.0,
             max_tokens=120,
@@ -126,22 +121,28 @@ def rewrite_query_for_retrieval(question: str, settings) -> str:
     return question
 
 
-def _call_openai_compat(question: str, chunks: list[Chunk], settings) -> str:
+def _call_openai_compat_raw(
+    question: str,
+    chunks: list[Chunk],
+    *,
+    base_url: str,
+    api_key: str,
+    model: str,
+    temperature: float,
+    timeout_s: float,
+) -> str:
     import openai
 
-    client = openai.OpenAI(
-        base_url=settings.llm_base_url,
-        api_key=settings.llm_api_key,
-    )
+    client = openai.OpenAI(base_url=base_url, api_key=api_key)
     try:
         response = client.chat.completions.create(
-            model=settings.llm_model,
+            model=model,
             messages=[
                 {"role": "system", "content": _SYSTEM_INSTRUCTION},
                 {"role": "user", "content": _build_context_block(question, chunks)},
             ],
-            temperature=settings.gemini_temperature,
-            timeout=settings.gemini_timeout_s,
+            temperature=temperature,
+            timeout=timeout_s,
         )
         choices = response.choices
         if not choices:
@@ -155,19 +156,6 @@ def _call_openai_compat(question: str, chunks: list[Chunk], settings) -> str:
         if "timeout" in error_str or "timed out" in error_str:
             raise GenerationTimeout("OpenAI-compat API call timed out") from e
         raise GenerationError(f"OpenAI-compat API error: {e}") from e
-
-
-def call_llm(question: str, chunks: list[Chunk], settings, gemini_client=None) -> str:
-    """Call the configured LLM provider and return the answer text."""
-    if settings.llm_provider == "openai_compat":
-        return _call_openai_compat(question, chunks, settings)
-    prompt = build_prompt(question, chunks)
-    return _call_gemini(
-        gemini_client,
-        prompt,
-        temperature=settings.gemini_temperature,
-        timeout_s=settings.gemini_timeout_s,
-    )
 
 
 def post_gen_validate(
