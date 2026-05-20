@@ -33,6 +33,7 @@ SOURCES = [
     ("data/processed/errata.md", "errata"),
     ("data/processed/tournament_rules.md", "tournament_rules"),
     ("data/processed/patch_notes.md", "patch_notes"),
+    ("data/processed/keywords.md", "rulebook"),
 ]
 
 

@@ -224,3 +224,59 @@ def test_hybrid_search_both_empty_returns_empty(monkeypatch):
 
     from app.rag.retrieval import hybrid_search
     assert hybrid_search(MagicMock(), [], "q", "v1") == []
+
+
+# ---------------------------------------------------------------------------
+# tagged_lookup tests
+# ---------------------------------------------------------------------------
+
+def test_tagged_lookup_empty_tags_returns_empty():
+    from app.rag.retrieval import tagged_lookup
+    assert tagged_lookup(MagicMock(), [], "v1") == []
+
+
+def test_tagged_lookup_returns_chunk_with_similarity_1(monkeypatch):
+    rows = [("id1", "content", "Accelerate", None, "rulebook")]
+    fake_conn, _ = _make_conn_ctx(rows)
+    monkeypatch.setattr("app.rag.retrieval.get_conn", fake_conn)
+
+    from app.rag.retrieval import tagged_lookup
+    result = tagged_lookup(MagicMock(), ["accelerate"], "v1")
+
+    assert len(result) == 1
+    assert result[0].id == "id1"
+    assert result[0].similarity == 1.0
+
+
+def test_tagged_lookup_deduplicates_same_chunk_across_tags(monkeypatch):
+    rows = [("id1", "content", "Accelerate", None, "rulebook")]
+    fake_conn, _ = _make_conn_ctx(rows)
+    monkeypatch.setattr("app.rag.retrieval.get_conn", fake_conn)
+
+    from app.rag.retrieval import tagged_lookup
+    result = tagged_lookup(MagicMock(), ["accelerate", "accel"], "v1")
+    assert [c.id for c in result].count("id1") == 1
+
+
+def test_tagged_lookup_multiple_tags_merges_distinct_chunks(monkeypatch):
+    cur = MagicMock()
+    cur.__enter__ = lambda s: s
+    cur.__exit__ = MagicMock(return_value=False)
+    cur.fetchall.side_effect = [
+        [("id1", "c1", "Accelerate", None, "rulebook")],
+        [("id2", "c2", "Action", None, "rulebook")],
+    ]
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+    conn.__enter__ = lambda s: s
+    conn.__exit__ = MagicMock(return_value=False)
+
+    @contextmanager
+    def fake_conn(_pool):
+        yield conn
+
+    monkeypatch.setattr("app.rag.retrieval.get_conn", fake_conn)
+
+    from app.rag.retrieval import tagged_lookup
+    result = tagged_lookup(MagicMock(), ["accelerate", "action"], "v1")
+    assert {c.id for c in result} == {"id1", "id2"}
