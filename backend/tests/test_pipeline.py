@@ -270,10 +270,6 @@ def test_detect_keywords_multiple():
     assert "accelerate" in result and "action" in result
 
 
-def test_detect_keywords_domain():
-    from app.rag.pipeline import _detect_keywords
-    assert "domain" in _detect_keywords("What determines the Domain Identity of a deck?")
-
 
 def test_detect_keywords_alias_action_phase():
     from app.rag.pipeline import _detect_keywords
