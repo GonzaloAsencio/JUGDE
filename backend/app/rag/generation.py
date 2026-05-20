@@ -95,6 +95,7 @@ _REWRITE_PROMPT = """\
 You help retrieve rules from the Riftbound card game rulebook.
 Rewrite the question using official game terminology (exhausted, ready, attack, combat, unit, keyword, ability, enter the board, etc.).
 Preserve any keyword names mentioned in the question verbatim (e.g., Accelerate, Action, Shield).
+Apply these specific term translations: "Action Phase" → "Main Phase", "Domain Identity" → "Domain".
 Output only the rewritten question, 1-2 sentences max.
 
 Question: {question}
