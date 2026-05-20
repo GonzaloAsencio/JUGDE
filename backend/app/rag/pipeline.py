@@ -16,6 +16,19 @@ logger = get_logger(__name__)
 _NO_INFO_ANSWER = "No tengo información suficiente para responder esa pregunta con las reglas disponibles."
 _TAG_RE = re.compile(r"@(\w+)", re.UNICODE)
 
+_KNOWN_KEYWORDS: frozenset[str] = frozenset({
+    "accelerate", "action", "assault", "deathknell", "deflect",
+    "ganking", "hidden", "legion", "reaction", "shield", "tank",
+    "temporary", "vision", "equip", "quick-draw", "repeat",
+    "weaponmaster", "ambush", "hunt", "level", "unique", "backline",
+})
+
+
+def _detect_keywords(question: str) -> list[str]:
+    """Return known keywords found in question via case-insensitive substring match."""
+    q_lower = question.lower()
+    return [kw for kw in _KNOWN_KEYWORDS if kw in q_lower]
+
 
 def _extract_tags(question: str) -> tuple[str, list[str]]:
     """Extract @tags from question. Returns (clean_question, [tags_lowercase])."""
@@ -58,7 +71,10 @@ async def answer_question(
         except Exception:
             pass  # Corrupt cache entry — fall through to generation
 
-    clean_question, tags = _extract_tags(question)
+    clean_question, explicit_tags = _extract_tags(question)
+    auto_tags = _detect_keywords(clean_question or question)
+    tags = list(dict.fromkeys(explicit_tags + auto_tags))  # dedup, explicit tags first
+
     retrieval_query = rewrite_query_for_retrieval(clean_question or question, settings)
     embedding = embedder.encode(retrieval_query)
 

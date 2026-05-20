@@ -249,6 +249,58 @@ async def test_pipeline_tagged_chunks_prepend_before_semantic():
     assert result.citations[0].section == "Accelerate"
 
 
+# ---------------------------------------------------------------------------
+# _detect_keywords tests
+# ---------------------------------------------------------------------------
+
+def test_detect_keywords_finds_exact():
+    from app.rag.pipeline import _detect_keywords
+    assert "accelerate" in _detect_keywords("What does Accelerate do?")
+
+
+def test_detect_keywords_case_insensitive():
+    from app.rag.pipeline import _detect_keywords
+    assert "accelerate" in _detect_keywords("WHAT DOES ACCELERATE DO?")
+
+
+def test_detect_keywords_no_match():
+    from app.rag.pipeline import _detect_keywords
+    assert _detect_keywords("How many cards in a deck?") == []
+
+
+def test_detect_keywords_multi_word():
+    from app.rag.pipeline import _detect_keywords
+    assert "quick-draw" in _detect_keywords("Explain Quick-Draw please")
+
+
+def test_detect_keywords_multiple():
+    from app.rag.pipeline import _detect_keywords
+    result = _detect_keywords("Compare Accelerate and Action")
+    assert "accelerate" in result and "action" in result
+
+
+async def test_pipeline_auto_detects_keyword_without_tag():
+    """A question without @tag but mentioning a keyword triggers tagged_lookup."""
+    from app.rag.retrieval import Chunk
+    from tests.conftest import FakeEmbedder
+
+    tagged_chunk = Chunk("tag_id", "Accelerate content", "Accelerate", None, "rulebook", 1.0)
+
+    with patch("app.rag.pipeline.tagged_lookup", return_value=[tagged_chunk]) as mock_lookup:
+        with patch("app.rag.pipeline.hybrid_search", return_value=[]):
+            with patch("app.rag.pipeline.call_llm", return_value="answer"):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        result = await answer_question(
+                            "What does Accelerate do?",
+                            FakeEmbedder(), MagicMock(), MagicMock(), _fake_settings(),
+                        )
+
+    mock_lookup.assert_called_once()
+    assert result.citations[0].section == "Accelerate"
+
+
 async def test_pipeline_tagged_deduplicates_with_semantic():
     """A chunk returned by both tagged_lookup and hybrid_search appears only once in citations."""
     from app.rag.retrieval import Chunk
