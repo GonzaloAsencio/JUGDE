@@ -6,6 +6,7 @@ from app.middleware.rate_limit import limiter
 from app.observability import get_logger
 from app.rag.generation import GenerationError, GenerationTimeout
 from app.rag.pipeline import answer_question
+from app.rag.provider import LLMProvider
 from app.rag.schemas import QueryRequest, QueryResponse
 
 logger = get_logger(__name__)
@@ -21,8 +22,8 @@ def get_db_pool(request: Request):
     return request.app.state.db_pool
 
 
-def get_llm_client(request: Request):
-    return request.app.state.llm_client
+def get_llm_provider(request: Request) -> LLMProvider:
+    return request.app.state.llm_provider
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -32,14 +33,14 @@ async def query(
     request: Request,
     embedder=Depends(get_embedder),
     pool=Depends(get_db_pool),
-    llm_client=Depends(get_llm_client),
+    provider: LLMProvider = Depends(get_llm_provider),
     settings=Depends(get_settings),
 ) -> QueryResponse:
     """POST /query — embed -> retrieve -> generate."""
     if request.app.state.corpus_version is None:
         raise HTTPException(status_code=503, detail="Corpus not loaded. Run ingest pipeline first.")
     try:
-        return await answer_question(body.question, embedder, pool, llm_client, settings, body.card_mentions)
+        return await answer_question(body.question, embedder, pool, provider, settings, body.card_mentions)
     except GenerationTimeout as e:
         logger.warning("LLM timeout", error=str(e))
         raise HTTPException(status_code=504, detail="Generation timeout") from e

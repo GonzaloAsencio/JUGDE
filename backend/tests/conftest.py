@@ -5,6 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.rag.generation import GenerationTimeout
+from app.rag.provider import LLMProvider
+from app.rag.retrieval import Chunk
 from app.rag.schemas import Citation, QueryResponse
 
 
@@ -18,50 +20,40 @@ class FakePool:
     pass
 
 
-class FakeGeminiClient:
-    def generate_content(self, prompt, generation_config=None, request_options=None):
-        class _Response:
-            text = "Fake answer for testing."
-        return _Response()
+class FakeLLMProvider(LLMProvider):
+    def generate(self, question: str, chunks: list[Chunk]) -> str:
+        return "Fake answer for testing."
 
 
-class FakeGeminiTimeout:
-    def generate_content(self, prompt, generation_config=None, request_options=None):
+class FakeLLMProviderTimeout(LLMProvider):
+    def generate(self, question: str, chunks: list[Chunk]) -> str:
         raise GenerationTimeout("timeout")
 
 
-def _make_client(gemini_override=None):
+# Keep aliases for test files that import these directly
+FakeGeminiClient = FakeLLMProvider
+FakeGeminiTimeout = FakeLLMProviderTimeout
+
+
+def _make_client(provider_override=None):
     """Build a TestClient with all heavy startup steps mocked out."""
-    from app.api.v1.query import get_db_pool, get_embedder, get_llm_client
+    from app.api.v1.query import get_db_pool, get_embedder, get_llm_provider
     from app.main import app
 
-    gemini = gemini_override if gemini_override is not None else FakeGeminiClient()
+    provider = provider_override if provider_override is not None else FakeLLMProvider()
 
     app.dependency_overrides[get_embedder] = lambda: FakeEmbedder()
     app.dependency_overrides[get_db_pool] = lambda: FakePool()
-    app.dependency_overrides[get_llm_client] = lambda: gemini
+    app.dependency_overrides[get_llm_provider] = lambda: provider
 
-    # Patch lifespan-level heavy operations so TestClient startup doesn't fail
     patches = [
         patch("app.main.init_pool", return_value=MagicMock()),
         patch("app.main.close_pool"),
         patch("app.main.Embedder.load", return_value=FakeEmbedder()),
-        patch(
-            "app.main.genai.configure",
-        ),
-        patch(
-            "app.main.genai.GenerativeModel",
-            return_value=gemini,
-        ),
-        # Patch corpus_version resolution: mock get_conn so the MAX query returns "v1"
-        patch(
-            "app.main.get_conn",
-        ),
-        # Patch settings so corpus_version is already set (skips MAX query)
-        patch(
-            "app.main.get_settings",
-            return_value=_fake_settings(),
-        ),
+        patch("app.main.genai.configure"),
+        patch("app.main.genai.GenerativeModel", return_value=MagicMock()),
+        patch("app.main.get_conn"),
+        patch("app.main.get_settings", return_value=_fake_settings()),
     ]
 
     for p in patches:
@@ -92,19 +84,19 @@ def _fake_settings():
 
 @pytest.fixture
 def client():
-    from app.api.v1.query import get_db_pool, get_embedder, get_llm_client
+    from app.api.v1.query import get_db_pool, get_embedder, get_llm_provider
     from app.main import app
 
     app.dependency_overrides[get_embedder] = lambda: FakeEmbedder()
     app.dependency_overrides[get_db_pool] = lambda: FakePool()
-    app.dependency_overrides[get_llm_client] = lambda: FakeGeminiClient()
+    app.dependency_overrides[get_llm_provider] = lambda: FakeLLMProvider()
 
     with (
         patch("app.main.init_pool", return_value=MagicMock()),
         patch("app.main.close_pool"),
         patch("app.main.Embedder.load", return_value=FakeEmbedder()),
         patch("app.main.genai.configure"),
-        patch("app.main.genai.GenerativeModel", return_value=FakeGeminiClient()),
+        patch("app.main.genai.GenerativeModel", return_value=MagicMock()),
         patch("app.main.get_settings", return_value=_fake_settings()),
     ):
         with TestClient(app) as c:
@@ -115,20 +107,20 @@ def client():
 
 @pytest.fixture
 def timeout_client():
-    """Client whose Gemini dependency raises GenerationTimeout."""
-    from app.api.v1.query import get_db_pool, get_embedder, get_llm_client
+    """Client whose LLM provider raises GenerationTimeout."""
+    from app.api.v1.query import get_db_pool, get_embedder, get_llm_provider
     from app.main import app
 
     app.dependency_overrides[get_embedder] = lambda: FakeEmbedder()
     app.dependency_overrides[get_db_pool] = lambda: FakePool()
-    app.dependency_overrides[get_llm_client] = lambda: FakeGeminiTimeout()
+    app.dependency_overrides[get_llm_provider] = lambda: FakeLLMProviderTimeout()
 
     with (
         patch("app.main.init_pool", return_value=MagicMock()),
         patch("app.main.close_pool"),
         patch("app.main.Embedder.load", return_value=FakeEmbedder()),
         patch("app.main.genai.configure"),
-        patch("app.main.genai.GenerativeModel", return_value=FakeGeminiClient()),
+        patch("app.main.genai.GenerativeModel", return_value=MagicMock()),
         patch("app.main.get_settings", return_value=_fake_settings()),
     ):
         with TestClient(app) as c:

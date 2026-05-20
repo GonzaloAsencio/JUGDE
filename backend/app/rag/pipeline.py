@@ -7,7 +7,8 @@ from app.cache import get_cached, make_cache_key, set_cached
 from app.config import Settings
 from app.observability import get_logger
 from app.rag.embedder import Embedder
-from app.rag.generation import call_llm, post_gen_validate, rewrite_query_for_retrieval
+from app.rag.generation import post_gen_validate
+from app.rag.provider import LLMProvider
 from app.rag.retrieval import hybrid_search, tagged_lookup
 from app.rag.schemas import Citation, QueryResponse
 
@@ -41,7 +42,7 @@ async def answer_question(
     question: str,
     embedder: Embedder,
     db_pool,
-    llm_client,
+    provider: LLMProvider,
     settings: Settings,
     card_mentions: list[str] | None = None,
 ) -> QueryResponse:
@@ -75,7 +76,7 @@ async def answer_question(
     auto_tags = _detect_keywords(clean_question or question)
     tags = list(dict.fromkeys(explicit_tags + auto_tags))  # dedup, explicit tags first
 
-    retrieval_query = rewrite_query_for_retrieval(clean_question or question, settings)
+    retrieval_query = provider.rewrite_query(clean_question or question)
     embedding = embedder.encode(retrieval_query)
 
     tagged_chunks: list = []
@@ -114,7 +115,7 @@ async def answer_question(
             confidence=0.0,
         )
 
-    answer = call_llm(clean_question or question, chunks, settings, gemini_client=llm_client)
+    answer = provider.generate(clean_question or question, chunks)
 
     citations = [
         Citation(
