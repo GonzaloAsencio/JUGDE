@@ -7,9 +7,13 @@ Detecta headers por tamaño de fuente relativo al body text:
   - > 1.2x body → H3 (subsección)
   - else        → párrafo
 """
+import re
+
 import pymupdf
 from pathlib import Path
 from statistics import mode
+
+_RULE_BOUNDARY = re.compile(r"^\d{3,}\.")
 
 
 def _extract_spans(doc: pymupdf.Document) -> list[dict]:
@@ -59,6 +63,8 @@ def _spans_to_markdown(spans: list[dict], body_size: float) -> str:
     for span in spans:
         kind = _classify(span["size"], body_size)
         if kind == "body":
+            if current_body and _RULE_BOUNDARY.match(span["text"]):
+                flush_body()
             current_body.append(span["text"])
         else:
             flush_body()
