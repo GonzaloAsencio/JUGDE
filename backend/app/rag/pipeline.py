@@ -30,13 +30,27 @@ _KNOWN_KEYWORDS: frozenset[str] = frozenset({
     # Core game concepts (dedicated rulebook sections)
     "chain", "showdown", "priority", "cleanup", "combat",
     "scoring", "token", "replacement",
+    # Additional concepts with dedicated sections
+    "domain", "main phase",
 })
+
+# Community terms → official rulebook section names
+_KEYWORD_ALIASES: dict[str, str] = {
+    "action phase": "main phase",
+}
 
 
 def _detect_keywords(question: str) -> list[str]:
-    """Return known keywords found in question via case-insensitive substring match."""
+    """Return known keywords found in question via case-insensitive substring match.
+
+    Also resolves community aliases to their official rulebook section names.
+    """
     q_lower = question.lower()
-    return [kw for kw in _KNOWN_KEYWORDS if kw in q_lower]
+    found = [kw for kw in _KNOWN_KEYWORDS if kw in q_lower]
+    for alias, canonical in _KEYWORD_ALIASES.items():
+        if alias in q_lower and canonical not in found:
+            found.append(canonical)
+    return found
 
 
 def _extract_tags(question: str) -> tuple[str, list[str]]:
