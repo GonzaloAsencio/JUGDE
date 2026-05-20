@@ -18,10 +18,18 @@ _NO_INFO_ANSWER = "No tengo información suficiente para responder esa pregunta 
 _TAG_RE = re.compile(r"@(\w+)", re.UNICODE)
 
 _KNOWN_KEYWORDS: frozenset[str] = frozenset({
+    # Card keywords (rules text on cards)
     "accelerate", "action", "assault", "deathknell", "deflect",
     "ganking", "hidden", "legion", "reaction", "shield", "tank",
     "temporary", "vision", "equip", "quick-draw", "repeat",
     "weaponmaster", "ambush", "hunt", "level", "unique", "backline",
+    # Game actions (dedicated rulebook sections 413-431)
+    "stun", "draw", "exhaust", "ready", "recycle", "channel",
+    "kill", "buff", "banish", "counter", "burn out", "recall",
+    "discard", "reveal",
+    # Core game concepts (dedicated rulebook sections)
+    "chain", "showdown", "priority", "cleanup", "combat",
+    "scoring", "token", "replacement",
 })
 
 
