@@ -31,7 +31,7 @@ _KNOWN_KEYWORDS: frozenset[str] = frozenset({
     "chain", "showdown", "priority", "cleanup", "combat",
     "scoring", "token", "replacement",
     # Additional concepts with dedicated sections
-    "domain", "main phase", "mighty",
+    "main phase", "mighty",
 })
 
 # Community terms → official rulebook section names
