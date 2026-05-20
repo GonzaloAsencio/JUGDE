@@ -90,6 +90,10 @@ def fts_search(
     ]
 
 
+_OFFICIAL_SOURCES = frozenset({"rulebook", "tournament_rules", "patch_notes"})
+_OFFICIAL_BOOST = 1.05  # official rule sources get a 5% score boost over errata
+
+
 def _rrf_fuse(
     vector_results: list[Chunk],
     fts_results: list[Chunk],
@@ -101,6 +105,9 @@ def _rrf_fuse(
     For each chunk d, score(d) = sum over lists l in {vector, fts} of
     1 / (rrf_k + rank_l(d)), where rank_l(d) is 1-based (only counted if d
     appears in l).
+
+    Rulebook chunks receive a _RULEBOOK_BOOST multiplier so base-rule chunks
+    rank above errata chunks when scores are comparable.
 
     Dedup key: chunk.id.
     Tie-break: chunk that appeared in vector_results wins (stable).
@@ -115,13 +122,15 @@ def _rrf_fuse(
 
     for rank_0, chunk in enumerate(vector_results):
         rank = rank_0 + 1  # 1-based
-        scores[chunk.id] = scores.get(chunk.id, 0.0) + 1.0 / (rrf_k + rank)
+        boost = _OFFICIAL_BOOST if chunk.source_type in _OFFICIAL_SOURCES else 1.0
+        scores[chunk.id] = scores.get(chunk.id, 0.0) + boost / (rrf_k + rank)
         chunks_by_id[chunk.id] = chunk  # vector side wins for Chunk object
         in_vector.add(chunk.id)
 
     for rank_0, chunk in enumerate(fts_results):
         rank = rank_0 + 1  # 1-based
-        scores[chunk.id] = scores.get(chunk.id, 0.0) + 1.0 / (rrf_k + rank)
+        boost = _OFFICIAL_BOOST if chunk.source_type in _OFFICIAL_SOURCES else 1.0
+        scores[chunk.id] = scores.get(chunk.id, 0.0) + boost / (rrf_k + rank)
         if chunk.id not in chunks_by_id:
             chunks_by_id[chunk.id] = chunk  # FTS-only: use FTS chunk (similarity=0.0)
 

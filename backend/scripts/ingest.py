@@ -26,10 +26,13 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 EMBED_MODEL = "BAAI/bge-m3"
 CHUNK_SIZE = 512   # tokens aproximados
 CHUNK_OVERLAP = 50
+_RULE_SPLIT = re.compile(r"(?=\b\d{3,}\.\s)")
 
 SOURCES = [
     ("data/processed/rulebook.md", "rulebook"),
     ("data/processed/errata.md", "errata"),
+    ("data/processed/tournament_rules.md", "tournament_rules"),
+    ("data/processed/patch_notes.md", "patch_notes"),
 ]
 
 
@@ -69,6 +72,10 @@ def _chunk_section(section: dict, source_type: str, source_document: str) -> lis
 
     # Dividir en párrafos y agrupar respetando el tamaño
     paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
+
+    # Fallback: si sigue siendo 1 párrafo gigante, dividir por número de regla (NNN.)
+    if len(paragraphs) <= 1 and _approx_tokens(content) > CHUNK_SIZE:
+        paragraphs = [p.strip() for p in _RULE_SPLIT.split(content) if p.strip()]
     chunks = []
     current: list[str] = []
     current_tokens = 0

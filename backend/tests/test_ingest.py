@@ -192,3 +192,29 @@ def test_build_chunks_source_document_is_stem(tmp_path):
     f.write_text(md, encoding="utf-8")
     chunks = build_chunks(str(f), "errata")
     assert all(c["source_document"] == "errata" for c in chunks)
+
+
+# ---------------------------------------------------------------------------
+# _chunk_section — fallback rule-split
+# ---------------------------------------------------------------------------
+
+def _make_giant_rule_block() -> dict:
+    """Un único párrafo sin \\n\\n con números de regla embebidos (~3200 tokens)."""
+    rule_block = " ".join(
+        f"{800 + i}. This is a long rule description that takes up space. " * 15
+        for i in range(8)
+    )
+    return {"content": rule_block, "header": "Keywords", "level": 2}
+
+
+def test_chunk_section_falls_back_to_rule_split_for_single_huge_paragraph():
+    section = _make_giant_rule_block()
+    chunks = _chunk_section(section, "rulebook", "rulebook.md")
+    assert len(chunks) > 1, "Fallback rule-split debe generar múltiples chunks"
+
+
+def test_chunk_section_fallback_chunks_contain_rule_numbers():
+    section = _make_giant_rule_block()
+    chunks = _chunk_section(section, "rulebook", "rulebook.md")
+    rule_nums = {c["content"].split(".")[0].strip() for c in chunks}
+    assert any(n.isdigit() and len(n) == 3 for n in rule_nums)
