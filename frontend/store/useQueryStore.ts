@@ -29,7 +29,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     if (loading || question.trim().length < 3) return;
     set({ loading: true, answer: null, citations: [], error: null, latencyMs: null });
     try {
-      const data = await postQuery(question.trim());
+      const data = await postQuery(question.trim().replace(/@/g, ''));
       set({ answer: data.answer, citations: data.citations, latencyMs: data.latency_ms, loading: false });
     } catch (err: unknown) {
       if (err instanceof ApiErrorInstance) {
