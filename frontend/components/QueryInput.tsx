@@ -3,7 +3,8 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { GAME_KEYWORDS } from '@/lib/gameKeywords';
+import { GAME_KEYWORDS, type KeywordDef } from '@/lib/gameKeywords';
+import { KeywordBadge } from '@/components/KeywordBadge';
 
 interface QueryInputProps {
   value: string;
@@ -18,7 +19,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
   const isValid = trimmed.length >= 3 && trimmed.length <= 1000;
 
   const [mentionActive, setMentionActive] = useState(false);
-  const [filteredKeywords, setFilteredKeywords] = useState<string[]>([]);
+  const [filteredKeywords, setFilteredKeywords] = useState<KeywordDef[]>([]);
   const [mentionIndex, setMentionIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,7 +51,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
     if (match) {
       const search = match[1];
       const results = GAME_KEYWORDS.filter(k =>
-        k.toLowerCase().startsWith(search.toLowerCase())
+        k.name.toLowerCase().startsWith(search.toLowerCase())
       );
       if (results.length > 0) {
         setFilteredKeywords(results);
@@ -62,10 +63,10 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
     setMentionActive(false);
   }
 
-  function selectMention(keyword: string) {
+  function selectMention(keywordName: string) {
     const el = inputRef.current;
     const cursor = el?.selectionStart ?? value.length;
-    const before = value.slice(0, cursor).replace(/@([\w-]*)$/, `@${keyword} `);
+    const before = value.slice(0, cursor).replace(/@([\w-]*)$/, `@${keywordName} `);
     const after = value.slice(cursor);
     onChange(before + after);
     setMentionActive(false);
@@ -89,7 +90,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        selectMention(filteredKeywords[mentionIndex]);
+        selectMention(filteredKeywords[mentionIndex].name);
         return;
       }
       if (e.key === 'Escape') {
@@ -120,7 +121,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
           <ul className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-md border border-input bg-popover shadow-md">
             {filteredKeywords.map((kw, i) => (
               <li
-                key={kw}
+                key={kw.name}
                 ref={i === mentionIndex ? activeItemRef : null}
                 className={cn(
                   'cursor-pointer px-3 py-2 text-sm',
@@ -128,9 +129,12 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
                     ? 'bg-accent text-accent-foreground'
                     : 'hover:bg-accent/50'
                 )}
-                onMouseDown={e => { e.preventDefault(); selectMention(kw); }}
+                onMouseDown={e => { e.preventDefault(); selectMention(kw.name); }}
               >
-                <span className="text-muted-foreground">@</span>{kw}
+                {kw.color
+                  ? <KeywordBadge def={kw} />
+                  : <><span className="text-muted-foreground">@</span>{kw.name}</>
+                }
               </li>
             ))}
           </ul>
