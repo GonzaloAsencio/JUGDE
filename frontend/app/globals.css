@@ -142,30 +142,9 @@
 
 /* ─── Judge UI: Landing & Animation Keyframes ─── */
 
-@keyframes fullscreenJudgeIntro {
-  0% {
-    opacity: 0;
-    transform: scale(0.72) translateY(40px);
-    filter: blur(14px);
-    letter-spacing: 0.7em;
-  }
-  45% {
-    opacity: 1;
-    transform: scale(1.04) translateY(0px);
-    filter: blur(0px);
-    letter-spacing: 0.34em;
-  }
-  70% {
-    opacity: 1;
-    transform: scale(1);
-    letter-spacing: 0.22em;
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.02) translateY(-30px);
-    filter: blur(8px);
-    letter-spacing: 0.18em;
-  }
+@keyframes pageFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes judgeSignal {
@@ -188,37 +167,41 @@
   100% { transform: translateY(0px); }
 }
 
-@keyframes judgeShadow {
-  0%   { opacity: 0; transform: scale(0.6); }
-  100% { opacity: 1; transform: scale(1.4); }
+.page-fade-in {
+  animation: pageFadeIn 0.4s ease both;
 }
 
-/* ─── Judge Fullscreen Intro ─── */
-
-.judge-fullscreen-active {
-  position: relative;
-  z-index: 5;
-  font-size: clamp(90px, 16vw, 240px);
-  font-weight: 900;
-  font-style: italic;
-  text-transform: uppercase;
-  color: #111111;
-  letter-spacing: 0.22em;
-  animation: fullscreenJudgeIntro 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  transform-origin: center;
+@keyframes judgePopupIn {
+  0%   { opacity: 0; transform: translate(-50%, -50%) rotate(var(--r)) scale(0.2); }
+  55%  { opacity: 1; transform: translate(-50%, -50%) rotate(var(--r)) scale(1.08); }
+  75%  { opacity: 1; transform: translate(-50%, -50%) rotate(var(--r)) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--r)) scale(0.9) translateY(-8px); }
 }
 
-.judge-intro-shadow {
-  position: absolute;
-  font-size: clamp(90px, 16vw, 240px);
+.judge-called-popup {
+  position: fixed;
+  z-index: 200;
+  pointer-events: none;
+  background: #d4620a;
+  color: #ffffff;
+  font-size: 11px;
   font-weight: 900;
-  font-style: italic;
-  letter-spacing: 0.35em;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.03);
-  transform: scale(1.4);
-  filter: blur(10px);
-  animation: judgeShadow 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  padding: 6px 14px;
+  border-radius: 999px;
+  box-shadow: 0 4px 20px rgba(212, 98, 10, 0.45);
+  animation: judgePopupIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes landingFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.landing-fade-out {
+  animation: landingFadeOut 0.4s ease forwards;
+  pointer-events: none;
 }
 
 /* ─── Call Judge Button ─── */

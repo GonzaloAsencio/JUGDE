@@ -3,21 +3,26 @@
 import { useState } from 'react';
 import { useQueryStore } from '@/store/useQueryStore';
 import { LandingHero } from '@/components/LandingHero';
-import { JudgeIntroAnimation } from '@/components/JudgeIntroAnimation';
 import { ChatView } from '@/components/ChatView';
 
-type AppState = 'landing' | 'animating' | 'chat';
+type AppState = 'landing' | 'leaving' | 'chat';
+interface PopupPos { x: number; y: number; rotation: number; }
 
 export default function JudgePage() {
   const [appState, setAppState] = useState<AppState>('landing');
+  const [popup, setPopup] = useState<PopupPos | null>(null);
   const { reset } = useQueryStore();
 
-  const handleCallJudge = () => {
-    setAppState('animating');
-  };
-
-  const handleAnimationComplete = () => {
-    setAppState('chat');
+  const handleCallJudge = (clientX: number, clientY: number) => {
+    const offsetX = (Math.random() - 0.5) * 180;
+    const offsetY = -30 + (Math.random() - 0.5) * 70;
+    const rotation = (Math.random() - 0.5) * 18;
+    setPopup({ x: clientX + offsetX, y: clientY + offsetY, rotation });
+    setAppState('leaving');
+    setTimeout(() => {
+      setPopup(null);
+      setAppState('chat');
+    }, 700);
   };
 
   const handleReset = () => {
@@ -27,11 +32,16 @@ export default function JudgePage() {
 
   return (
     <>
-      {(appState === 'landing' || appState === 'animating') && (
-        <LandingHero onCallJudge={handleCallJudge} />
+      {(appState === 'landing' || appState === 'leaving') && (
+        <LandingHero onCallJudge={handleCallJudge} leaving={appState === 'leaving'} />
       )}
-      {appState === 'animating' && (
-        <JudgeIntroAnimation onComplete={handleAnimationComplete} />
+      {popup && (
+        <div
+          className="judge-called-popup"
+          style={{ left: popup.x, top: popup.y, '--r': `${popup.rotation}deg` } as React.CSSProperties}
+        >
+          JUDGE!
+        </div>
       )}
       {appState === 'chat' && (
         <ChatView onReset={handleReset} />
