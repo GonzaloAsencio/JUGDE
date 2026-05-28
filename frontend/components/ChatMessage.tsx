@@ -3,7 +3,7 @@
 import React from 'react';
 import type { Message } from '@/store/useQueryStore';
 import { AnswerDisplay } from './AnswerDisplay';
-import { CitationsList } from './CitationsList';
+import { SourcesPopover } from './SourcesPopover';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { KeywordBadge } from './KeywordBadge';
 import { GAME_KEYWORDS } from '@/lib/gameKeywords';
@@ -44,10 +44,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
             answer={message.answer}
             loading={message.loading}
             error={message.error}
+            citations={message.citations}
           />
           {message.answer && message.citations.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-black/5">
-              <CitationsList citations={message.citations} />
+            <div className="flex justify-end mt-3">
+              <SourcesPopover citations={message.citations} />
             </div>
           )}
         </div>
