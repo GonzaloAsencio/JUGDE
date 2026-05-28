@@ -133,9 +133,11 @@ export function LandingHero({ onCallJudge }: LandingHeroProps) {
             aria-label="Call the Judge"
           >
             <div className="judge-button-inner">
-              <span className="judge-call-sign" />
+              <div className="judge-icon-wrap">
+                <img src="/ICON.png" alt="" className="judge-icon judge-icon-idle" />
+                <img src="/ICONCALL.png" alt="" className="judge-icon judge-icon-call" />
+              </div>
               <span className="judge-main-text">CALL THE JUDGE</span>
-              <span className="judge-subtext">Competitive match assistance</span>
             </div>
             <div className="judge-signal-line signal-1" />
             <div className="judge-signal-line signal-2" />

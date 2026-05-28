@@ -259,6 +259,40 @@
   gap: 10px;
 }
 
+.judge-icon-wrap {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+.judge-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  filter: brightness(0);
+  transition: opacity 0.35s ease;
+}
+
+.judge-icon-idle {
+  opacity: 1;
+}
+
+.judge-icon-call {
+  opacity: 0;
+}
+
+.call-judge-btn:hover .judge-icon-idle {
+  opacity: 0;
+}
+
+.call-judge-btn:hover .judge-icon-call {
+  opacity: 1;
+}
+
 .judge-main-text {
   font-size: 14px;
   font-weight: 900;
