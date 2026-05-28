@@ -5,7 +5,7 @@ import { useQueryStore } from '@/store/useQueryStore';
 import { LandingHero } from '@/components/LandingHero';
 import { ChatView } from '@/components/ChatView';
 
-type AppState = 'landing' | 'leaving' | 'chat';
+type AppState = 'landing' | 'chat';
 interface PopupPos { x: number; y: number; rotation: number; }
 
 export default function JudgePage() {
@@ -18,7 +18,6 @@ export default function JudgePage() {
     const offsetY = -30 + (Math.random() - 0.5) * 70;
     const rotation = (Math.random() - 0.5) * 18;
     setPopup({ x: clientX + offsetX, y: clientY + offsetY, rotation });
-    setAppState('leaving');
     setTimeout(() => {
       setPopup(null);
       setAppState('chat');
@@ -32,8 +31,8 @@ export default function JudgePage() {
 
   return (
     <>
-      {(appState === 'landing' || appState === 'leaving') && (
-        <LandingHero onCallJudge={handleCallJudge} leaving={appState === 'leaving'} />
+      {appState === 'landing' && (
+        <LandingHero onCallJudge={handleCallJudge} />
       )}
       {popup && (
         <div
