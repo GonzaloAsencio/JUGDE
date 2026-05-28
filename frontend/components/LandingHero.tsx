@@ -132,15 +132,12 @@ export function LandingHero({ onCallJudge }: LandingHeroProps) {
             onClick={onCallJudge}
             aria-label="Call the Judge"
           >
-            <div className="judge-button-inner">
-              <div className="judge-icon-wrap">
-                <img src="/ICON.png" alt="" className="judge-icon judge-icon-idle" />
-                <img src="/ICONCALL.png" alt="" className="judge-icon judge-icon-call" />
-              </div>
-              <span className="judge-main-text">CALL THE JUDGE</span>
-            </div>
-            <div className="judge-signal-line signal-1" />
-            <div className="judge-signal-line signal-2" />
+            <span className="cjb-content">
+              <span className="cjb-text">
+                <span className="cjb-label cjb-label-idle">CHAT WITH A JUDGE</span>
+                <span className="cjb-label cjb-label-hover">CALL THE JUDGE</span>
+              </span>
+            </span>
           </button>
         </div>
       </section>
