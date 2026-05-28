@@ -2,11 +2,12 @@ import { Navbar } from '@/components/Navbar';
 
 export default function RulesLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div
+      className="min-h-screen text-foreground"
+      style={{ backgroundColor: '#f6f3ee', ['--background' as string]: '#f6f3ee' } as React.CSSProperties}
+    >
       <Navbar />
-      <main className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
+      {children}
     </div>
   );
 }
