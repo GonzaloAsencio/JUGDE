@@ -13,7 +13,7 @@ export function CitationsList({ citations }: CitationsListProps) {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-        📚 Sources
+        Sources
       </h3>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {sorted.map((c, i) => (
