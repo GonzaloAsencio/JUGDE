@@ -129,3 +129,199 @@
     @apply font-sans;
   }
 }
+
+/* ─── Judge UI: Landing & Animation Keyframes ─── */
+
+@keyframes fullscreenJudgeIntro {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(40px);
+    filter: blur(14px);
+    letter-spacing: 0.7em;
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.04) translateY(0px);
+    filter: blur(0px);
+    letter-spacing: 0.34em;
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1);
+    letter-spacing: 0.22em;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.02) translateY(-30px);
+    filter: blur(8px);
+    letter-spacing: 0.18em;
+  }
+}
+
+@keyframes judgeSignal {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes floatY {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-12px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes judgeShadow {
+  0%   { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: scale(1.4); }
+}
+
+/* ─── Judge Fullscreen Intro ─── */
+
+.judge-fullscreen-active {
+  position: relative;
+  z-index: 5;
+  font-size: clamp(90px, 16vw, 240px);
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  color: #111111;
+  letter-spacing: 0.22em;
+  animation: fullscreenJudgeIntro 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform-origin: center;
+}
+
+.judge-intro-shadow {
+  position: absolute;
+  font-size: clamp(90px, 16vw, 240px);
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.03);
+  transform: scale(1.4);
+  filter: blur(10px);
+  animation: judgeShadow 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ─── Call Judge Button ─── */
+
+.call-judge-btn {
+  position: relative;
+  width: 380px;
+  max-width: 90vw;
+  height: 110px;
+  border-radius: 36px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+  transition: all 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+
+.call-judge-btn:hover {
+  transform: translateY(-6px) scale(1.015);
+  box-shadow: 0 35px 100px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 1);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.call-judge-btn:hover .judge-main-text {
+  letter-spacing: 0.42em;
+  transform: translateY(-2px);
+}
+
+.call-judge-btn:hover .judge-subtext {
+  opacity: 0.6;
+  letter-spacing: 0.24em;
+}
+
+.call-judge-btn:hover .judge-signal-line {
+  opacity: 1;
+}
+
+.judge-button-inner {
+  position: relative;
+  z-index: 5;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.judge-main-text {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.32em;
+  color: #111111;
+  text-transform: uppercase;
+  transition: all 0.45s ease;
+}
+
+.judge-subtext {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8a8a8a;
+  transition: all 0.45s ease;
+}
+
+.judge-call-sign {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #111111;
+  position: relative;
+}
+
+.judge-call-sign::before,
+.judge-call-sign::after {
+  content: '';
+  position: absolute;
+  inset: -10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  animation: judgeSignal 2.6s ease-out infinite;
+}
+
+.judge-call-sign::after {
+  animation-delay: 1.3s;
+}
+
+.judge-signal-line {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.08), transparent);
+  left: 10%;
+  right: 10%;
+  opacity: 0;
+  transition: all 0.45s ease;
+}
+
+.signal-1 { top: 28px; }
+.signal-2 { bottom: 28px; }
+
+/* ─── Floating Cards ─── */
+
+.floating-card {
+  width: 240px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 22px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+}
+
+.judge-float-left  { animation: floatY 4s ease-in-out infinite; }
+.judge-float-right { animation: floatY 5s ease-in-out infinite; }
