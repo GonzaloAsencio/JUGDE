@@ -38,7 +38,13 @@ export default function JudgePage() {
       {popup && (
         <div
           className="judge-called-popup"
-          style={{ left: popup.x, top: popup.y, '--r': `${popup.rotation}deg` } as React.CSSProperties}
+          style={{
+            left: popup.x,
+            top: popup.y,
+            '--r': `${popup.rotation}deg`,
+            background: '#d4620a',
+            color: '#ffffff',
+          } as React.CSSProperties}
         >
           JUDGE!
         </div>
