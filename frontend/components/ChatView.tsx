@@ -20,36 +20,25 @@ export function ChatView({ onReset }: ChatViewProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const header = (
-    <header className="flex-shrink-0 px-8 md:px-16 py-8 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-[#111111] flex items-center justify-center shadow-sm p-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/Order.png"
-            alt="Riftbound"
-            className="w-full h-full object-contain"
-            style={{ filter: 'brightness(0) invert(1)' }}
-          />
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.35em] text-[#777777] font-bold">Riftbound Competitive</div>
-          <div className="text-2xl font-black italic uppercase tracking-tight">Judge System</div>
-        </div>
-      </div>
-      <Link
-        href="/rules"
-        className="text-[11px] uppercase tracking-[0.22em] text-[#666666] font-bold hover:text-black transition-colors px-4 py-2 rounded-full border border-black/10 hover:border-black/20"
-      >
-        Rules
-      </Link>
-    </header>
-  );
-
   if (!hasMessages) {
     return (
       <div className="flex flex-col h-screen bg-[#f6f3ee]">
-        {header}
+        <header className="flex-shrink-0 px-8 md:px-16 py-8 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#111111] flex items-center justify-center shadow-sm p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/Order.png" alt="Riftbound" className="w-full h-full object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.35em] text-[#777777] font-bold">Riftbound Competitive</div>
+              <div className="text-2xl font-black italic uppercase tracking-tight">Judge System</div>
+            </div>
+          </div>
+          <nav className="hidden md:flex items-center gap-8 text-sm tracking-[0.18em] text-[#666666] font-semibold">
+            <button onClick={onReset} className="hover:text-[#d4620a] transition-colors">Home</button>
+            <Link href="/rules" className="hover:text-[#d4620a] transition-colors">Rules</Link>
+          </nav>
+        </header>
         <div className="flex-1 flex flex-col justify-center px-4">
           <div className="max-w-2xl mx-auto w-full flex flex-col gap-6">
             <div className="flex justify-start pointer-events-none select-none judge-welcome-bubble">
@@ -97,7 +86,7 @@ export function ChatView({ onReset }: ChatViewProps) {
 
   return (
     <div className="flex flex-col h-screen bg-[#f6f3ee]">
-      {header}
+      <Navbar onHomeClick={onReset} />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6">

@@ -110,8 +110,8 @@ export function LandingHero({ onCallJudge }: LandingHeroProps) {
             </div>
           </div>
         </div>
-        <nav className="hidden md:flex items-center gap-8 text-sm uppercase tracking-[0.18em] text-[#666666] font-semibold">
-          <a href="/rules" className="hover:text-black transition-colors">Rules</a>
+        <nav className="hidden md:flex items-center gap-8 text-sm tracking-[0.18em] text-[#666666] font-semibold">
+          <a href="/rules" className="hover:text-[#d4620a] transition-colors">Rules</a>
         </nav>
       </header>
 
