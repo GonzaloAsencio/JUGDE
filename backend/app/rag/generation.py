@@ -55,7 +55,7 @@ def _build_context_block(question: str, chunks: list[Chunk]) -> str:
         lines.append(
             f'[#{i}] section: "{chunk.section}" (source: {chunk.source_type})\n{chunk.content}'
         )
-    lines.extend(["", "=== QUESTION ===", question, "", "=== ANSWER ==="])
+    lines.extend(["", "=== QUESTION ===", question, "", "=== ANSWER (write in English only — do not use Spanish) ==="])
     return "\n".join(lines)
 
 
