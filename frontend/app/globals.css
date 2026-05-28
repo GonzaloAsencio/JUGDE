@@ -130,6 +130,16 @@
   }
 }
 
+/* ─── Rules sidebar ─── */
+
+.rules-sidebar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.rules-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ─── Judge UI: Landing & Animation Keyframes ─── */
 
 @keyframes fullscreenJudgeIntro {
