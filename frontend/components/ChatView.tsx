@@ -22,7 +22,7 @@ export function ChatView({ onReset }: ChatViewProps) {
 
   if (!hasMessages) {
     return (
-      <div className="flex flex-col h-screen bg-[#f6f3ee]">
+      <div className="flex flex-col h-screen bg-[#f6f3ee] page-fade-in">
         <header className="flex-shrink-0 px-8 md:px-16 py-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-2xl bg-[#111111] flex items-center justify-center shadow-sm p-2">
@@ -85,7 +85,7 @@ export function ChatView({ onReset }: ChatViewProps) {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#f6f3ee]">
+    <div className="flex flex-col h-screen bg-[#f6f3ee] page-fade-in">
       <Navbar onHomeClick={onReset} />
 
       {/* Messages */}

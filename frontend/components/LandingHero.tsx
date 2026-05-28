@@ -1,7 +1,8 @@
 'use client';
 
 interface LandingHeroProps {
-  onCallJudge: () => void;
+  onCallJudge: (x: number, y: number) => void;
+  leaving?: boolean;
 }
 
 const FACTIONS = [
@@ -49,9 +50,9 @@ const FACTIONS = [
   },
 ];
 
-export function LandingHero({ onCallJudge }: LandingHeroProps) {
+export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
   return (
-    <div className="min-h-screen bg-[#f6f3ee] text-[#111111] overflow-hidden relative font-sans">
+    <div className={`min-h-screen bg-[#f6f3ee] text-[#111111] overflow-hidden relative font-sans${leaving ? ' landing-fade-out' : ''}`}>
       {/* Faction icons — each with its own centered glow */}
       {FACTIONS.map(({ src, wrapperClass, rotate, blobColor, blobSize }) => (
         <div
@@ -129,7 +130,7 @@ export function LandingHero({ onCallJudge }: LandingHeroProps) {
 
           <button
             className="call-judge-btn mt-14"
-            onClick={onCallJudge}
+            onClick={(e) => onCallJudge(e.clientX, e.clientY)}
             aria-label="Call the Judge"
           >
             <span className="cjb-content">
