@@ -173,9 +173,14 @@
 
 @keyframes judgePopupIn {
   0%   { opacity: 0; transform: translate(-50%, -50%) rotate(var(--r)) scale(0.2); }
-  55%  { opacity: 1; transform: translate(-50%, -50%) rotate(var(--r)) scale(1.08); }
-  75%  { opacity: 1; transform: translate(-50%, -50%) rotate(var(--r)) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--r)) scale(0.9) translateY(-8px); }
+  22%  { opacity: 1; transform: translate(-50%, -50%) rotate(var(--r)) scale(1.15); }
+  32%  { opacity: 1; transform: translate(calc(-50% + 4px), -50%) rotate(calc(var(--r) + 9deg)) scale(1); }
+  42%  { opacity: 1; transform: translate(calc(-50% - 4px), -50%) rotate(calc(var(--r) - 7deg)) scale(1); }
+  52%  { opacity: 1; transform: translate(calc(-50% + 3px), -50%) rotate(calc(var(--r) + 6deg)) scale(1); }
+  62%  { opacity: 1; transform: translate(calc(-50% - 2px), -50%) rotate(calc(var(--r) - 4deg)) scale(1); }
+  72%  { opacity: 1; transform: translate(calc(-50% + 1px), -50%) rotate(calc(var(--r) + 2deg)) scale(1); }
+  82%  { opacity: 1; transform: translate(-50%, -50%) rotate(var(--r)) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(var(--r)) scale(0.88) translateY(-6px); }
 }
 
 .judge-called-popup {
@@ -191,7 +196,7 @@
   padding: 6px 14px;
   border-radius: 999px;
   box-shadow: 0 4px 20px rgba(212, 98, 10, 0.45);
-  animation: judgePopupIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: judgePopupIn 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes landingFadeOut {

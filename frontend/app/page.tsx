@@ -21,7 +21,7 @@ export default function JudgePage() {
     setTimeout(() => {
       setPopup(null);
       setAppState('chat');
-    }, 700);
+    }, 850);
   };
 
   const handleReset = () => {
