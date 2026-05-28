@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useQueryStore } from '@/store/useQueryStore';
 import { QueryInput } from './QueryInput';
 import { ChatMessage } from './ChatMessage';
@@ -36,12 +37,12 @@ export function ChatView({ onReset }: ChatViewProps) {
           <div className="text-2xl font-black italic uppercase tracking-tight">Judge System</div>
         </div>
       </div>
-      <button
-        onClick={onReset}
+      <Link
+        href="/rules"
         className="text-[11px] uppercase tracking-[0.22em] text-[#666666] font-bold hover:text-black transition-colors px-4 py-2 rounded-full border border-black/10 hover:border-black/20"
       >
-        New consultation
-      </button>
+        Rules
+      </Link>
     </header>
   );
 
@@ -51,9 +52,15 @@ export function ChatView({ onReset }: ChatViewProps) {
         {header}
         <div className="flex-1 flex flex-col justify-center px-4">
           <div className="max-w-2xl mx-auto w-full flex flex-col gap-6">
-            <div className="text-center pointer-events-none select-none">
-              <div className="text-sm text-[#888888] font-medium">
-                How can I help with your ruling?
+            <div className="flex justify-start pointer-events-none select-none judge-welcome-bubble">
+              <div className="max-w-[85%] rounded-[28px] border border-black/5 bg-white/70 backdrop-blur-xl px-6 py-5 shadow-sm">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-[#111111]" />
+                  <span className="text-[10px] uppercase tracking-[0.28em] text-[#888888] font-bold">Judge</span>
+                </div>
+                <p className="text-[15px] leading-relaxed text-[#111111]">
+                  What&apos;s your ruling question?
+                </p>
               </div>
             </div>
             <div data-testid="centered-input">
@@ -65,6 +72,23 @@ export function ChatView({ onReset }: ChatViewProps) {
                 placeholder="Describe the game situation..."
               />
             </div>
+            {currentQuestion === '' && (
+              <div className="flex flex-wrap gap-2 justify-center">
+                {[
+                  { label: 'Use @ to tag keywords', value: '@' },
+                  { label: 'Can I chain two Quick effects?', value: 'Can I chain two Quick effects?' },
+                  { label: 'What if both players trigger simultaneously?', value: 'What if both players trigger simultaneously?' },
+                ].map(tip => (
+                  <button
+                    key={tip.label}
+                    onClick={() => setCurrentQuestion(tip.value)}
+                    className="text-[11px] text-[#888888] px-3 py-1.5 rounded-full border border-black/8 bg-white/50 hover:bg-white hover:text-[#111111] hover:border-black/15 transition-all"
+                  >
+                    {tip.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
