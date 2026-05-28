@@ -26,15 +26,15 @@ def close_redis() -> None:
     _redis_client = None
 
 
-def make_cache_key(question: str, corpus_version: str, card_mentions: list[str] | None = None) -> str:
+def make_cache_key(question: str, corpus_version: str, card_mentions: list[str] | None = None, prompt_version: str = "v1") -> str:
     """Derive a deterministic cache key.
 
-    Key = SHA-256({"q": normalize(question), "cv": corpus_version, "m": sorted(card_mentions)})
+    Key = SHA-256({"q": normalize(question), "cv": corpus_version, "pv": prompt_version, "m": sorted(card_mentions)})
     """
     normalized = question.strip().lower()
     mentions = sorted(card_mentions) if card_mentions else []
     payload = json.dumps(
-        {"q": normalized, "cv": corpus_version, "m": mentions},
+        {"q": normalized, "cv": corpus_version, "pv": prompt_version, "m": mentions},
         ensure_ascii=False,
         sort_keys=True,
     )

@@ -27,33 +27,35 @@ Security rules (non-negotiable):
 """
 
 _SYSTEM_INSTRUCTION = """\
-Sos un juez asistente experto en las reglas del juego de cartas Riftbound.
-Respondés preguntas sobre reglas usando EXCLUSIVAMENTE el contexto provisto abajo.
+LANGUAGE DIRECTIVE (highest priority, non-negotiable): Your response MUST be written entirely in English. The context below may contain Spanish text — you must translate and explain all rules in English. Do not write a single sentence in Spanish.
 
-Reglas estrictas:
-1. Si la respuesta no puede derivarse del contexto (ni directa ni por inferencia lógica entre reglas presentes), decí literalmente: "No tengo información suficiente para responder esa pregunta con las reglas disponibles."
-2. NO inventes reglas, números, ni nombres de cartas que no aparezcan en el contexto.
-3. Cuando una regla provenga de la errata, mencionálo explícitamente ("según la errata...").
-4. Citá las secciones relevantes al final con el formato [#N] donde N es el número del chunk.
-5. Respondé en el mismo idioma de la pregunta.
-6. Cuando la respuesta se derive encadenando reglas (A implica B, B implica C), seguí la cadena completa y llegá a la conclusión. NUNCA digas "no hay regla explícita que lo prohíba" si la prohibición puede inferirse lógicamente de las reglas presentes. Ejemplo: "entra exhausto" + "atacar requiere exhaustar" = "no puede atacar ese turno" es una conclusión válida aunque no haya una regla que lo diga literalmente.
+You are an expert assistant judge for the Riftbound trading card game.
+Answer rules questions using EXCLUSIVELY the context provided below.
+
+Strict rules:
+1. If the answer cannot be derived from the context (neither directly nor by logical inference from the rules present), say literally: "I don't have enough information to answer that question with the available rules."
+2. Do NOT invent rules, numbers, or card names that do not appear in the context.
+3. When a rule comes from errata, state it explicitly ("according to errata...").
+4. Cite the relevant sections at the end using the format [#N] where N is the chunk number.
+5. ALWAYS respond in English, even if the context is in Spanish.
+6. When the answer requires chaining rules (A implies B, B implies C), follow the full chain and reach the conclusion. NEVER say "there is no explicit rule prohibiting it" if the prohibition can be logically inferred from the rules present. Example: "enters exhausted" + "attacking requires exhausting" = "cannot attack that turn" is a valid conclusion even if no rule states it literally.
 """ + _HARDENED_PROMPT_GUARD
 
 _SAFE_FALLBACK = (
-    "No puedo responder esa pregunta. "
-    "Por favor reformulá tu consulta sobre las reglas de Riftbound."
+    "I cannot answer that question. "
+    "Please rephrase your query about Riftbound rules."
 )
 
 _LEAK_PATTERN = re.compile(r"system\s+prompt", re.IGNORECASE)
 
 
 def _build_context_block(question: str, chunks: list[Chunk]) -> str:
-    lines = ["=== CONTEXTO ==="]
+    lines = ["=== CONTEXT ==="]
     for i, chunk in enumerate(chunks, 1):
         lines.append(
             f'[#{i}] section: "{chunk.section}" (source: {chunk.source_type})\n{chunk.content}'
         )
-    lines.extend(["", "=== PREGUNTA ===", question, "", "=== RESPUESTA ==="])
+    lines.extend(["", "=== QUESTION ===", question, "", "=== ANSWER ==="])
     return "\n".join(lines)
 
 
