@@ -3,6 +3,7 @@
 import { useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useQueryStore } from '@/store/useQueryStore';
+import { Navbar } from './Navbar';
 import { QueryInput } from './QueryInput';
 import { ChatMessage } from './ChatMessage';
 

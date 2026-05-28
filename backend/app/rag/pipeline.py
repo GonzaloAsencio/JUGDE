@@ -14,7 +14,7 @@ from app.rag.schemas import Citation, QueryResponse
 
 logger = get_logger(__name__)
 
-_NO_INFO_ANSWER = "No tengo información suficiente para responder esa pregunta con las reglas disponibles."
+_NO_INFO_ANSWER = "I don't have enough information to answer that question with the available rules."
 _TAG_RE = re.compile(r"@(\w+)", re.UNICODE)
 
 _KNOWN_KEYWORDS: frozenset[str] = frozenset({
@@ -73,7 +73,7 @@ async def answer_question(
     query_id = str(uuid.uuid4())
 
     corpus_version = settings.corpus_version or "latest"
-    cache_key = make_cache_key(question, corpus_version, card_mentions)
+    cache_key = make_cache_key(question, corpus_version, card_mentions, settings.prompt_version)
 
     # Cache check — runs after Pydantic validation + rate limit (see ADR-1)
     cached_raw = await get_cached(cache_key)
