@@ -23,12 +23,12 @@ beforeEach(() => {
 });
 
 describe('ChatView', () => {
-  it('renders JUDGE! watermark when there are no messages', () => {
+  it('renders hero subtitle when there are no messages', () => {
     render(<ChatView onReset={jest.fn()} />);
-    expect(screen.getByText('JUDGE!')).toBeInTheDocument();
+    expect(screen.getByText(/how can i help/i)).toBeInTheDocument();
   });
 
-  it('does not render watermark when messages exist', () => {
+  it('does not render hero subtitle when messages exist', () => {
     mockUseQueryStore.mockReturnValue({
       ...defaultStore,
       messages: [{
@@ -42,7 +42,7 @@ describe('ChatView', () => {
       }] as Message[],
     });
     render(<ChatView onReset={jest.fn()} />);
-    expect(screen.queryByText('JUDGE!')).toBeNull();
+    expect(screen.queryByText(/how can i help/i)).toBeNull();
   });
 
   it('renders messages when present', () => {
@@ -72,5 +72,23 @@ describe('ChatView', () => {
   it('renders the query input', () => {
     render(<ChatView onReset={jest.fn()} />);
     expect(screen.getByPlaceholderText(/describe the game/i)).toBeInTheDocument();
+  });
+
+  it('renders input centered in the middle when there are no messages', () => {
+    render(<ChatView onReset={jest.fn()} />);
+    expect(screen.getByTestId('centered-input')).toBeInTheDocument();
+    expect(screen.queryByTestId('footer-input')).toBeNull();
+  });
+
+  it('renders input in footer when messages exist', () => {
+    mockUseQueryStore.mockReturnValue({
+      ...defaultStore,
+      messages: [{
+        id: '1', question: 'Q?', answer: 'A', citations: [], latencyMs: 10, loading: false, error: null,
+      }] as Message[],
+    });
+    render(<ChatView onReset={jest.fn()} />);
+    expect(screen.getByTestId('footer-input')).toBeInTheDocument();
+    expect(screen.queryByTestId('centered-input')).toBeNull();
   });
 });

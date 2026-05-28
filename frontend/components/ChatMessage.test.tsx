@@ -55,4 +55,17 @@ describe('ChatMessage', () => {
     render(<ChatMessage message={msg} />);
     expect(screen.queryByText(/Sources/i)).toBeNull();
   });
+
+  it('renders @hunt as a KeywordBadge in user bubble (not raw @hunt text)', () => {
+    const msg: Message = { ...baseMessage, question: 'Can @hunt trigger twice?' };
+    render(<ChatMessage message={msg} />);
+    expect(screen.queryByText('@hunt')).toBeNull();
+    expect(screen.getByText('HUNT')).toBeInTheDocument();
+  });
+
+  it('keeps unrecognized @mentions as plain text', () => {
+    const msg: Message = { ...baseMessage, question: 'Can @unknownkeyword appear?' };
+    render(<ChatMessage message={msg} />);
+    expect(screen.getByText(/\@unknownkeyword/)).toBeInTheDocument();
+  });
 });

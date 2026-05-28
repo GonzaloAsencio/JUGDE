@@ -41,4 +41,12 @@ describe('AnswerDisplay', () => {
     expect(screen.getByText('ASSAULT').previousElementSibling).toHaveStyle({ backgroundColor: '#bb2f65' });
     expect(screen.getByText('DEFLECT').previousElementSibling).toHaveStyle({ backgroundColor: '#93af34' });
   });
+
+  it('renders three bouncing dots when loading', () => {
+    const { container } = render(
+      <AnswerDisplay answer={null} loading={true} error={null} />
+    );
+    const dots = container.querySelectorAll('.animate-bounce');
+    expect(dots).toHaveLength(3);
+  });
 });

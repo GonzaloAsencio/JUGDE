@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Loader2, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GAME_KEYWORDS, type KeywordDef } from '@/lib/gameKeywords';
 import { KeywordBadge } from '@/components/KeywordBadge';
@@ -106,46 +104,60 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
   }
 
   return (
-    <div className="flex gap-2 w-full">
-      <div ref={containerRef} className="relative flex-1">
-        <Input
+    <div ref={containerRef} className="relative w-full">
+      <div className="relative flex items-center w-full rounded-full border border-black/10 bg-white shadow-md focus-within:border-black/20 focus-within:shadow-lg transition-shadow">
+        <input
           ref={inputRef}
+          type="text"
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           disabled={loading}
           placeholder={placeholder}
-          className="w-full"
+          className="flex-1 bg-transparent py-4 pl-6 pr-14 text-sm text-[#111111] placeholder:text-[#aaaaaa] outline-none disabled:opacity-50 min-w-0"
         />
-        {mentionActive && (
-          <ul className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-md border border-input bg-popover shadow-md">
-            {filteredKeywords.map((kw, i) => (
-              <li
-                key={kw.name}
-                ref={i === mentionIndex ? activeItemRef : null}
-                className={cn(
-                  'cursor-pointer px-3 py-2 text-sm',
-                  i === mentionIndex
-                    ? 'bg-accent text-accent-foreground'
-                    : 'hover:bg-accent/50'
-                )}
-                onMouseDown={e => { e.preventDefault(); selectMention(kw.name); }}
-              >
-                {kw.color
-                  ? <KeywordBadge def={kw} />
-                  : <><span className="text-muted-foreground">@</span>{kw.name}</>
-                }
-              </li>
-            ))}
-          </ul>
-        )}
+        <button
+          onClick={onSubmit}
+          disabled={loading || !isValid}
+          className={cn(
+            'absolute right-2 w-10 h-10 rounded-full flex items-center justify-center transition-colors flex-shrink-0',
+            loading || !isValid
+              ? 'bg-black/10 text-black/30 cursor-not-allowed'
+              : 'bg-[#111111] text-white hover:bg-[#333333]'
+          )}
+        >
+          {loading
+            ? <Loader2 className="w-4 h-4 animate-spin" />
+            : <ArrowUp className="w-4 h-4" />
+          }
+        </button>
       </div>
-      <Button
-        onClick={onSubmit}
-        disabled={loading || !isValid}
-      >
-        {loading ? <Loader2 className="animate-spin" /> : 'Ask Judge'}
-      </Button>
+
+      {mentionActive && (
+        <ul
+          data-testid="mention-dropdown"
+          className="absolute left-0 right-0 bottom-full mb-2 z-50 max-h-48 overflow-y-auto rounded-2xl border border-black/10 bg-white shadow-lg"
+        >
+          {filteredKeywords.map((kw, i) => (
+            <li
+              key={kw.name}
+              ref={i === mentionIndex ? activeItemRef : null}
+              className={cn(
+                'cursor-pointer px-4 py-2.5 text-sm first:rounded-t-2xl last:rounded-b-2xl',
+                i === mentionIndex
+                  ? 'bg-black/5'
+                  : 'hover:bg-black/[0.03]'
+              )}
+              onMouseDown={e => { e.preventDefault(); selectMention(kw.name); }}
+            >
+              {kw.color
+                ? <KeywordBadge def={kw} />
+                : <><span className="text-[#aaaaaa]">@</span>{kw.name}</>
+              }
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
