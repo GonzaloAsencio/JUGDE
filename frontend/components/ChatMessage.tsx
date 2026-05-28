@@ -1,9 +1,22 @@
 'use client';
 
+import React from 'react';
 import type { Message } from '@/store/useQueryStore';
 import { AnswerDisplay } from './AnswerDisplay';
 import { CitationsList } from './CitationsList';
 import { ConfidenceBadge } from './ConfidenceBadge';
+import { KeywordBadge } from './KeywordBadge';
+import { GAME_KEYWORDS } from '@/lib/gameKeywords';
+
+function parseQuestionWithTags(text: string): React.ReactNode[] {
+  const parts = text.split(/(@[\w-]+)/g);
+  return parts.map((part, i) => {
+    if (!part.startsWith('@')) return part;
+    const name = part.slice(1);
+    const kw = GAME_KEYWORDS.find(k => k.name.toLowerCase() === name.toLowerCase());
+    return kw ? <KeywordBadge key={i} def={kw} /> : part;
+  });
+}
 
 interface ChatMessageProps {
   message: Message;
@@ -15,7 +28,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
       {/* User bubble */}
       <div className="flex justify-end">
         <div className="max-w-[70%] rounded-[24px] bg-[#111111] text-white px-5 py-3 text-sm leading-relaxed">
-          {message.question}
+          {parseQuestionWithTags(message.question)}
         </div>
       </div>
 

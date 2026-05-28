@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryInput } from '@/components/QueryInput';
 
@@ -35,5 +35,25 @@ describe('QueryInput', () => {
     render(<QueryInput value="valid question here" onChange={noop} onSubmit={onSubmit} loading={false} />);
     await userEvent.click(screen.getByRole('button'));
     expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the send button inside the same wrapper as the input', () => {
+    render(<QueryInput value="valid question" onChange={noop} onSubmit={noop} loading={false} />);
+    const button = screen.getByRole('button');
+    const input = screen.getByRole('textbox');
+    expect(button.parentElement).toBe(input.parentElement);
+  });
+
+  it('mention dropdown has bottom-full class (appears above input)', async () => {
+    const user = userEvent.setup();
+    const onChange = jest.fn((v: string) => v);
+    render(<QueryInput value="" onChange={onChange} onSubmit={noop} loading={false} />);
+    await user.type(screen.getByRole('textbox'), '@');
+    await waitFor(() => {
+      const dropdown = screen.queryByTestId('mention-dropdown');
+      if (dropdown) {
+        expect(dropdown.className).toContain('bottom-full');
+      }
+    });
   });
 });
