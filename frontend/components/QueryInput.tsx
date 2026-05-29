@@ -3,6 +3,7 @@ import { Loader2, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GAME_KEYWORDS, type KeywordDef } from '@/lib/gameKeywords';
 import { KeywordBadge } from '@/components/KeywordBadge';
+import { searchCards, toSlug, type CardIndexEntry } from '@/lib/cardLookup';
 
 interface QueryInputProps {
   value: string;
@@ -12,12 +13,19 @@ interface QueryInputProps {
   placeholder?: string;
 }
 
+// #term -> game keyword, @entity -> card. The sigil picks the source.
+type MentionItem =
+  | { kind: 'keyword'; keyword: KeywordDef }
+  | { kind: 'card'; card: CardIndexEntry };
+
+const MENTION_RE = /([#@])([\w-]*)$/;
+
 export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: QueryInputProps) {
   const trimmed = value.trim();
   const isValid = trimmed.length >= 3 && trimmed.length <= 1000;
 
   const [mentionActive, setMentionActive] = useState(false);
-  const [filteredKeywords, setFilteredKeywords] = useState<KeywordDef[]>([]);
+  const [mentionItems, setMentionItems] = useState<MentionItem[]>([]);
   const [mentionIndex, setMentionIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,16 +51,20 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
     onChange(val);
 
     const cursor = e.target.selectionStart ?? val.length;
-    const beforeCursor = val.slice(0, cursor);
-    const match = beforeCursor.match(/@([\w-]*)$/);
+    const match = val.slice(0, cursor).match(MENTION_RE);
 
     if (match) {
-      const search = match[1];
-      const results = GAME_KEYWORDS.filter(k =>
-        k.name.toLowerCase().startsWith(search.toLowerCase())
-      );
-      if (results.length > 0) {
-        setFilteredKeywords(results);
+      const sigil = match[1];
+      const search = match[2];
+      const items: MentionItem[] =
+        sigil === '#'
+          ? GAME_KEYWORDS
+              .filter(k => k.name.toLowerCase().startsWith(search.toLowerCase()))
+              .map(keyword => ({ kind: 'keyword' as const, keyword }))
+          : searchCards(search).map(card => ({ kind: 'card' as const, card }));
+
+      if (items.length > 0) {
+        setMentionItems(items);
         setMentionActive(true);
         setMentionIndex(0);
         return;
@@ -61,10 +73,14 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
     setMentionActive(false);
   }
 
-  function selectMention(keywordName: string) {
+  function selectMention(item: MentionItem) {
     const el = inputRef.current;
     const cursor = el?.selectionStart ?? value.length;
-    const before = value.slice(0, cursor).replace(/@([\w-]*)$/, `@${keywordName} `);
+    const token =
+      item.kind === 'keyword'
+        ? `#${item.keyword.name} `
+        : `@${toSlug(item.card.clean_name)} `;
+    const before = value.slice(0, cursor).replace(MENTION_RE, token);
     const after = value.slice(cursor);
     onChange(before + after);
     setMentionActive(false);
@@ -78,7 +94,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
     if (mentionActive) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setMentionIndex(i => Math.min(i + 1, filteredKeywords.length - 1));
+        setMentionIndex(i => Math.min(i + 1, mentionItems.length - 1));
         return;
       }
       if (e.key === 'ArrowUp') {
@@ -88,7 +104,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        selectMention(filteredKeywords[mentionIndex].name);
+        selectMention(mentionItems[mentionIndex]);
         return;
       }
       if (e.key === 'Escape') {
@@ -136,24 +152,34 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
       {mentionActive && (
         <ul
           data-testid="mention-dropdown"
-          className="absolute left-0 right-0 bottom-full mb-2 z-50 max-h-48 overflow-y-auto rounded-2xl border border-black/10 bg-white shadow-lg"
+          className="absolute left-0 right-0 bottom-full mb-2 z-50 max-h-64 overflow-y-auto rounded-2xl border border-black/10 bg-white shadow-lg"
         >
-          {filteredKeywords.map((kw, i) => (
+          {mentionItems.map((item, i) => (
             <li
-              key={kw.name}
+              key={item.kind === 'keyword' ? `k-${item.keyword.name}` : `c-${item.card.riftbound_id}`}
               ref={i === mentionIndex ? activeItemRef : null}
               className={cn(
-                'cursor-pointer px-4 py-2.5 text-sm first:rounded-t-2xl last:rounded-b-2xl',
-                i === mentionIndex
-                  ? 'bg-black/5'
-                  : 'hover:bg-black/[0.03]'
+                'cursor-pointer px-4 py-2 text-sm first:rounded-t-2xl last:rounded-b-2xl',
+                i === mentionIndex ? 'bg-black/5' : 'hover:bg-black/[0.03]'
               )}
-              onMouseDown={e => { e.preventDefault(); selectMention(kw.name); }}
+              onMouseDown={e => { e.preventDefault(); selectMention(item); }}
             >
-              {kw.color
-                ? <KeywordBadge def={kw} />
-                : <><span className="text-[#aaaaaa]">@</span>{kw.name}</>
-              }
+              {item.kind === 'keyword' ? (
+                item.keyword.color
+                  ? <KeywordBadge def={item.keyword} />
+                  : <><span className="text-[#aaaaaa]">#</span>{item.keyword.name}</>
+              ) : (
+                <span className="flex items-center gap-2.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.card.image_url}
+                    alt={item.card.clean_name}
+                    loading="lazy"
+                    className="h-9 w-auto rounded shrink-0 bg-black/5"
+                  />
+                  <span className="truncate capitalize">{item.card.clean_name}</span>
+                </span>
+              )}
             </li>
           ))}
         </ul>
