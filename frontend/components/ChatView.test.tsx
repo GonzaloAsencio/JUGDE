@@ -7,7 +7,7 @@ import { ChatView } from './ChatView';
 import { useQueryStore } from '@/store/useQueryStore';
 import type { Message } from '@/store/useQueryStore';
 
-const mockUseQueryStore = useQueryStore as jest.Mock;
+const mockUseQueryStore = useQueryStore as unknown as jest.Mock;
 
 const defaultStore = {
   messages: [] as Message[],
@@ -25,7 +25,7 @@ beforeEach(() => {
 describe('ChatView', () => {
   it('renders hero subtitle when there are no messages', () => {
     render(<ChatView onReset={jest.fn()} />);
-    expect(screen.getByText(/how can i help/i)).toBeInTheDocument();
+    expect(screen.getByText(/ruling question/i)).toBeInTheDocument();
   });
 
   it('does not render hero subtitle when messages exist', () => {
@@ -62,10 +62,10 @@ describe('ChatView', () => {
     expect(screen.getByText('What is hunt?')).toBeInTheDocument();
   });
 
-  it('calls onReset when nueva consulta is clicked', () => {
+  it('calls onReset when the Home control is clicked', () => {
     const onReset = jest.fn();
     render(<ChatView onReset={onReset} />);
-    fireEvent.click(screen.getByText(/new consultation/i));
+    fireEvent.click(screen.getByText(/home/i));
     expect(onReset).toHaveBeenCalledTimes(1);
   });
 
