@@ -218,3 +218,80 @@ def test_chunk_section_fallback_chunks_contain_rule_numbers():
     chunks = _chunk_section(section, "rulebook", "rulebook.md")
     rule_nums = {c["content"].split(".")[0].strip() for c in chunks}
     assert any(n.isdigit() and len(n) == 3 for n in rule_nums)
+
+
+# ---------------------------------------------------------------------------
+# build_chunks — card corpus (source_type='card')
+# ---------------------------------------------------------------------------
+
+_CARDS_MD = """\
+## Yasuo
+**Name**: Yasuo
+**Set**: Origins (ORI-042) | **Rarity**: Legendary | **Domain**: Body
+**Energy**: 3 | **Might**: 4 | **Power**: 3 | **Type**: Unit
+**Tags**: Accelerate, Quick-Draw
+
+**Text**:
+When Yasuo enters the board, draw a card.
+
+## Counterspell
+**Name**: Counterspell
+**Set**: Origins (ORI-100) | **Rarity**: Common | **Domain**: Mind
+**Energy**: 2 | **Type**: Spell
+
+**Text**:
+Counter target spell.
+
+## Shen
+**Name**: Shen
+**Set**: Origins (ORI-055) | **Rarity**: Legendary | **Domain**: Body, Mind
+**Energy**: 4 | **Might**: 3 | **Power**: 5 | **Type**: Unit
+
+**Text**:
+Shield 2.
+"""
+
+
+def test_build_chunks_cards_produces_one_chunk_per_card(tmp_path):
+    f = tmp_path / "cards.md"
+    f.write_text(_CARDS_MD, encoding="utf-8")
+    chunks = build_chunks(str(f), "card")
+    assert len(chunks) == 3
+
+
+def test_build_chunks_cards_source_type_is_card(tmp_path):
+    f = tmp_path / "cards.md"
+    f.write_text(_CARDS_MD, encoding="utf-8")
+    chunks = build_chunks(str(f), "card")
+    assert all(c["source_type"] == "card" for c in chunks)
+
+
+def test_build_chunks_cards_section_is_card_name(tmp_path):
+    f = tmp_path / "cards.md"
+    f.write_text(_CARDS_MD, encoding="utf-8")
+    chunks = build_chunks(str(f), "card")
+    sections = sorted(c["section"] for c in chunks)
+    assert sections == ["Counterspell", "Shen", "Yasuo"]
+
+
+def test_build_chunks_cards_card_metadata_in_content(tmp_path):
+    """Each chunk must contain the full card body so the LLM sees cost + type + abilities together (D2)."""
+    f = tmp_path / "cards.md"
+    f.write_text(_CARDS_MD, encoding="utf-8")
+    chunks = build_chunks(str(f), "card")
+    yasuo = next(c for c in chunks if c["section"] == "Yasuo")
+    assert "**Energy**: 3" in yasuo["content"]
+    assert "**Type**: Unit" in yasuo["content"]
+    assert "**Tags**: Accelerate, Quick-Draw" in yasuo["content"]
+    assert "When Yasuo enters the board" in yasuo["content"]
+
+
+def test_build_chunks_real_cards_md_each_card_fits_one_chunk():
+    """Confirm D2 holds against the actual production corpus: 1 card == 1 chunk."""
+    from pathlib import Path
+    cards_path = Path(__file__).parent.parent / "data" / "processed" / "cards.md"
+    if not cards_path.exists():
+        pytest.skip("cards.md not generated yet")
+    chunks = build_chunks(str(cards_path), "card")
+    h2_count = sum(1 for line in cards_path.read_text(encoding="utf-8").splitlines() if line.startswith("## "))
+    assert len(chunks) == h2_count, f"Expected {h2_count} chunks (one per card), got {len(chunks)}"
