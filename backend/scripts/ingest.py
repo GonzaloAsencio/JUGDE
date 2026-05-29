@@ -35,6 +35,7 @@ SOURCES = [
     ("data/processed/patch_notes.md", "patch_notes"),
     ("data/processed/keywords.md", "rulebook"),
     ("data/processed/rules_faq.md", "rules_faq"),
+    ("data/processed/cards.md", "card"),
 ]
 
 
