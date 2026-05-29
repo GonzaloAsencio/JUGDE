@@ -12,18 +12,23 @@ import { GAME_KEYWORDS } from '@/lib/gameKeywords';
 import { lookupCard } from '@/lib/cardLookup';
 
 function parseQuestionWithTags(text: string): React.ReactNode[] {
-  const parts = text.split(/(@[\w-]+)/g);
+  // Two sigils, no ambiguity: #term -> keyword, @entity -> card.
+  const parts = text.split(/(#[\w-]+|@[\w-]+)/g);
   return parts.map((part, i) => {
-    if (!part.startsWith('@')) return part;
-    const name = part.slice(1);
-    const kw = GAME_KEYWORDS.find(k => k.name.toLowerCase() === name.toLowerCase());
-    if (kw) return <KeywordBadge key={i} def={kw} />;
-    if (lookupCard(name)) {
-      return (
-        <CardPreview key={i} cardName={name}>
-          <CardChip name={name} />
-        </CardPreview>
-      );
+    if (part.startsWith('#')) {
+      const name = part.slice(1);
+      const kw = GAME_KEYWORDS.find(k => k.name.toLowerCase() === name.toLowerCase());
+      return kw ? <KeywordBadge key={i} def={kw} /> : part;
+    }
+    if (part.startsWith('@')) {
+      const card = lookupCard(part.slice(1));
+      if (card) {
+        return (
+          <CardPreview key={i} cardName={card.clean_name}>
+            <CardChip name={card.clean_name} />
+          </CardPreview>
+        );
+      }
     }
     return part;
   });

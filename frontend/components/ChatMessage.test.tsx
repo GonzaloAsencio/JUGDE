@@ -6,6 +6,12 @@ jest.mock('@/lib/cardIndex', () => ({
       set_label: 'Origins',
       riftbound_id: 'ori-042-219',
     },
+    {
+      clean_name: 'jhin virtuoso',
+      image_url: 'https://example.com/jhin.png',
+      set_label: 'Unleashed',
+      riftbound_id: 'unl-181-219',
+    },
   ],
 }));
 
@@ -58,7 +64,8 @@ describe('ChatMessage', () => {
       }],
     };
     render(<ChatMessage message={msg} />);
-    expect(screen.getByText(/Sources/i)).toBeInTheDocument();
+    // One citation -> the popover trigger reads "1 source" (singular).
+    expect(screen.getByText(/source/i)).toBeInTheDocument();
   });
 
   it('does not show citations section when empty', () => {
@@ -67,17 +74,17 @@ describe('ChatMessage', () => {
     expect(screen.queryByText(/Sources/i)).toBeNull();
   });
 
-  it('renders @hunt as a KeywordBadge in user bubble (not raw @hunt text)', () => {
-    const msg: Message = { ...baseMessage, question: 'Can @hunt trigger twice?' };
+  it('renders #hunt as a KeywordBadge in user bubble (not raw #hunt text)', () => {
+    const msg: Message = { ...baseMessage, question: 'Can #hunt trigger twice?' };
     render(<ChatMessage message={msg} />);
-    expect(screen.queryByText('@hunt')).toBeNull();
+    expect(screen.queryByText('#hunt')).toBeNull();
     expect(screen.getByText('HUNT')).toBeInTheDocument();
   });
 
-  it('keeps unrecognized @mentions as plain text', () => {
-    const msg: Message = { ...baseMessage, question: 'Can @unknownkeyword appear?' };
+  it('keeps unrecognized #mentions as plain text', () => {
+    const msg: Message = { ...baseMessage, question: 'Can #unknownkeyword appear?' };
     render(<ChatMessage message={msg} />);
-    expect(screen.getByText(/\@unknownkeyword/)).toBeInTheDocument();
+    expect(screen.getByText(/#unknownkeyword/)).toBeInTheDocument();
   });
 
   it('renders @yasuo as a CardChip wrapped in a hover trigger', () => {
@@ -90,13 +97,30 @@ describe('ChatMessage', () => {
     expect(trigger?.textContent).toContain('YASUO');
   });
 
-  it('prefers keyword over card when the name matches both (keyword wins)', () => {
-    // 'hunt' is a GAME_KEYWORDS entry. Even if a card named "hunt" existed in the mock,
-    // the parser must still render KeywordBadge per D7.
-    const msg: Message = { ...baseMessage, question: 'How does @hunt resolve?' };
+  it('renders a hyphenated slug @jhin-virtuoso showing the pretty card name', () => {
+    const msg: Message = { ...baseMessage, question: 'Does @jhin-virtuoso work?' };
     render(<ChatMessage message={msg} />);
-    expect(screen.getByText('HUNT')).toBeInTheDocument();
-    // No card hover trigger should appear because the keyword path was taken.
+    expect(screen.queryByText('@jhin-virtuoso')).toBeNull();
+    expect(screen.getByText('JHIN VIRTUOSO')).toBeInTheDocument();
+  });
+
+  it('resolves a bare prefix @jhin to the full card name (first-wins)', () => {
+    const msg: Message = { ...baseMessage, question: 'Does @jhin work?' };
+    render(<ChatMessage message={msg} />);
+    expect(screen.getByText('JHIN VIRTUOSO')).toBeInTheDocument();
+  });
+
+  it('does not cross sigils: #yasuo (a card, not a keyword) stays plain text', () => {
+    const msg: Message = { ...baseMessage, question: 'Is #yasuo strong?' };
+    render(<ChatMessage message={msg} />);
+    expect(screen.getByText(/#yasuo/)).toBeInTheDocument();
     expect(document.querySelector('[data-slot="hover-card-trigger"]')).toBeNull();
+  });
+
+  it('does not cross sigils: @hunt (a keyword, not a card) stays plain text', () => {
+    const msg: Message = { ...baseMessage, question: 'Does @hunt resolve?' };
+    render(<ChatMessage message={msg} />);
+    expect(screen.getByText(/@hunt/)).toBeInTheDocument();
+    expect(screen.queryByText('HUNT')).toBeNull();
   });
 });
