@@ -193,11 +193,17 @@ def build_card_index(cards: list[dict]) -> list[dict]:
     """Build the frontend lookup index from raw Riftcodex card records.
 
     Filters: alternate_art, signature, overnumbered (D6 in the plan).
-    Dedupes by clean_name (case-insensitive, first match wins).
     Skips cards missing clean_name or media.image_url — can't preview them.
+
+    A card's identity is its artwork (image_url). Cosmetic variants — foil
+    ("... Metal"), promo ("... GG EZ", "... Starter", "... Launch Exclusive") —
+    carry a different clean_name but reuse the base card's image. We collapse by
+    image_url and keep the shortest clean_name so the base card wins over its
+    variant. Distinct clean_names that survive under different images are then
+    deduped by name (first match wins).
     """
-    seen: set[str] = set()
-    index: list[dict] = []
+    by_image: dict[str, dict] = {}
+    order: list[str] = []
     for card in cards:
         metadata = card.get("metadata") or {}
         if metadata.get("alternate_art") or metadata.get("signature") or metadata.get("overnumbered"):
@@ -206,20 +212,34 @@ def build_card_index(cards: list[dict]) -> list[dict]:
         if not clean_name:
             continue
         key = clean_name.strip().lower()
-        if not key or key in seen:
+        if not key:
             continue
         media = card.get("media") or {}
         image_url = media.get("image_url")
         if not image_url:
             continue
         set_info = card.get("set") or {}
-        index.append({
+        entry = {
             "clean_name": key,
             "image_url": image_url,
             "set_label": set_info.get("label") or "",
             "riftbound_id": card.get("riftbound_id") or "",
-        })
-        seen.add(key)
+        }
+        existing = by_image.get(image_url)
+        if existing is None:
+            by_image[image_url] = entry
+            order.append(image_url)
+        elif len(key) < len(existing["clean_name"]):
+            by_image[image_url] = entry
+
+    seen_names: set[str] = set()
+    index: list[dict] = []
+    for image_url in order:
+        entry = by_image[image_url]
+        if entry["clean_name"] in seen_names:
+            continue
+        seen_names.add(entry["clean_name"])
+        index.append(entry)
     return index
 
 

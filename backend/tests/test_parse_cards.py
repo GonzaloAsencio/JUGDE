@@ -205,6 +205,38 @@ def test_build_card_index_first_match_wins_on_dedupe(sample_cards):
     assert yasuo_entry["image_url"] == "https://example.com/yasuo.png"  # rc-001's image, not rc-005's
 
 
+def test_build_card_index_collapses_variant_sharing_image(yasuo):
+    """A foil/promo variant (e.g. "... Metal") shares the base card's artwork.
+    It must collapse into a single entry keyed by image_url."""
+    base = copy.deepcopy(yasuo)
+    base["metadata"]["clean_name"] = "yasuo unforgiven"
+    base["riftbound_id"] = "ORI-042"
+    base["media"]["image_url"] = "https://example.com/yu.png"
+    metal = copy.deepcopy(base)
+    metal["metadata"]["clean_name"] = "yasuo unforgiven metal"
+    metal["riftbound_id"] = "ORI-042-M"
+
+    index = build_card_index([base, metal])
+
+    assert [e["clean_name"] for e in index] == ["yasuo unforgiven"]
+
+
+def test_build_card_index_prefers_base_name_when_variant_appears_first(yasuo):
+    """When the variant precedes the base in the input, the shorter base name still wins."""
+    metal = copy.deepcopy(yasuo)
+    metal["metadata"]["clean_name"] = "yasuo metal"
+    metal["riftbound_id"] = "ORI-042-M"
+    metal["media"]["image_url"] = "https://example.com/shared.png"
+    base = copy.deepcopy(yasuo)
+    base["metadata"]["clean_name"] = "yasuo"
+    base["riftbound_id"] = "ORI-042"
+    base["media"]["image_url"] = "https://example.com/shared.png"
+
+    index = build_card_index([metal, base])
+
+    assert [e["clean_name"] for e in index] == ["yasuo"]
+
+
 def test_build_card_index_entry_has_exact_four_fields(sample_cards):
     index = build_card_index(sample_cards)
     for entry in index:

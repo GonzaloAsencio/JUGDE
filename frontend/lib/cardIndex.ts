@@ -358,10 +358,10 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "pr-036a-298"
   },
   {
-    "clean_name": "ahri alluring launch exclusive",
+    "clean_name": "ahri alluring",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/fabbcc2f83f397cf07299236a702db05a151053b-744x1039.png?accountingTag=RB",
-    "set_label": "Riftbound Promotional Cards",
-    "riftbound_id": "pr-066-298"
+    "set_label": "Origins",
+    "riftbound_id": "ogn-066-298"
   },
   {
     "clean_name": "keepers verdict",
@@ -1408,34 +1408,34 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "opp-086-221"
   },
   {
-    "clean_name": "sivir battle mistress metal",
+    "clean_name": "sivir battle mistress",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/fd060882c32a8deac04aea4241c6ab7b97236a05-744x1039.png?accountingTag=RB",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-203-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-203-221"
   },
   {
-    "clean_name": "rumble mechanized menace metal",
+    "clean_name": "rumble mechanized menace",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/f311115e4c527ce82010596ce462d4050a9201b2-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-181-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-181-221"
   },
   {
-    "clean_name": "reksai void burrower metal",
+    "clean_name": "reksai void burrower",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/2db78549c30d8f9012af797fe075c4dc2355ec5d-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-187-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-187-221"
   },
   {
-    "clean_name": "ornn fire below the mountain metal",
+    "clean_name": "ornn fire below the mountain",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/ed58d654034d545e54c85d836f3a6552772dd75b-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-189-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-189-221"
   },
   {
-    "clean_name": "lucian purifier metal",
+    "clean_name": "lucian purifier",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/450cfb71b8890904d48b37a24bbdc78f8d849614-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-183-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-183-221"
   },
   {
     "clean_name": "eclipse",
@@ -1804,10 +1804,10 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "unl-076-219"
   },
   {
-    "clean_name": "jax grandmaster at arms metal",
+    "clean_name": "jax grandmaster at arms",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/c6ddf49d7249bc8ac194fd9b194bfcb8857a4466-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-193-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-193-221"
   },
   {
     "clean_name": "ruined rex",
@@ -1894,7 +1894,7 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "unl-017-219"
   },
   {
-    "clean_name": "master yi wuju bladesman metal",
+    "clean_name": "master yi wuju bladesman",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/8231ced23eaf22ca3bf62ec8cb86b83a3e222da6-744x1039.png",
     "set_label": "Riftbound Organized Play Promotional Cards",
     "riftbound_id": "opp-019-024"
@@ -1910,12 +1910,6 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/18c0818cbbfdf26a1237b4f7703b1f035f47b014-744x1039.png",
     "set_label": "Riftbound Organized Play Promotional Cards",
     "riftbound_id": "opp-020-024"
-  },
-  {
-    "clean_name": "master yi wuju bladesman",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/8231ced23eaf22ca3bf62ec8cb86b83a3e222da6-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-019-024"
   },
   {
     "clean_name": "tibbers",
@@ -1936,64 +1930,16 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "opp-116-221"
   },
   {
-    "clean_name": "garen might of demacia metal",
+    "clean_name": "garen might of demacia",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e7185deb46f17770802d06aeddfe3b929afff880-744x1039.png",
     "set_label": "Riftbound Organized Play Promotional Cards",
     "riftbound_id": "opp-023-024"
-  },
-  {
-    "clean_name": "lux lady of luminosity metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/44885d811b70621b188d9813b2b10b5cff1b81e6-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-021-024"
   },
   {
     "clean_name": "final spark",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/4558a2dc1bb1f1b8a73ec0d82244654e84b12687-744x1039.png",
     "set_label": "Riftbound Organized Play Promotional Cards",
     "riftbound_id": "opp-022-024"
-  },
-  {
-    "clean_name": "annie dark child metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/89963e1d1cffd69c620fb5d6b037f50d5c334463-744x1039.png?accountingTag=RB",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-017-024"
-  },
-  {
-    "clean_name": "sett the boss metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/b132becb843b2cf418cb110ead64758f49f51554-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-269-298"
-  },
-  {
-    "clean_name": "miss fortune bounty hunter metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/cc11261fcdbf0851525030bd9e835b718efad3bc-744x1040.png?accountingTag=RB",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-267-298"
-  },
-  {
-    "clean_name": "viktor herald of the arcane metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/913236dabf1e4f71650bbba46870fff8163e2eff-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-265-298"
-  },
-  {
-    "clean_name": "teemo swift scout metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/9723181e3392bb61c2aabc804a44f7b0558cedf1-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-263-298"
-  },
-  {
-    "clean_name": "leona radiant dawn metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/822b8bc7987a47498550708b18ef166b121fd620-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-261-298"
-  },
-  {
-    "clean_name": "yasuo unforgiven metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/68e4d3230b785738ae9d86f780f7f5607ef11807-744x1040.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-259-298"
   },
   {
     "clean_name": "stellacorn herder",
@@ -2032,12 +1978,6 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "opp-004-024"
   },
   {
-    "clean_name": "lee sin blind monk metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/ffe064e002d3b9a366748eb85102a769b2545835-744x1039.png?accountingTag=RB",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-257-298"
-  },
-  {
     "clean_name": "annie fiery",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/532d75dc36a16eb5954253a77366fcceac7aec62-744x1039.png?accountingTag=RB",
     "set_label": "Riftbound Organized Play Promotional Cards",
@@ -2054,12 +1994,6 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/986782271be078c184a8d1c196e375106459c6c5-744x1039.png?accountingTag=RB",
     "set_label": "Riftbound Organized Play Promotional Cards",
     "riftbound_id": "opp-024-024"
-  },
-  {
-    "clean_name": "garen might of demacia",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e7185deb46f17770802d06aeddfe3b929afff880-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-023-024"
   },
   {
     "clean_name": "stacked deck",
@@ -2158,12 +2092,6 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "opp-089b-298"
   },
   {
-    "clean_name": "teemo scout gg ez",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/ca8a2e11dd78dd09ad1c9ad3a23e5699254b947e-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-197b-298"
-  },
-  {
     "clean_name": "riptide rex",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e09bf1fb6d72da31d415ea31ae7413fe7f02d650-744x1039.png",
     "set_label": "Riftbound Organized Play Promotional Cards",
@@ -2222,36 +2150,6 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/654dcc4aef0a0b5a0c6e928d7aae397a52c3ab17-744x1039.png?accountingTag=RB",
     "set_label": "Riftbound Organized Play Promotional Cards",
     "riftbound_id": "opp-067-298"
-  },
-  {
-    "clean_name": "kaisa daughter of the void metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/a576472c7bb00f475882ac814e1d8f9be233b402-744x1040.png?accountingTag=RB",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-247-298"
-  },
-  {
-    "clean_name": "volibear relentless storm metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/f1842ef373434db3e8109d8959832f9d184866c3-744x1040.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-249-298"
-  },
-  {
-    "clean_name": "jinx loose cannon metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/f57c14381b126e9f5a7b5bc4913151cb24c14fc3-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-251-298"
-  },
-  {
-    "clean_name": "darius hand of noxus metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/5b9a904048b7fb936377844ec2d31564b7fedf81-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-253-298"
-  },
-  {
-    "clean_name": "ahri nine tailed fox metal",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/fbce641f5e4d8cdf2956e8ead5884b6cd3ccd90d-744x1040.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-255-298"
   },
   {
     "clean_name": "galio indefatigable",
@@ -2404,34 +2302,34 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "unl-208-219"
   },
   {
-    "clean_name": "azir emperor of the sands metal",
+    "clean_name": "azir emperor of the sands",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/0472274c49f6540858758ebf9bd2f107a601541a-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-197-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-197-221"
   },
   {
-    "clean_name": "draven glorious executioner metal",
+    "clean_name": "draven glorious executioner",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/b01b2d0454ceeffdc106c4c64a390b275ebf390b-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-185-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-185-221"
   },
   {
-    "clean_name": "ezreal prodigal explorer metal",
+    "clean_name": "ezreal prodigal explorer",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/d0e143d9edbc14971b2a7b463b3c25b2b6a0c098-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-199-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-199-221"
   },
   {
-    "clean_name": "fiora grand duelist metal",
+    "clean_name": "fiora grand duelist",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/37064aa79c13316b5dd28f0a2b054821a43f6650-744x1039.png",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-205-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-205-221"
   },
   {
-    "clean_name": "irelia blade dancer metal",
+    "clean_name": "irelia blade dancer",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/656ef2d1724b818e9e737ec5dcce923de067a316-744x1039.png?accountingTag=RB",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-195-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-195-221"
   },
   {
     "clean_name": "undying loyalty",
@@ -2446,10 +2344,10 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "unl-077-219"
   },
   {
-    "clean_name": "renata glasc chem baroness metal",
+    "clean_name": "renata glasc chem baroness",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/4bd289c281ad64229061ff909abf88c12a574833-744x1039.png?accountingTag=RB",
-    "set_label": "Riftbound Organized Play Promotional Cards",
-    "riftbound_id": "opp-201-221"
+    "set_label": "Spiritforged",
+    "riftbound_id": "sfd-201-221"
   },
   {
     "clean_name": "boneshiver",
@@ -3760,12 +3658,6 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "ogn-077-298"
   },
   {
-    "clean_name": "ahri alluring",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/fabbcc2f83f397cf07299236a702db05a151053b-744x1039.png?accountingTag=RB",
-    "set_label": "Origins",
-    "riftbound_id": "ogn-066-298"
-  },
-  {
     "clean_name": "wizened elder",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/7b98797789ad7e3a6cf52126b82a42ec6f269bb7-744x1039.png",
     "set_label": "Origins",
@@ -3994,28 +3886,10 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "sfd-182-221"
   },
   {
-    "clean_name": "ezreal prodigal explorer",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/d0e143d9edbc14971b2a7b463b3c25b2b6a0c098-744x1039.png",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-199-221"
-  },
-  {
     "clean_name": "defiant dance",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/6f5bc5c9e321830337998a2b85e4fec3cd8251c9-744x1039.png?accountingTag=RB",
     "set_label": "Spiritforged",
     "riftbound_id": "sfd-196-221"
-  },
-  {
-    "clean_name": "jax grandmaster at arms",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/c6ddf49d7249bc8ac194fd9b194bfcb8857a4466-744x1039.png",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-193-221"
-  },
-  {
-    "clean_name": "ornn fire below the mountain",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/ed58d654034d545e54c85d836f3a6552772dd75b-744x1039.png",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-189-221"
   },
   {
     "clean_name": "void rush",
@@ -4024,34 +3898,10 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "sfd-188-221"
   },
   {
-    "clean_name": "reksai void burrower",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/2db78549c30d8f9012af797fe075c4dc2355ec5d-744x1039.png",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-187-221"
-  },
-  {
     "clean_name": "relentless pursuit",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/48754730486abefdb56221d0760b9c963aae7c09-744x1039.png",
     "set_label": "Spiritforged",
     "riftbound_id": "sfd-184-221"
-  },
-  {
-    "clean_name": "lucian purifier",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/450cfb71b8890904d48b37a24bbdc78f8d849614-744x1039.png",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-183-221"
-  },
-  {
-    "clean_name": "fiora grand duelist",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/37064aa79c13316b5dd28f0a2b054821a43f6650-744x1039.png",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-205-221"
-  },
-  {
-    "clean_name": "rumble mechanized menace",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/f311115e4c527ce82010596ce462d4050a9201b2-744x1039.png",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-181-221"
   },
   {
     "clean_name": "irelia graceful",
@@ -4600,12 +4450,6 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "ogn-275-298"
   },
   {
-    "clean_name": "garen might of demacia starter",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e7185deb46f17770802d06aeddfe3b929afff880-744x1039.png",
-    "set_label": "Proving Grounds",
-    "riftbound_id": "ogs-023-024"
-  },
-  {
     "clean_name": "long sword",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/48d798bf93afd1ef139dcafc6cd8705742b93169-744x1039.png",
     "set_label": "Spiritforged",
@@ -4648,24 +4492,6 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "riftbound_id": "sfd-115-221"
   },
   {
-    "clean_name": "lux lady of luminosity starter",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/44885d811b70621b188d9813b2b10b5cff1b81e6-744x1039.png",
-    "set_label": "Proving Grounds",
-    "riftbound_id": "ogs-021-024"
-  },
-  {
-    "clean_name": "master yi wuju bladesman starter",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/8231ced23eaf22ca3bf62ec8cb86b83a3e222da6-744x1039.png",
-    "set_label": "Proving Grounds",
-    "riftbound_id": "ogs-019-024"
-  },
-  {
-    "clean_name": "annie dark child starter",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/89963e1d1cffd69c620fb5d6b037f50d5c334463-744x1039.png?accountingTag=RB",
-    "set_label": "Proving Grounds",
-    "riftbound_id": "ogs-017-024"
-  },
-  {
     "clean_name": "vanguard attendant",
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/4ce467c1d51a65ab4fbae918dca38ae90b510844-744x1039.png",
     "set_label": "Proving Grounds",
@@ -4676,36 +4502,6 @@ export const CARD_INDEX: readonly CardIndexEntry[] = [
     "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/81d1c47459606f7b627778cce9b5f0e44d80f7fa-744x1039.png",
     "set_label": "Proving Grounds",
     "riftbound_id": "ogs-015-024"
-  },
-  {
-    "clean_name": "sivir battle mistress",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/fd060882c32a8deac04aea4241c6ab7b97236a05-744x1039.png?accountingTag=RB",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-203-221"
-  },
-  {
-    "clean_name": "renata glasc chem baroness",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/4bd289c281ad64229061ff909abf88c12a574833-744x1039.png?accountingTag=RB",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-201-221"
-  },
-  {
-    "clean_name": "azir emperor of the sands",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/0472274c49f6540858758ebf9bd2f107a601541a-744x1039.png",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-197-221"
-  },
-  {
-    "clean_name": "irelia blade dancer",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/656ef2d1724b818e9e737ec5dcce923de067a316-744x1039.png?accountingTag=RB",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-195-221"
-  },
-  {
-    "clean_name": "draven glorious executioner",
-    "image_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/b01b2d0454ceeffdc106c4c64a390b275ebf390b-744x1039.png",
-    "set_label": "Spiritforged",
-    "riftbound_id": "sfd-185-221"
   },
   {
     "clean_name": "overzealous fan",
