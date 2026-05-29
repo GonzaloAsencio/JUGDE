@@ -6,7 +6,10 @@ import { AnswerDisplay } from './AnswerDisplay';
 import { SourcesPopover } from './SourcesPopover';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { KeywordBadge } from './KeywordBadge';
+import { CardChip } from './CardChip';
+import { CardPreview } from './CardPreview';
 import { GAME_KEYWORDS } from '@/lib/gameKeywords';
+import { lookupCard } from '@/lib/cardLookup';
 
 function parseQuestionWithTags(text: string): React.ReactNode[] {
   const parts = text.split(/(@[\w-]+)/g);
@@ -14,7 +17,15 @@ function parseQuestionWithTags(text: string): React.ReactNode[] {
     if (!part.startsWith('@')) return part;
     const name = part.slice(1);
     const kw = GAME_KEYWORDS.find(k => k.name.toLowerCase() === name.toLowerCase());
-    return kw ? <KeywordBadge key={i} def={kw} /> : part;
+    if (kw) return <KeywordBadge key={i} def={kw} />;
+    if (lookupCard(name)) {
+      return (
+        <CardPreview key={i} cardName={name}>
+          <CardChip name={name} />
+        </CardPreview>
+      );
+    }
+    return part;
   });
 }
 
