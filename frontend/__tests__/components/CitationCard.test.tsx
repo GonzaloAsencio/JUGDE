@@ -38,4 +38,39 @@ describe('CitationCard', () => {
     const link = screen.getByRole('link', { name: /View/i });
     expect(link).toHaveAttribute('href', '/rules');
   });
+
+  describe('card source_type', () => {
+    const cardCitation = {
+      section: 'Yasuo',
+      source_type: 'card',
+      content_preview: 'When Yasuo enters the board, draw a card.',
+      similarity: 0.98,
+    };
+
+    it('renders the card name as title without the § prefix', () => {
+      render(<CitationCard citation={cardCitation} rank={1} />);
+      expect(screen.getByText('Yasuo')).toBeInTheDocument();
+      expect(screen.queryByText(/§/)).not.toBeInTheDocument();
+    });
+
+    it('renders the card badge with text "card"', () => {
+      render(<CitationCard citation={cardCitation} rank={1} />);
+      expect(screen.getByText('card')).toBeInTheDocument();
+    });
+
+    it('does not render a "View" link for cards', () => {
+      render(<CitationCard citation={cardCitation} rank={1} />);
+      expect(screen.queryByRole('link', { name: /View/i })).not.toBeInTheDocument();
+    });
+
+    it('still renders the content_preview for cards', () => {
+      render(<CitationCard citation={cardCitation} rank={1} />);
+      expect(screen.getByText(/When Yasuo enters the board/)).toBeInTheDocument();
+    });
+
+    it('still renders the similarity percentage for cards', () => {
+      render(<CitationCard citation={cardCitation} rank={1} />);
+      expect(screen.getByText('98%')).toBeInTheDocument();
+    });
+  });
 });

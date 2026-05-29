@@ -11,14 +11,17 @@ interface CitationCardProps {
 }
 
 export function CitationCard({ citation }: CitationCardProps) {
+  const isCard = citation.source_type === 'card';
   const slug = sectionToSlug(citation.section);
   const href = slug ? `/rules#${slug}` : '/rules';
 
   return (
     <Card className="flex flex-col gap-3 p-4">
       <div className="flex items-center gap-2 flex-wrap">
-        <Badge variant="secondary">{citation.source_type}</Badge>
-        <span className="text-sm font-medium">§ {citation.section}</span>
+        <Badge variant={isCard ? 'default' : 'secondary'}>{citation.source_type}</Badge>
+        <span className="text-sm font-medium">
+          {isCard ? citation.section : `§ ${citation.section}`}
+        </span>
         <span className="text-xs text-muted-foreground ml-auto">
           {Math.round(citation.similarity * 100)}%
         </span>
@@ -26,12 +29,14 @@ export function CitationCard({ citation }: CitationCardProps) {
 
       <p className="text-sm text-muted-foreground line-clamp-2">{citation.content_preview}</p>
 
-      <Link
-        href={href}
-        className="flex items-center gap-1 text-xs text-primary hover:underline mt-auto"
-      >
-        View <ExternalLink size={12} />
-      </Link>
+      {!isCard && (
+        <Link
+          href={href}
+          className="flex items-center gap-1 text-xs text-primary hover:underline mt-auto"
+        >
+          View <ExternalLink size={12} />
+        </Link>
+      )}
     </Card>
   );
 }
