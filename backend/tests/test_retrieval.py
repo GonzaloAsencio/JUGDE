@@ -258,6 +258,30 @@ def test_tagged_lookup_deduplicates_same_chunk_across_tags(monkeypatch):
     assert [c.id for c in result].count("id1") == 1
 
 
+def test_tagged_sql_prioritizes_cards_above_rulebook():
+    """Ordering must surface card chunks before rulebook chunks when both share a section."""
+    from app.rag import retrieval
+    sql = retrieval._TAGGED_SQL
+    card_clause = sql.find("source_type = 'card'")
+    rulebook_clause = sql.find("source_type = 'rulebook'")
+    assert card_clause != -1, "card clause must be present in _TAGGED_SQL"
+    assert rulebook_clause != -1, "rulebook fallback must remain in _TAGGED_SQL"
+    assert card_clause < rulebook_clause, "card clause must come first in the ORDER BY"
+
+
+def test_tagged_lookup_returns_card_chunk_when_tag_matches_card_section(monkeypatch):
+    """Sanity: a card-section match returns a chunk with source_type='card'."""
+    rows = [("yasuo-id", "## Yasuo ...", "Yasuo", None, "card")]
+    fake_conn, _ = _make_conn_ctx(rows)
+    monkeypatch.setattr("app.rag.retrieval.get_conn", fake_conn)
+
+    from app.rag.retrieval import tagged_lookup
+    result = tagged_lookup(MagicMock(), ["yasuo"], "v1")
+    assert len(result) == 1
+    assert result[0].source_type == "card"
+    assert result[0].similarity == 1.0
+
+
 def test_tagged_lookup_multiple_tags_merges_distinct_chunks(monkeypatch):
     cur = MagicMock()
     cur.__enter__ = lambda s: s

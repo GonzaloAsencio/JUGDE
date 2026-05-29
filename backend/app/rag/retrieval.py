@@ -164,7 +164,8 @@ SELECT id, content, section, parent_section, source_type
 FROM corpus_chunks
 WHERE corpus_version = %s
   AND LOWER(section) ILIKE LOWER(%s)
-ORDER BY (source_type = 'rulebook') DESC
+ORDER BY (source_type = 'card') DESC,
+         (source_type = 'rulebook') DESC
 LIMIT 2
 """
 
