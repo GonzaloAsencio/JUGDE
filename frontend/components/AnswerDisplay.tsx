@@ -5,7 +5,10 @@ import remarkGfm from 'remark-gfm';
 import { AnswerSkeleton } from '@/components/AnswerSkeleton';
 import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { KeywordBadge } from '@/components/KeywordBadge';
+import { CardChip } from '@/components/CardChip';
+import { CardPreview } from '@/components/CardPreview';
 import { detectKeywords } from '@/lib/keywordDetection';
+import { detectCards } from '@/lib/cardDetection';
 import ruleAnchors from '@/content/rule-anchors.json';
 import type { ApiError, Citation } from '@/lib/types';
 import type { Components } from 'react-markdown';
@@ -58,10 +61,28 @@ function splitWithRuleRefs(text: string, baseKey: string): React.ReactNode[] {
       return <RuleLink key={`${baseKey}-r${i}`} href={ruleRefToHref(part)}>{part}</RuleLink>;
     }
     if (!part) return null;
-    const segments = detectKeywords(part);
-    if (segments.length === 1 && !segments[0].keyword) return part;
-    return segments.map((seg, j) =>
-      seg.keyword ? <KeywordBadge key={`${baseKey}-r${i}-k${j}`} def={seg.keyword} /> : seg.text
+    return renderEntities(part, `${baseKey}-r${i}`);
+  });
+}
+
+// Highlight cards first (multi-word names), then keywords inside the remaining
+// plain text. Cards win so a keyword sitting inside a card name is not split out.
+function renderEntities(text: string, baseKey: string): React.ReactNode {
+  const cardSegments = detectCards(text);
+  return cardSegments.map((cseg, ci) => {
+    if (cseg.card) {
+      return (
+        <CardPreview key={`${baseKey}-c${ci}`} cardName={cseg.card.clean_name}>
+          <CardChip name={cseg.card.clean_name} />
+        </CardPreview>
+      );
+    }
+    const kwSegments = detectKeywords(cseg.text);
+    if (kwSegments.length === 1 && !kwSegments[0].keyword) return cseg.text;
+    return kwSegments.map((kseg, ki) =>
+      kseg.keyword
+        ? <KeywordBadge key={`${baseKey}-c${ci}-k${ki}`} def={kseg.keyword} />
+        : kseg.text
     );
   });
 }
