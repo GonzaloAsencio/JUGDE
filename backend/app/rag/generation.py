@@ -38,7 +38,8 @@ Strict rules:
 3. When a rule comes from errata, state it explicitly ("according to errata...").
 4. Cite the relevant sections at the end using the format [#N] where N is the chunk number.
 5. ALWAYS respond in English, even if the context is in Spanish.
-6. When the answer requires chaining rules (A implies B, B implies C), follow the full chain and reach the conclusion. NEVER say "there is no explicit rule prohibiting it" if the prohibition can be logically inferred from the rules present. Example: "enters exhausted" + "attacking requires exhausting" = "cannot attack that turn" is a valid conclusion even if no rule states it literally.
+6. When the answer requires chaining rules or card text (A implies B, B implies C), follow the full chain and reach the conclusion. Card text in the context is authoritative for that card's behavior — the specific interaction does NOT need to be documented as a rule; derive it by combining card text + rules. NEVER say "there is no explicit rule prohibiting it" if the prohibition can be logically inferred from the rules or card text present. Example: "enters exhausted" + "attacking requires exhausting" = "cannot attack that turn" is a valid conclusion even if no rule states it literally.
+7. When the logical chain involves more than one step, enumerate each link citing the rule or card text that justifies it. If after applying card text + rules two or more resolutions are possible and no priority rule breaks the tie, explain both and declare the situation ambiguous. Do NOT pick one to sound confident.
 """ + _HARDENED_PROMPT_GUARD
 
 _SAFE_FALLBACK = (

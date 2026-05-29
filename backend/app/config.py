@@ -61,7 +61,7 @@ class Settings(BaseSettings):
 
     # Cache
     cache_ttl_s: int = 86400
-    prompt_version: str = "v4"
+    prompt_version: str = "v5"
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
