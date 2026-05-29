@@ -1,0 +1,94 @@
+[
+  {
+    "id": "rc-001",
+    "name": "Yasuo",
+    "riftbound_id": "ORI-042",
+    "tcgplayer_id": "tcg-001",
+    "collector_number": 42,
+    "attributes": {"energy": 3, "might": 4, "power": 3},
+    "classification": {"type": "Unit", "supertype": "Champion", "rarity": "Legendary", "domain": ["Body"]},
+    "text": {
+      "rich": "<p>When Yasuo enters the board, draw a card.</p>",
+      "plain": "When Yasuo enters the board, draw a card.\nActivated: pay 1, ready Yasuo.",
+      "flavour": "A wanderer's path is his own."
+    },
+    "set": {"set_id": "ORI", "label": "Origins"},
+    "media": {"image_url": "https://example.com/yasuo.png", "artist": "Artist A", "accessibility_text": "Yasuo, a wandering swordsman"},
+    "tags": ["Accelerate", "Quick-Draw"],
+    "orientation": "portrait",
+    "metadata": {"clean_name": "yasuo", "updated_on": "2025-01-01T00:00:00Z", "alternate_art": false, "overnumbered": false, "signature": false}
+  },
+  {
+    "id": "rc-002",
+    "name": "Counterspell",
+    "riftbound_id": "ORI-100",
+    "tcgplayer_id": "tcg-002",
+    "collector_number": 100,
+    "attributes": {"energy": 2},
+    "classification": {"type": "Spell", "rarity": "Common", "domain": ["Mind"]},
+    "text": {
+      "rich": "<p>Counter target spell.</p>",
+      "plain": "Counter target spell."
+    },
+    "set": {"set_id": "ORI", "label": "Origins"},
+    "media": {"image_url": "https://example.com/cs.png", "artist": "Artist B", "accessibility_text": "A swirling counter"},
+    "tags": ["Reaction"],
+    "orientation": "portrait",
+    "metadata": {"clean_name": "counterspell", "updated_on": "2025-01-01T00:00:00Z", "alternate_art": false, "overnumbered": false, "signature": false}
+  },
+  {
+    "id": "rc-003",
+    "name": "Yasuo",
+    "riftbound_id": "ORI-042",
+    "tcgplayer_id": "tcg-003",
+    "collector_number": 42,
+    "attributes": {"energy": 3, "might": 4, "power": 3},
+    "classification": {"type": "Unit", "supertype": "Champion", "rarity": "Legendary", "domain": ["Body"]},
+    "text": {
+      "rich": "<p>When Yasuo enters the board, draw a card.</p>",
+      "plain": "When Yasuo enters the board, draw a card.",
+      "flavour": "Alt art flavor."
+    },
+    "set": {"set_id": "ORI", "label": "Origins"},
+    "media": {"image_url": "https://example.com/yasuo-alt.png", "artist": "Artist C", "accessibility_text": "Alt art Yasuo"},
+    "tags": ["Accelerate", "Quick-Draw"],
+    "orientation": "portrait",
+    "metadata": {"clean_name": "yasuo", "updated_on": "2025-01-02T00:00:00Z", "alternate_art": true, "overnumbered": false, "signature": false}
+  },
+  {
+    "id": "rc-004",
+    "name": "Shen",
+    "riftbound_id": "ORI-055",
+    "tcgplayer_id": "tcg-004",
+    "collector_number": 55,
+    "attributes": {"energy": 4, "might": 3, "power": 5},
+    "classification": {"type": "Unit", "supertype": "Champion", "rarity": "Legendary", "domain": ["Body", "Mind"]},
+    "text": {
+      "rich": "<p>Shield 2.</p>",
+      "plain": "Shield 2."
+    },
+    "set": {"set_id": "ORI", "label": "Origins"},
+    "media": {"image_url": "https://example.com/shen.png", "artist": "Artist D", "accessibility_text": "Shen, a balanced warrior"},
+    "tags": [],
+    "orientation": "portrait",
+    "metadata": {"clean_name": "shen", "updated_on": "2025-01-01T00:00:00Z", "alternate_art": false, "overnumbered": false, "signature": false}
+  },
+  {
+    "id": "rc-005",
+    "name": "Yasuo",
+    "riftbound_id": "ORI-042",
+    "tcgplayer_id": "tcg-005",
+    "collector_number": 42,
+    "attributes": {"energy": 3, "might": 4, "power": 3},
+    "classification": {"type": "Unit", "supertype": "Champion", "rarity": "Legendary", "domain": ["Body"]},
+    "text": {
+      "rich": "<p>When Yasuo enters the board, draw a card.</p>",
+      "plain": "When Yasuo enters the board, draw a card."
+    },
+    "set": {"set_id": "ORI", "label": "Origins"},
+    "media": {"image_url": "https://example.com/yasuo-2.png", "artist": "Artist E", "accessibility_text": "Yasuo (reprint)"},
+    "tags": ["Accelerate", "Quick-Draw"],
+    "orientation": "portrait",
+    "metadata": {"clean_name": "yasuo", "updated_on": "2025-01-03T00:00:00Z", "alternate_art": false, "overnumbered": false, "signature": false}
+  }
+]
