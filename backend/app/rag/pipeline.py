@@ -96,7 +96,8 @@ async def answer_question(
 
     clean_question, explicit_tags = _extract_tags(question)
     auto_tags = _detect_keywords(clean_question or question)
-    tags = list(dict.fromkeys(explicit_tags + auto_tags))  # dedup, explicit tags first
+    mention_tags = [m.lower() for m in (card_mentions or [])]
+    tags = list(dict.fromkeys(explicit_tags + mention_tags + auto_tags))  # dedup, explicit first, then mentions, then auto
 
     retrieval_query = provider.rewrite_query(clean_question or question)
     embedding = embedder.encode(retrieval_query)

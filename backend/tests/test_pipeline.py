@@ -38,6 +38,8 @@ def _fake_settings(corpus_version: str = "v1"):
     s.rrf_k = 60
     s.gemini_temperature = 0.1
     s.gemini_timeout_s = 10.0
+    s.prompt_version = "v5"
+    s.cache_ttl_s = 86400
     return s
 
 
@@ -303,6 +305,83 @@ async def test_pipeline_auto_detects_keyword_without_tag():
 
     mock_lookup.assert_called_once()
     assert result.citations[0].section == "Accelerate"
+
+
+async def test_pipeline_card_mentions_passed_to_tagged_lookup_as_tags():
+    """card_mentions from the request body must become tags for tagged_lookup."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    with patch("app.rag.pipeline.tagged_lookup", return_value=[]) as mock_lookup:
+        with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    await answer_question(
+                        "How does this card work?",
+                        FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                        card_mentions=["Yasuo"],
+                    )
+
+    mock_lookup.assert_called_once()
+    _, tags_arg, _ = mock_lookup.call_args[0]
+    assert "yasuo" in tags_arg
+
+
+async def test_pipeline_card_mentions_lowercased():
+    """Card mentions arrive in any case but must be normalised to lowercase tags."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    with patch("app.rag.pipeline.tagged_lookup", return_value=[]) as mock_lookup:
+        with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    await answer_question(
+                        "question?",
+                        FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                        card_mentions=["YASUO", "Shen"],
+                    )
+
+    _, tags_arg, _ = mock_lookup.call_args[0]
+    assert "yasuo" in tags_arg and "shen" in tags_arg
+    assert "YASUO" not in tags_arg and "Shen" not in tags_arg
+
+
+async def test_pipeline_card_mentions_dedup_with_explicit_at_tag():
+    """An explicit @Yasuo in the question + card_mentions=['Yasuo'] must produce only one 'yasuo' tag."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    with patch("app.rag.pipeline.tagged_lookup", return_value=[]) as mock_lookup:
+        with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    await answer_question(
+                        "@Yasuo can attack?",
+                        FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                        card_mentions=["Yasuo"],
+                    )
+
+    _, tags_arg, _ = mock_lookup.call_args[0]
+    assert tags_arg.count("yasuo") == 1
+
+
+async def test_pipeline_no_card_mentions_does_not_alter_existing_tag_flow():
+    """Backwards-compat: when card_mentions is None, behavior must match the previous tag pipeline."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    with patch("app.rag.pipeline.tagged_lookup", return_value=[]) as mock_lookup:
+        with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    await answer_question(
+                        "@accelerate how does it work?",
+                        FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                    )
+
+    _, tags_arg, _ = mock_lookup.call_args[0]
+    assert tags_arg == ["accelerate"]
 
 
 async def test_pipeline_tagged_deduplicates_with_semantic():
