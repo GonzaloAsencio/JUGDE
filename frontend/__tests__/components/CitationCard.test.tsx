@@ -3,6 +3,17 @@ import { CitationCard } from '@/components/CitationCard';
 
 jest.mock('@/content/sections.json', () => ({ 'Game Concepts': 'game-concepts' }), { virtual: true });
 
+jest.mock('@/lib/cardIndex', () => ({
+  CARD_INDEX: [
+    {
+      clean_name: 'yasuo',
+      image_url: 'https://example.com/yasuo.png',
+      set_label: 'Origins',
+      riftbound_id: 'ori-042-219',
+    },
+  ],
+}));
+
 const citation = {
   section: 'Game Concepts',
   source_type: 'rulebook',
@@ -71,6 +82,27 @@ describe('CitationCard', () => {
     it('still renders the similarity percentage for cards', () => {
       render(<CitationCard citation={cardCitation} rank={1} />);
       expect(screen.getByText('98%')).toBeInTheDocument();
+    });
+
+    it('wraps the card header in a hover trigger when the card is in the index', () => {
+      render(<CitationCard citation={cardCitation} rank={1} />);
+      const trigger = document.querySelector('[data-slot="hover-card-trigger"]');
+      expect(trigger).not.toBeNull();
+      expect(trigger?.textContent).toContain('Yasuo');
+      expect(trigger?.textContent).toContain('card');  // badge text lives inside the trigger
+    });
+
+    it('does not include the similarity % inside the hover trigger', () => {
+      render(<CitationCard citation={cardCitation} rank={1} />);
+      const trigger = document.querySelector('[data-slot="hover-card-trigger"]');
+      expect(trigger?.textContent).not.toContain('%');
+    });
+
+    it('renders the card header without a hover trigger when the card is not in the index', () => {
+      const unknown = { ...cardCitation, section: 'NotInIndex' };
+      render(<CitationCard citation={unknown} rank={1} />);
+      expect(screen.getByText('NotInIndex')).toBeInTheDocument();
+      expect(document.querySelector('[data-slot="hover-card-trigger"]')).toBeNull();
     });
   });
 });
