@@ -1,3 +1,20 @@
+jest.mock('@/lib/cardIndex', () => ({
+  CARD_INDEX: [
+    {
+      clean_name: 'jhin virtuoso',
+      image_url: 'https://example.com/jhin.png',
+      set_label: 'Unleashed',
+      riftbound_id: 'unl-181-219',
+    },
+    {
+      clean_name: 'eclipse',
+      image_url: 'https://example.com/eclipse.png',
+      set_label: 'Unleashed',
+      riftbound_id: 'unl-200-219',
+    },
+  ],
+}));
+
 import { render, screen } from '@testing-library/react';
 import { AnswerDisplay } from './AnswerDisplay';
 
@@ -40,6 +57,21 @@ describe('AnswerDisplay', () => {
     );
     expect(screen.getByText('ASSAULT').previousElementSibling).toHaveStyle({ backgroundColor: '#bb2f65' });
     expect(screen.getByText('DEFLECT').previousElementSibling).toHaveStyle({ backgroundColor: '#93af34' });
+  });
+
+  it('renders a card chip for a multi-word card name in the answer', () => {
+    render(
+      <AnswerDisplay answer="Then Jhin Virtuoso deals damage" loading={false} error={null} />
+    );
+    expect(screen.getByText('JHIN VIRTUOSO')).toBeInTheDocument();
+    expect(document.querySelector('[data-slot="hover-card-trigger"]')).not.toBeNull();
+  });
+
+  it('does not chip single-word card names in the answer', () => {
+    render(
+      <AnswerDisplay answer="A solar eclipse occurs at night" loading={false} error={null} />
+    );
+    expect(document.querySelector('[data-slot="hover-card-trigger"]')).toBeNull();
   });
 
   it('renders three bouncing dots when loading', () => {
