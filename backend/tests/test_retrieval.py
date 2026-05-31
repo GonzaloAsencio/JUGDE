@@ -114,7 +114,7 @@ def test_rrf_preserves_similarity_from_vector_side():
 # ---------------------------------------------------------------------------
 
 def test_fts_search_returns_chunks(monkeypatch):
-    rows = [("id1", "content one", "Section A", None, "rulebook")]
+    rows = [("id1", "content one", "Section A", None, "rulebook", None)]
     fake_conn, _ = _make_conn_ctx(rows)
     monkeypatch.setattr("app.rag.retrieval.get_conn", fake_conn)
 
@@ -170,11 +170,11 @@ def test_hybrid_search_calls_both_sides_and_fuses(monkeypatch):
 def test_hybrid_search_passes_top_k_fetch_to_each_side(monkeypatch):
     vec_calls, fts_calls = [], []
 
-    def fake_vector(pool, emb, corpus_version, top_k):
+    def fake_vector(pool, emb, corpus_version, top_k, set_filter=None):
         vec_calls.append(top_k)
         return []
 
-    def fake_fts(pool, query_text, corpus_version, top_k):
+    def fake_fts(pool, query_text, corpus_version, top_k, set_filter=None):
         fts_calls.append(top_k)
         return []
 
@@ -236,7 +236,7 @@ def test_tagged_lookup_empty_tags_returns_empty():
 
 
 def test_tagged_lookup_returns_chunk_with_similarity_1(monkeypatch):
-    rows = [("id1", "content", "Accelerate", None, "rulebook")]
+    rows = [("id1", "content", "Accelerate", None, "rulebook", None)]
     fake_conn, _ = _make_conn_ctx(rows)
     monkeypatch.setattr("app.rag.retrieval.get_conn", fake_conn)
 
@@ -249,7 +249,7 @@ def test_tagged_lookup_returns_chunk_with_similarity_1(monkeypatch):
 
 
 def test_tagged_lookup_deduplicates_same_chunk_across_tags(monkeypatch):
-    rows = [("id1", "content", "Accelerate", None, "rulebook")]
+    rows = [("id1", "content", "Accelerate", None, "rulebook", None)]
     fake_conn, _ = _make_conn_ctx(rows)
     monkeypatch.setattr("app.rag.retrieval.get_conn", fake_conn)
 
@@ -271,7 +271,7 @@ def test_tagged_sql_prioritizes_cards_above_rulebook():
 
 def test_tagged_lookup_returns_card_chunk_when_tag_matches_card_section(monkeypatch):
     """Sanity: a card-section match returns a chunk with source_type='card'."""
-    rows = [("yasuo-id", "## Yasuo ...", "Yasuo", None, "card")]
+    rows = [("yasuo-id", "## Yasuo ...", "Yasuo", None, "card", None)]
     fake_conn, _ = _make_conn_ctx(rows)
     monkeypatch.setattr("app.rag.retrieval.get_conn", fake_conn)
 
@@ -287,8 +287,8 @@ def test_tagged_lookup_multiple_tags_merges_distinct_chunks(monkeypatch):
     cur.__enter__ = lambda s: s
     cur.__exit__ = MagicMock(return_value=False)
     cur.fetchall.side_effect = [
-        [("id1", "c1", "Accelerate", None, "rulebook")],
-        [("id2", "c2", "Action", None, "rulebook")],
+        [("id1", "c1", "Accelerate", None, "rulebook", None)],
+        [("id2", "c2", "Action", None, "rulebook", None)],
     ]
     conn = MagicMock()
     conn.cursor.return_value = cur

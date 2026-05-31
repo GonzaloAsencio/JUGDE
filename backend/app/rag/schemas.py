@@ -36,6 +36,7 @@ class Citation(BaseModel):
     content_preview: str  # first 200 chars of chunk content
     similarity: float
     chunk_id: Optional[str] = None
+    set: Optional[str] = None  # expansión del chunk (origins/spiritforged/unleashed/core)
 
 
 class QueryResponse(BaseModel):
