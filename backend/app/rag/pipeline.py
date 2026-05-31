@@ -147,6 +147,7 @@ async def answer_question(
             content_preview=chunk.content[:200],
             similarity=chunk.similarity,
             chunk_id=chunk.id,
+            set=(chunk.metadata or {}).get("set"),
         )
         for chunk in chunks
     ]

@@ -14,25 +14,33 @@ class Chunk:
     parent_section: str | None
     source_type: str
     similarity: float
+    metadata: dict | None = None
 
 
 _SQL = """
-SELECT id, content, section, parent_section, source_type,
+SELECT id, content, section, parent_section, source_type, metadata,
        1 - (embedding <=> %s::vector) AS similarity
 FROM corpus_chunks
-WHERE corpus_version = %s
+WHERE corpus_version = %s{set_clause}
 ORDER BY embedding <=> %s::vector
 LIMIT %s;
 """
 
 _FTS_SQL = """
-SELECT id, content, section, parent_section, source_type
+SELECT id, content, section, parent_section, source_type, metadata
 FROM corpus_chunks
 WHERE corpus_version = %s
-  AND to_tsvector('simple', content) @@ plainto_tsquery('simple', %s)
+  AND to_tsvector('simple', content) @@ plainto_tsquery('simple', %s){set_clause}
 ORDER BY ts_rank_cd(to_tsvector('simple', content), plainto_tsquery('simple', %s)) DESC
 LIMIT %s;
 """
+
+# Filtro por expansión: incluye SIEMPRE los chunks 'core' (reglas base aplican a
+# todos los sets) además del set pedido. Devuelve (cláusula SQL, params).
+def _set_clause(set_filter: str | None) -> tuple[str, tuple]:
+    if not set_filter:
+        return "", ()
+    return "\n  AND (metadata->>'set' = %s OR metadata->>'set' = 'core')", (set_filter,)
 
 
 def vector_search(
@@ -40,11 +48,14 @@ def vector_search(
     embedding: list[float],
     corpus_version: str,
     top_k: int = 5,
+    set_filter: str | None = None,
 ) -> list[Chunk]:
     """Return top-K most similar chunks using cosine similarity on the pgvector column."""
+    clause, clause_params = _set_clause(set_filter)
+    sql = _SQL.format(set_clause=clause)
     with get_conn(pool) as conn:
         with conn.cursor() as cur:
-            cur.execute(_SQL, (embedding, corpus_version, embedding, top_k))
+            cur.execute(sql, (embedding, corpus_version, *clause_params, embedding, top_k))
             rows = cur.fetchall()
 
     return [
@@ -54,7 +65,8 @@ def vector_search(
             section=row[2],
             parent_section=row[3],
             source_type=row[4],
-            similarity=float(row[5]),
+            metadata=row[5],
+            similarity=float(row[6]),
         )
         for row in rows
     ]
@@ -65,6 +77,7 @@ def fts_search(
     query_text: str,
     corpus_version: str,
     top_k: int = 5,
+    set_filter: str | None = None,
 ) -> list[Chunk]:
     """Full-text search over corpus_chunks using plainto_tsquery('simple', query_text).
 
@@ -72,9 +85,11 @@ def fts_search(
     FTS rank is not comparable to cosine similarity. Empty query_text or zero
     matches returns [] without raising.
     """
+    clause, clause_params = _set_clause(set_filter)
+    sql = _FTS_SQL.format(set_clause=clause)
     with get_conn(pool) as conn:
         with conn.cursor() as cur:
-            cur.execute(_FTS_SQL, (corpus_version, query_text, query_text, top_k))
+            cur.execute(sql, (corpus_version, query_text, *clause_params, query_text, top_k))
             rows = cur.fetchall()
 
     return [
@@ -84,6 +99,7 @@ def fts_search(
             section=row[2],
             parent_section=row[3],
             source_type=row[4],
+            metadata=row[5],
             similarity=0.0,
         )
         for row in rows
@@ -150,9 +166,10 @@ def _hybrid_search_impl(
     top_k: int = 5,
     top_k_fetch: int = 15,
     rrf_k: int = 60,
+    set_filter: str | None = None,
 ) -> list[Chunk]:
-    vec_results = vector_search(pool, embedding, corpus_version, top_k=top_k_fetch)
-    fts_results = fts_search(pool, query_text, corpus_version, top_k=top_k_fetch)
+    vec_results = vector_search(pool, embedding, corpus_version, top_k=top_k_fetch, set_filter=set_filter)
+    fts_results = fts_search(pool, query_text, corpus_version, top_k=top_k_fetch, set_filter=set_filter)
     return _rrf_fuse(vec_results, fts_results, rrf_k, top_k)
 
 
@@ -160,7 +177,7 @@ hybrid_search = observe_or_noop(_hybrid_search_impl, name="retrieval")
 
 
 _TAGGED_SQL = """
-SELECT id, content, section, parent_section, source_type
+SELECT id, content, section, parent_section, source_type, metadata
 FROM corpus_chunks
 WHERE corpus_version = %s
   AND LOWER(section) ILIKE LOWER(%s)
@@ -194,6 +211,7 @@ def tagged_lookup(
                             section=row[2],
                             parent_section=row[3],
                             source_type=row[4],
+                            metadata=row[5],
                             similarity=1.0,
                         ))
     return results
