@@ -18,6 +18,7 @@ from pathlib import Path
 import psycopg2
 from dotenv import load_dotenv
 from pgvector.psycopg2 import register_vector
+from psycopg2.extras import Json
 
 load_dotenv()
 
@@ -30,11 +31,16 @@ _RULE_SPLIT = re.compile(r"(?=\b\d{3,}\.\s)")
 
 SOURCES = [
     ("data/processed/rulebook.md", "rulebook"),
-    ("data/processed/errata.md", "errata"),
     ("data/processed/tournament_rules.md", "tournament_rules"),
-    ("data/processed/patch_notes.md", "patch_notes"),
-    ("data/processed/keywords.md", "rulebook"),
-    ("data/processed/rules_faq.md", "rules_faq"),
+    ("data/processed/patch_notes_origins.md", "patch_notes"),
+    ("data/processed/patch_notes_spiritforged.md", "patch_notes"),
+    ("data/processed/patch_notes_unleashed.md", "patch_notes"),
+    ("data/processed/faq_origins.md", "rules_faq"),
+    ("data/processed/faq_spiritforged.md", "rules_faq"),
+    ("data/processed/faq_unleashed.md", "rules_faq"),
+    ("data/processed/errata_origins.md", "errata"),
+    ("data/processed/errata_spiritforged.md", "errata"),
+    ("data/processed/errata_unleashed.md", "errata"),
     ("data/processed/cards.md", "card"),
 ]
 
@@ -64,14 +70,75 @@ def _split_into_sections(markdown: str) -> list[dict]:
     return sections
 
 
-def _chunk_section(section: dict, source_type: str, source_document: str) -> list[dict]:
+_HEADER_LINE = re.compile(r"^#{1,6}\s+[^\n]*\n*")
+_RULE_LINE_START = re.compile(r"(?m)^\d{3,}\.")
+_RULE_UNIT_SPLIT = re.compile(r"(?m)^(?=\d{3,}\.)")
+
+
+def _strip_header_line(content: str) -> str:
+    """Devuelve el cuerpo de una sección sin su línea de header markdown inicial."""
+    if content.lstrip().startswith("#"):
+        return _HEADER_LINE.sub("", content.lstrip(), count=1).strip()
+    return content.strip()
+
+
+def _chunk_rulebook_section(content: str, header: str, parent: str, source_document: str,
+                           metadata: dict | None) -> list[dict]:
+    """Chunking fino para el rulebook: agrupa reglas NNN. sin partirlas, con el header
+    de la sección prependido a cada chunk para preservar contexto."""
+    body = _strip_header_line(content)
+    raw_units = [u.strip() for u in _RULE_UNIT_SPLIT.split(body) if u.strip()]
+
+    # Si una unidad (regla) sigue excediendo el budget — p.ej. reglas embebidas en una
+    # sola línea sin saltos — se sub-divide por límites de regla in-line (NNN. ).
+    units: list[str] = []
+    for u in raw_units:
+        if _approx_tokens(u) > CHUNK_SIZE:
+            units.extend(p.strip() for p in _RULE_SPLIT.split(u) if p.strip())
+        else:
+            units.append(u)
+
+    header_line = f"### {header}"
+
+    chunks: list[dict] = []
+    current: list[str] = []
+
+    def render(units_):
+        return header_line + "\n" + "\n".join(units_)
+
+    def flush():
+        nonlocal current
+        if current:
+            chunks.append(_make_chunk(render(current), header, parent, "rulebook", source_document, metadata))
+            current = []
+
+    for unit in units:
+        # Mide el tamaño REAL del texto candidato (incluye header + separadores).
+        if current and _approx_tokens(render(current + [unit])) > CHUNK_SIZE:
+            flush()
+        current.append(unit)
+
+    flush()
+    return chunks
+
+
+def _chunk_section(section: dict, source_type: str, source_document: str,
+                   metadata: dict | None = None) -> list[dict]:
     """Genera chunks de una sección. Si cabe en CHUNK_SIZE → 1 chunk. Si no → divide con overlap."""
     content = section["content"]
     header = section["header"]
     parent = f"Level {section['level']} — {header}"
 
+    # Secciones que son solo el header (sin cuerpo) no generan chunk basura.
+    if not _strip_header_line(content):
+        return []
+
     if _approx_tokens(content) <= CHUNK_SIZE:
-        return [_make_chunk(content, header, parent, source_type, source_document)]
+        return [_make_chunk(content, header, parent, source_type, source_document, metadata)]
+
+    # Rulebook con reglas numeradas → chunking fino por regla (sin partir reglas).
+    if source_type == "rulebook" and _RULE_LINE_START.search(_strip_header_line(content)):
+        return _chunk_rulebook_section(content, header, parent, source_document, metadata)
 
     # Dividir en párrafos y agrupar respetando el tamaño
     paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
@@ -86,7 +153,7 @@ def _chunk_section(section: dict, source_type: str, source_document: str) -> lis
     for para in paragraphs:
         para_tokens = _approx_tokens(para)
         if current_tokens + para_tokens > CHUNK_SIZE and current:
-            chunks.append(_make_chunk("\n\n".join(current), header, parent, source_type, source_document))
+            chunks.append(_make_chunk("\n\n".join(current), header, parent, source_type, source_document, metadata))
             # Overlap: retener el último párrafo
             current = current[-1:] if current else []
             current_tokens = _approx_tokens(current[0]) if current else 0
@@ -94,15 +161,53 @@ def _chunk_section(section: dict, source_type: str, source_document: str) -> lis
         current_tokens += para_tokens
 
     if current:
-        chunks.append(_make_chunk("\n\n".join(current), header, parent, source_type, source_document))
+        chunks.append(_make_chunk("\n\n".join(current), header, parent, source_type, source_document, metadata))
 
     return chunks
 
 
 _CHUNK_NAMESPACE = uuid.UUID("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
 
+_SET_WORDS = ("origins", "spiritforged", "unleashed")
+_CARD_SET_RE = re.compile(r"\*\*Set\*\*:\s*([A-Za-z]+)")
 
-def _make_chunk(content: str, section: str, parent_section: str, source_type: str, source_document: str) -> dict:
+
+def _detect_set(source_document: str, content: str | None = None) -> str:
+    """Resuelve la expansión (set) de un chunk.
+
+    - rulebook / tournament_rules → 'core' (aplican a todas las expansiones)
+    - *_origins / *_spiritforged / *_unleashed (patch_notes, faq, errata) → ese set por sufijo del stem
+    - cards → se extrae del campo '**Set**: <Word>' en el contenido
+    - cualquier otro → 'core'
+    """
+    stem = source_document.lower()
+
+    if stem == "cards":
+        if content:
+            m = _CARD_SET_RE.search(content)
+            if m:
+                word = m.group(1).lower()
+                if word in _SET_WORDS:
+                    return word
+        return "core"
+
+    for word in _SET_WORDS:
+        if stem.endswith(word):
+            return word
+
+    return "core"
+
+
+def _make_chunk(
+    content: str,
+    section: str,
+    parent_section: str,
+    source_type: str,
+    source_document: str,
+    metadata: dict | None = None,
+) -> dict:
+    # El ID es determinístico sobre (source_document, content) — NO incluye metadata,
+    # así taggear la expansión nunca cambia el ID de un chunk existente.
     chunk_id = str(uuid.uuid5(_CHUNK_NAMESPACE, f"{source_document}:{content}"))
     return {
         "id": chunk_id,
@@ -112,6 +217,7 @@ def _make_chunk(content: str, section: str, parent_section: str, source_type: st
         "section": section,
         "parent_section": parent_section,
         "corpus_version": CORPUS_VERSION,
+        "metadata": metadata if metadata is not None else {},
     }
 
 
@@ -123,9 +229,17 @@ def build_chunks(source_path: str, source_type: str) -> list[dict]:
 
     text = path.read_text(encoding="utf-8")
     sections = _split_into_sections(text)
+    stem = path.stem
+    # Para la mayoría de docs el set es por documento (sufijo del stem).
+    # Para cards, el set se resuelve por carta desde el contenido de cada sección.
+    doc_set = _detect_set(stem)
     chunks = []
     for section in sections:
-        chunks.extend(_chunk_section(section, source_type, path.stem))
+        if stem == "cards":
+            section_set = _detect_set("cards", section["content"])
+        else:
+            section_set = doc_set
+        chunks.extend(_chunk_section(section, source_type, stem, metadata={"set": section_set}))
 
     return chunks
 
@@ -186,13 +300,14 @@ def upsert_chunks(conn, chunks: list[dict], dry_run: bool = False):
 
     sql = """
         INSERT INTO corpus_chunks
-            (id, content, embedding, source_type, source_document, section, parent_section, corpus_version, ingested_at)
+            (id, content, embedding, source_type, source_document, section, parent_section, corpus_version, metadata, ingested_at)
         VALUES
-            (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
         ON CONFLICT (id) DO UPDATE SET
             content = EXCLUDED.content,
             embedding = EXCLUDED.embedding,
             corpus_version = EXCLUDED.corpus_version,
+            metadata = EXCLUDED.metadata,
             ingested_at = NOW()
     """
     with conn.cursor() as cur:
@@ -206,6 +321,7 @@ def upsert_chunks(conn, chunks: list[dict], dry_run: bool = False):
                 chunk["section"],
                 chunk["parent_section"],
                 chunk["corpus_version"],
+                Json(chunk.get("metadata") or {}),
             ))
     conn.commit()
     print(f"  {len(chunks)} chunks insertados/actualizados.")

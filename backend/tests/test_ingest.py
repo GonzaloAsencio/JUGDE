@@ -88,7 +88,7 @@ def test_make_chunk_has_required_keys():
     chunk = _make_chunk("content", "section", "parent", "rulebook", "doc")
     assert set(chunk.keys()) == {
         "id", "content", "source_type", "source_document",
-        "section", "parent_section", "corpus_version",
+        "section", "parent_section", "corpus_version", "metadata",
     }
 
 
@@ -216,7 +216,12 @@ def test_chunk_section_falls_back_to_rule_split_for_single_huge_paragraph():
 def test_chunk_section_fallback_chunks_contain_rule_numbers():
     section = _make_giant_rule_block()
     chunks = _chunk_section(section, "rulebook", "rulebook.md")
-    rule_nums = {c["content"].split(".")[0].strip() for c in chunks}
+    # Los chunks del rulebook anteponen el header de sección para dar contexto;
+    # el contrato es que los números de regla NNN. estén presentes en el contenido.
+    import re as _re
+    rule_nums = set()
+    for c in chunks:
+        rule_nums.update(_re.findall(r"\b(\d{3,})\.", c["content"]))
     assert any(n.isdigit() and len(n) == 3 for n in rule_nums)
 
 
