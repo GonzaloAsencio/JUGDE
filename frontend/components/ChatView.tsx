@@ -28,10 +28,10 @@ export function ChatView({ onReset }: ChatViewProps) {
           <div className="flex items-center gap-4">
             <div>
               <div className="text-2xl font-display font-black uppercase tracking-tight">Riftward</div>
-              <div className="text-[10px] uppercase tracking-[0.35em] text-[#777777] font-bold">Competitive Rules Judge</div>
+              <div className="text-[10px] uppercase tracking-[0.35em] text-[#27484f] font-bold">Competitive Rules Judge</div>
             </div>
           </div>
-          <nav className="hidden md:flex items-center gap-8 text-sm tracking-[0.18em] text-[#666666] font-semibold">
+          <nav className="hidden md:flex items-center gap-8 text-sm tracking-[0.18em] text-[#27484f] font-semibold">
             <button onClick={onReset} className="hover:text-[#d4620a] transition-colors">Home</button>
             <Link href="/rules" className="hover:text-[#d4620a] transition-colors">Rules</Link>
           </nav>
@@ -39,10 +39,10 @@ export function ChatView({ onReset }: ChatViewProps) {
         <div className="flex-1 flex flex-col justify-center px-4">
           <div className="max-w-2xl mx-auto w-full flex flex-col gap-6">
             <div className="flex justify-start pointer-events-none select-none judge-welcome-bubble">
-              <div className="max-w-[85%] rounded-[28px] border border-black/5 bg-white/70 backdrop-blur-xl px-6 py-5 shadow-sm">
+              <div className="max-w-[85%] rounded-[28px] border border-[#27484f]/15 bg-[#27484f]/[0.05] backdrop-blur-xl px-6 py-5 shadow-sm">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-2 h-2 rounded-full bg-[#111111]" />
-                  <span className="text-[10px] uppercase tracking-[0.28em] text-[#888888] font-bold">Judge</span>
+                  <div className="w-2 h-2 rounded-full bg-[#27484f]" />
+                  <span className="text-[10px] uppercase tracking-[0.28em] text-[#27484f] font-bold">Judge</span>
                 </div>
                 <p className="text-[15px] leading-relaxed text-[#111111]">
                   Hey! What ruling can I help you sort out?

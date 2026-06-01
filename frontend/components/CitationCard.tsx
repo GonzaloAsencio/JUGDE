@@ -26,7 +26,7 @@ export function CitationCard({ citation }: CitationCardProps) {
   );
 
   return (
-    <Card className="flex flex-col gap-3 p-4">
+    <Card className="flex flex-col gap-3 p-4 border-[#27484f]/15">
       <div className="flex items-center gap-2 flex-wrap">
         {isCard ? <CardPreview cardName={citation.section}>{header}</CardPreview> : header}
         <span className="text-xs text-muted-foreground ml-auto">

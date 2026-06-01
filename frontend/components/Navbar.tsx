@@ -17,12 +17,12 @@ export function Navbar({ onHomeClick }: NavbarProps) {
       <div className="flex items-center gap-4">
         <div>
           <div className="text-2xl font-display font-black uppercase tracking-tight">Riftward</div>
-          <div className="text-[10px] uppercase tracking-[0.35em] text-[#777777] font-bold">Competitive Rules Judge</div>
+          <div className="text-[10px] uppercase tracking-[0.35em] text-[#27484f] font-bold">Competitive Rules Judge</div>
         </div>
       </div>
 
       {/* Right: nav */}
-      <nav className="hidden md:flex items-center gap-8 text-sm tracking-[0.18em] text-[#666666] font-semibold">
+      <nav className="hidden md:flex items-center gap-8 text-sm tracking-[0.18em] text-[#27484f] font-semibold">
         {onHomeClick ? (
           <button onClick={onHomeClick} className="hover:text-[#d4620a] transition-colors">Home</button>
         ) : (

@@ -121,7 +121,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div className="relative flex items-center w-full rounded-full border border-black/10 bg-white shadow-md focus-within:border-black/20 focus-within:shadow-lg transition-shadow">
+      <div className="relative flex items-center w-full rounded-full border border-black/10 bg-white shadow-md focus-within:border-[#27484f]/40 focus-within:shadow-lg transition-shadow">
         <input
           ref={inputRef}
           type="text"
