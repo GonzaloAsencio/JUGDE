@@ -9,6 +9,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ detail: 'question is required' }, { status: 400 });
   }
 
+  const cardMentions: string[] = Array.isArray(body.card_mentions)
+    ? body.card_mentions.filter((m: unknown): m is string => typeof m === 'string')
+    : [];
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -16,7 +20,7 @@ export async function POST(req: NextRequest) {
     const upstream = await fetch(`${FASTAPI_URL}/api/v1/query`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: body.question }),
+      body: JSON.stringify({ question: body.question, card_mentions: cardMentions }),
       signal: controller.signal,
     });
 

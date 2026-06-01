@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import { ApiErrorInstance, postQuery } from '@/lib/api';
+import { lookupCard } from '@/lib/cardLookup';
 import type { ApiError, Citation } from '@/lib/types';
+
+// Pull every `@token` mention out of the raw question and resolve it to a card's
+// clean_name (space-separated, e.g. "yasuo unforgiven"). The backend's tagged_lookup
+// matches against the corpus section, which stores clean_name with spaces — so the
+// hyphenated slug must be resolved back to the space form, not sent verbatim.
+const MENTION = /@([a-z0-9-]+)/gi;
+function extractCardMentions(text: string): string[] {
+  const names = new Set<string>();
+  for (const [, token] of text.matchAll(MENTION)) {
+    const card = lookupCard(token);
+    if (card) names.add(card.clean_name);
+  }
+  return [...names].slice(0, 10); // backend validates max_length=10
+}
 
 export interface Message {
   id: string;
@@ -33,6 +48,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
 
     const id = `msg-${Date.now()}-${Math.random()}`;
     const displayQuestion = currentQuestion.trim();
+    const cardMentions = extractCardMentions(displayQuestion);
     const apiQuestion = displayQuestion.replace(/@/g, '');
 
     const newMessage: Message = {
@@ -48,7 +64,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     set(state => ({ messages: [...state.messages, newMessage], currentQuestion: '' }));
 
     try {
-      const data = await postQuery(apiQuestion);
+      const data = await postQuery(apiQuestion, cardMentions);
       set(state => ({
         messages: state.messages.map(m =>
           m.id === id

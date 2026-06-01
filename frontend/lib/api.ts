@@ -38,7 +38,7 @@ function mapError(res: Response, body: Record<string, unknown>): ApiError {
   return { type: 'unknown', message };
 }
 
-export async function postQuery(question: string): Promise<QueryResponse> {
+export async function postQuery(question: string, cardMentions: string[] = []): Promise<QueryResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
 
@@ -46,7 +46,7 @@ export async function postQuery(question: string): Promise<QueryResponse> {
     const res = await fetch('/api/query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, card_mentions: cardMentions }),
       signal: controller.signal,
     });
 

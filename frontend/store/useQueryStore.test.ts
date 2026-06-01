@@ -56,6 +56,27 @@ describe('useQueryStore', () => {
     expect(currentQuestion).toBe('');
   });
 
+  it('submit strips @ from the API question but extracts card_mentions as clean_names', async () => {
+    mockPostQuery.mockResolvedValueOnce({ answer: 'ok', citations: [], latency_ms: 10 });
+    useQueryStore.getState().setCurrentQuestion('explain @yasuo-unforgiven please');
+    await useQueryStore.getState().submit();
+    expect(mockPostQuery).toHaveBeenCalledWith('explain yasuo-unforgiven please', ['yasuo unforgiven']);
+  });
+
+  it('submit passes empty card_mentions when there are no @ mentions', async () => {
+    mockPostQuery.mockResolvedValueOnce({ answer: 'ok', citations: [], latency_ms: 10 });
+    useQueryStore.getState().setCurrentQuestion('what is priority?');
+    await useQueryStore.getState().submit();
+    expect(mockPostQuery).toHaveBeenCalledWith('what is priority?', []);
+  });
+
+  it('submit dedupes repeated mentions of the same card', async () => {
+    mockPostQuery.mockResolvedValueOnce({ answer: 'ok', citations: [], latency_ms: 10 });
+    useQueryStore.getState().setCurrentQuestion('@yasuo-unforgiven vs @yasuo-unforgiven?');
+    await useQueryStore.getState().submit();
+    expect(mockPostQuery).toHaveBeenCalledWith('yasuo-unforgiven vs yasuo-unforgiven?', ['yasuo unforgiven']);
+  });
+
   it('submit accumulates multiple messages over time', async () => {
     mockPostQuery.mockResolvedValue({ answer: 'ok', citations: [], latency_ms: 10 });
     useQueryStore.getState().setCurrentQuestion('First question?');
