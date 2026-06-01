@@ -21,8 +21,17 @@ interface RulesContentProps {
   toc: TocEntry[];
 }
 
-const ACCENT = '#d4620a';
-const SIDEBAR_BG = '#eae6df';
+// Theme-aware tokens (defined in globals.css :root / .dark). Inline styles can't
+// use Tailwind utilities, so we reference the CSS variables directly.
+const ACCENT = 'var(--brand-accent)';
+const SIDEBAR_BG = 'var(--brand-sidebar)';
+const INK = 'var(--brand-ink)';        // emphasis (strong)
+const INK_2 = 'var(--brand-ink-2)';    // body text
+const INK_3 = 'var(--brand-ink-3)';    // h2 headings
+const INK_4 = 'var(--brand-ink-4)';    // h3 subheadings
+const INK_SOFT = 'var(--brand-ink-soft)';
+const INK_FAINT = 'var(--brand-ink-faint)';
+const HAIRLINE = 'var(--border)';
 
 function groupToc(toc: TocEntry[]): TocSection[] {
   const sections: TocSection[] = [];
@@ -100,7 +109,7 @@ function TocSidebar({
                   display: 'block',
                   fontSize: 13,
                   fontWeight: headerActive || hasActiveChild ? 700 : 600,
-                  color: headerActive ? ACCENT : hasActiveChild ? '#222222' : '#333333',
+                  color: headerActive ? ACCENT : hasActiveChild ? INK_2 : INK_3,
                   paddingTop: 5,
                   paddingBottom: 5,
                   paddingLeft: 10,
@@ -124,14 +133,14 @@ function TocSidebar({
                 onMouseLeave={(e) => {
                   if (!headerActive) {
                     const el = e.currentTarget as HTMLAnchorElement;
-                    el.style.color = hasActiveChild ? '#222222' : '#333333';
+                    el.style.color = hasActiveChild ? INK_2 : INK_3;
                     el.style.transform = 'translateX(0)';
                   }
                 }}
               >
                 {numMatch ? (
                   <>
-                    <span style={{ color: headerActive ? ACCENT : '#bbbbbb', fontWeight: 400, marginRight: 4 }}>
+                    <span style={{ color: headerActive ? ACCENT : INK_FAINT, fontWeight: 400, marginRight: 4 }}>
                       {numMatch[1]}
                     </span>
                     {numMatch[2]}
@@ -149,7 +158,7 @@ function TocSidebar({
                     border: 'none',
                     cursor: 'pointer',
                     padding: '4px 6px',
-                    color: '#aaaaaa',
+                    color: INK_FAINT,
                     fontSize: 9,
                     lineHeight: 1,
                     flexShrink: 0,
@@ -184,7 +193,7 @@ function TocSidebar({
                             display: 'block',
                             fontSize: 11.5,
                             fontWeight: childActive ? 700 : 400,
-                            color: childActive ? ACCENT : '#666666',
+                            color: childActive ? ACCENT : INK_SOFT,
                             paddingTop: 3,
                             paddingBottom: 3,
                             paddingLeft: 22,
@@ -208,14 +217,14 @@ function TocSidebar({
                           onMouseLeave={(e) => {
                             if (!childActive) {
                               const el = e.currentTarget as HTMLAnchorElement;
-                              el.style.color = '#666666';
+                              el.style.color = INK_SOFT;
                               el.style.transform = 'translateX(0)';
                             }
                           }}
                         >
                           {childNum ? (
                             <>
-                              <span style={{ color: childActive ? ACCENT : '#bbbbbb', marginRight: 4, fontWeight: 400 }}>
+                              <span style={{ color: childActive ? ACCENT : INK_FAINT, marginRight: 4, fontWeight: 400 }}>
                                 {childNum[1]}
                               </span>
                               {childNum[2]}
@@ -251,7 +260,7 @@ const mdComponents = {
         marginTop: '2.5rem',
         marginBottom: '0.5rem',
         paddingBottom: '0.5rem',
-        borderBottom: '1px solid rgba(0,0,0,0.08)',
+        borderBottom: `1px solid ${HAIRLINE}`,
         lineHeight: 1.15,
       }}
     >
@@ -266,7 +275,7 @@ const mdComponents = {
         fontWeight: 700,
         textTransform: 'uppercase' as const,
         letterSpacing: '0.08em',
-        color: '#333333',
+        color: INK_3,
         marginTop: '1.75rem',
         marginBottom: '0.4rem',
         display: 'flex',
@@ -284,7 +293,7 @@ const mdComponents = {
       style={{
         fontSize: '0.9rem',
         fontWeight: 600,
-        color: '#444444',
+        color: INK_4,
         marginTop: '1.25rem',
         marginBottom: '0.3rem',
         letterSpacing: '0.02em',
@@ -294,17 +303,17 @@ const mdComponents = {
     </h3>
   ),
   p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
-    <p {...props} style={{ lineHeight: 1.75, color: '#222222', fontSize: '0.95rem', marginBottom: '0.65rem', marginTop: 0 }}>
+    <p {...props} style={{ lineHeight: 1.75, color: INK_2, fontSize: '0.95rem', marginBottom: '0.65rem', marginTop: 0 }}>
       {children}
     </p>
   ),
   ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
-    <ul {...props} style={{ paddingLeft: '1.4rem', color: '#222222', lineHeight: 1.7, marginBottom: '0.65rem', marginTop: 0 }}>
+    <ul {...props} style={{ paddingLeft: '1.4rem', color: INK_2, lineHeight: 1.7, marginBottom: '0.65rem', marginTop: 0 }}>
       {children}
     </ul>
   ),
   ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
-    <ol {...props} style={{ paddingLeft: '1.4rem', color: '#222222', lineHeight: 1.7, marginBottom: '0.65rem', marginTop: 0 }}>
+    <ol {...props} style={{ paddingLeft: '1.4rem', color: INK_2, lineHeight: 1.7, marginBottom: '0.65rem', marginTop: 0 }}>
       {children}
     </ol>
   ),
@@ -312,7 +321,7 @@ const mdComponents = {
     <li {...props} style={{ marginBottom: '0.3rem', fontSize: '0.95rem' }}>{children}</li>
   ),
   strong: ({ children, ...props }: React.ComponentPropsWithoutRef<'strong'>) => (
-    <strong {...props} style={{ color: '#111111', fontWeight: 700 }}>{children}</strong>
+    <strong {...props} style={{ color: INK, fontWeight: 700 }}>{children}</strong>
   ),
   a: ({ children, ...props }: React.ComponentPropsWithoutRef<'a'>) => (
     <a {...props} style={{ color: ACCENT, textDecoration: 'underline', textDecorationColor: 'rgba(212,98,10,0.3)' }}>
@@ -320,7 +329,7 @@ const mdComponents = {
     </a>
   ),
   blockquote: ({ children, ...props }: React.ComponentPropsWithoutRef<'blockquote'>) => (
-    <blockquote {...props} style={{ borderLeft: `3px solid ${ACCENT}`, paddingLeft: '1rem', marginLeft: 0, color: '#555555', fontStyle: 'italic', marginBottom: '0.75rem' }}>
+    <blockquote {...props} style={{ borderLeft: `3px solid ${ACCENT}`, paddingLeft: '1rem', marginLeft: 0, color: INK_SOFT, fontStyle: 'italic', marginBottom: '0.75rem' }}>
       {children}
     </blockquote>
   ),
@@ -377,7 +386,7 @@ export function RulesContent({ markdown, toc }: RulesContentProps) {
           padding: '32px 12px 32px 24px',
         } as React.CSSProperties}
       >
-        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#aaaaaa', marginBottom: 16, marginTop: 0 }}>
+        <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: INK_FAINT, marginBottom: 16, marginTop: 0 }}>
           Contents
         </p>
         {sidebarContent}
@@ -387,10 +396,10 @@ export function RulesContent({ markdown, toc }: RulesContentProps) {
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
         {/* Mobile TOC */}
-        <div className="lg:hidden" style={{ borderBottom: '1px solid rgba(0,0,0,0.08)', backgroundColor: SIDEBAR_BG, padding: '12px 20px' }}>
+        <div className="lg:hidden" style={{ borderBottom: `1px solid ${HAIRLINE}`, backgroundColor: SIDEBAR_BG, padding: '12px 20px' }}>
           <button
             onClick={() => setMobileOpen((o) => !o)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontWeight: 600, color: '#555555', letterSpacing: '0.06em', textTransform: 'uppercase' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontWeight: 600, color: INK_SOFT, letterSpacing: '0.06em', textTransform: 'uppercase' }}
           >
             Contents
             <span style={{ transform: mobileOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>

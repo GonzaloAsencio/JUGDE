@@ -41,7 +41,7 @@ export default function JudgePage() {
             left: popup.x,
             top: popup.y,
             '--r': `${popup.rotation}deg`,
-            background: '#d4620a',
+            background: 'var(--brand-accent)',
             color: '#ffffff',
           } as React.CSSProperties}
         >

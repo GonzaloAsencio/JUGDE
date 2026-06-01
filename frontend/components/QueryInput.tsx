@@ -121,7 +121,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div className="relative flex items-center w-full rounded-full border border-black/10 bg-white shadow-md focus-within:border-[#27484f]/40 focus-within:shadow-lg transition-shadow">
+      <div className="relative flex items-center w-full rounded-full border border-brand-ink/10 bg-card shadow-md focus-within:border-brand-muted-ink/40 focus-within:shadow-lg transition-shadow">
         <input
           ref={inputRef}
           type="text"
@@ -130,7 +130,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
           onKeyDown={handleKeyDown}
           disabled={loading}
           placeholder={placeholder}
-          className="flex-1 bg-transparent py-4 pl-6 pr-14 text-sm text-[#111111] placeholder:text-[#aaaaaa] outline-none disabled:opacity-50 min-w-0"
+          className="flex-1 bg-transparent py-4 pl-6 pr-14 text-sm text-brand-ink placeholder:text-brand-ink-faint outline-none disabled:opacity-50 min-w-0"
         />
         <button
           onClick={onSubmit}
@@ -138,8 +138,8 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
           className={cn(
             'absolute right-2 w-10 h-10 rounded-full flex items-center justify-center transition-colors flex-shrink-0',
             loading || !isValid
-              ? 'bg-black/10 text-black/30 cursor-not-allowed'
-              : 'bg-[#111111] text-white hover:bg-[#333333]'
+              ? 'bg-brand-ink/10 text-brand-ink/30 cursor-not-allowed'
+              : 'bg-brand-ink text-brand-surface hover:bg-brand-ink/80'
           )}
         >
           {loading
@@ -152,7 +152,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
       {mentionActive && (
         <ul
           data-testid="mention-dropdown"
-          className="absolute left-0 right-0 bottom-full mb-2 z-50 max-h-64 overflow-y-auto rounded-2xl border border-black/10 bg-white shadow-lg"
+          className="absolute left-0 right-0 bottom-full mb-2 z-50 max-h-64 overflow-y-auto rounded-2xl border border-brand-ink/10 bg-card shadow-lg"
         >
           {mentionItems.map((item, i) => (
             <li
@@ -160,14 +160,14 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
               ref={i === mentionIndex ? activeItemRef : null}
               className={cn(
                 'cursor-pointer px-4 py-2 text-sm first:rounded-t-2xl last:rounded-b-2xl',
-                i === mentionIndex ? 'bg-black/5' : 'hover:bg-black/[0.03]'
+                i === mentionIndex ? 'bg-brand-ink/5' : 'hover:bg-brand-ink/[0.03]'
               )}
               onMouseDown={e => { e.preventDefault(); selectMention(item); }}
             >
               {item.kind === 'keyword' ? (
                 item.keyword.color
                   ? <KeywordBadge def={item.keyword} />
-                  : <><span className="text-[#aaaaaa]">#</span>{item.keyword.name}</>
+                  : <><span className="text-brand-ink-faint">#</span>{item.keyword.name}</>
               ) : (
                 <span className="flex items-center gap-2.5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -175,7 +175,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
                     src={item.card.image_url}
                     alt={item.card.clean_name}
                     loading="lazy"
-                    className="h-9 w-auto rounded shrink-0 bg-black/5"
+                    className="h-9 w-auto rounded shrink-0 bg-brand-ink/5"
                   />
                   <span className="truncate capitalize">{item.card.clean_name}</span>
                 </span>

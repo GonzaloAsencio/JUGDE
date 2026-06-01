@@ -30,7 +30,9 @@ export function RuneIcon({ token }: RuneIconProps) {
         src={token.src}
         alt={token.alt}
         loading="lazy"
-        className="inline-block align-[-0.18em]"
+        // Monochrome (black) glyphs are invisible on dark bg — force them to pure
+        // white in dark mode. Colored runes (mono unset) keep their color.
+        className={`inline-block align-[-0.18em]${token.mono ? ' dark:brightness-0 dark:invert' : ''}`}
         style={{ height: token.emphasis ? '1.35em' : '1.1em', width: 'auto', margin: '0 1px' }}
       />
     );

@@ -1,5 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
+import { Navbar } from './Navbar';
+
 interface LandingHeroProps {
   onCallJudge: (x: number, y: number) => void;
   leaving?: boolean;
@@ -51,8 +55,20 @@ const FACTIONS = [
 ];
 
 export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === 'dark';
+
+  // Dark bg needs the opposite treatment: 'multiply' + grayscale hides the icons,
+  // so on dark we keep faction color, lighten via 'screen', and turn everything up.
+  const glowOpacity = isDark ? 0.5 : 0.42;
+  const iconStyle: React.CSSProperties = isDark
+    ? { filter: 'grayscale(0) saturate(1.35) brightness(1.1)', mixBlendMode: 'screen', opacity: 0.55 }
+    : { filter: 'grayscale(0.35) saturate(1.15)', mixBlendMode: 'multiply', opacity: 0.22 };
+
   return (
-    <div className={`min-h-screen bg-[#f6f3ee] text-[#111111] overflow-hidden relative font-sans${leaving ? ' landing-fade-out' : ''}`}>
+    <div className={`min-h-screen bg-brand-surface text-brand-ink overflow-hidden relative font-sans${leaving ? ' landing-fade-out' : ''}`}>
       {/* Faction icons — each with its own centered glow */}
       {FACTIONS.map(({ src, wrapperClass, rotate, blobColor, blobSize }) => (
         <div
@@ -71,7 +87,7 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
               transform: 'translate(-50%, -50%)',
               background: blobColor,
               filter: 'blur(100px)',
-              opacity: 0.28,
+              opacity: glowOpacity,
             }}
           />
           {/* Icon — desaturated, sits on top of its glow */}
@@ -81,42 +97,24 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
             alt=""
             aria-hidden="true"
             className="w-full relative"
-            style={{
-              filter: 'grayscale(1)',
-              mixBlendMode: 'multiply',
-              opacity: 0.12,
-            }}
+            style={iconStyle}
           />
         </div>
       ))}
 
       {/* Header */}
-      <header className="relative z-20 px-8 md:px-16 py-8 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div>
-            <div className="text-2xl font-display font-black uppercase tracking-tight">
-              Riftward
-            </div>
-            <div className="text-[10px] uppercase tracking-[0.35em] text-[#27484f] font-bold">
-              Competitive Rules Judge
-            </div>
-          </div>
-        </div>
-        <nav className="hidden md:flex items-center gap-8 text-sm tracking-[0.18em] text-[#27484f] font-semibold">
-          <a href="/rules" className="hover:text-[#d4620a] transition-colors">Rules</a>
-        </nav>
-      </header>
+      <Navbar sticky={false} transparent showHomeLink={false} />
 
       {/* Hero */}
       <section className="relative z-10 flex items-center justify-center px-8 md:px-16 pt-8 pb-20">
         <div className="max-w-5xl mx-auto w-full text-center flex flex-col items-center">
-          <div className="mt-14 leading-none uppercase font-display font-black">
-            <div className="text-6xl md:text-8xl text-[#111111]">NEED A</div>
-            <div className="text-7xl md:text-[11rem] text-[#d4620a]">JUDGE<span className="text-[#111111]">?</span></div>
+          <div className="mt-14 leading-none uppercase font-hero font-black">
+            <div className="text-6xl md:text-8xl text-brand-ink">NEED A</div>
+            <div className="text-7xl md:text-[11rem] text-brand-accent">JUDGE<span className="text-brand-ink">?</span></div>
           </div>
 
-          <p className="mt-10 max-w-2xl text-xl leading-relaxed text-[#555555]">
-            Resolve complex rulings, look up competitive interactions, and get answers backed by citations from the official <strong className="font-bold text-[#111111]">Riftbound</strong> rulebook.
+          <p className="mt-10 max-w-2xl text-xl leading-relaxed text-brand-ink-soft">
+            Resolve complex rulings, look up competitive interactions, and get answers backed by citations from the official <strong className="font-bold text-brand-ink">Riftbound</strong> rulebook.
           </p>
 
           <button

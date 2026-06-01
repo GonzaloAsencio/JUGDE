@@ -4,7 +4,9 @@
 // plain text by only matching a whitelist.
 
 export type RuneToken =
-  | { kind: 'img'; src: string; alt: string; desc: string; emphasis?: boolean }
+  // `mono`: a monochrome (black) glyph that must be inverted to white in dark mode.
+  // Colored symbols (domain runes, rainbow) leave it unset so they keep their color.
+  | { kind: 'img'; src: string; alt: string; desc: string; emphasis?: boolean; mono?: boolean }
   | { kind: 'energy'; value: number; alt: string; desc: string };
 
 export interface RuneSegment {
@@ -31,10 +33,10 @@ export function resolveRuneToken(name: string): RuneToken | undefined {
   const n = name.toLowerCase();
 
   if (n === 'might')
-    return { kind: 'img', src: '/rb_might.svg', alt: 'Might', emphasis: true,
+    return { kind: 'img', src: '/rb_might.svg', alt: 'Might', emphasis: true, mono: true,
       desc: "A unit's power: it deals this much combat damage and dies when it takes that much." };
   if (n === 'exhaust')
-    return { kind: 'img', src: '/rb_exhaust.svg', alt: 'Exhaust',
+    return { kind: 'img', src: '/rb_exhaust.svg', alt: 'Exhaust', mono: true,
       desc: 'Rotate this card sideways as a cost, marking it spent until you ready it.' };
   if (n === 'rune_rainbow')
     return { kind: 'img', src: '/rb_rune_rainbow.svg', alt: 'Any rune',

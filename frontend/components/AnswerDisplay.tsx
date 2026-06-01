@@ -25,7 +25,7 @@ interface AnswerDisplayProps {
 
 function CitationChip({ section }: { section: string }) {
   return (
-    <span className="inline-flex items-center mx-0.5 px-1.5 py-0.5 text-[0.72em] font-medium rounded-md bg-black/5 text-[#555555] border border-black/8 align-middle leading-none">
+    <span className="inline-flex items-center mx-0.5 px-1.5 py-0.5 text-[0.72em] font-medium rounded-md bg-brand-ink/5 text-brand-ink-soft border border-brand-ink/10 align-middle leading-none">
       §&nbsp;{section}
     </span>
   );
@@ -48,7 +48,7 @@ function RuleLink({ children, href }: { children: string; href: string }) {
   return (
     <Link
       href={href}
-      className="inline-code font-mono text-[0.8em] text-[#555555] bg-black/5 border border-black/8 rounded px-1 py-0.5 hover:bg-black/10 hover:text-black transition-colors no-underline"
+      className="inline-code font-mono text-[0.8em] text-brand-ink-soft bg-brand-ink/5 border border-brand-ink/10 rounded px-1 py-0.5 hover:bg-brand-ink/10 hover:text-brand-ink transition-colors no-underline"
     >
       {children}
     </Link>
@@ -115,7 +115,7 @@ function processText(children: React.ReactNode, citations: Citation[]): React.Re
         const citation = citations[idx];
         return citation
           ? <CitationChip key={i} section={citation.section} />
-          : <span key={i} className="text-[#aaaaaa] text-[0.75em]">{part}</span>;
+          : <span key={i} className="text-brand-ink-faint text-[0.75em]">{part}</span>;
       }
       return splitWithRuleRefs(part, String(i));
     });
@@ -141,7 +141,7 @@ export function AnswerDisplay({ answer, loading, error, citations = [], onRetry 
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        className="prose prose-neutral max-w-none"
+        className="prose prose-neutral dark:prose-invert max-w-none"
         components={makeComponents(citations)}
       >
         {answer}
