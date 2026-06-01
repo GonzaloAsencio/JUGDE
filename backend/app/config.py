@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     llm_base_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str | None = None
+
+    @field_validator("corpus_version", mode="after")
+    @classmethod
+    def _strip_corpus_version(cls, v: str | None) -> str | None:
+        # Espacios accidentales en la env var rompen el match exacto
+        # WHERE corpus_version = %s contra la DB. Normalizamos siempre.
+        return v.strip() if isinstance(v, str) else v
 
     @model_validator(mode="after")
     def _check_provider_fields(self):

@@ -19,3 +19,12 @@ def test_enable_reranker_false_is_noop(monkeypatch):
     from app.config import Settings
     s = Settings()
     assert s.enable_reranker is False
+
+
+def test_corpus_version_strips_whitespace(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    monkeypatch.setenv("CORPUS_VERSION", "v2.0.0  ")
+    from app.config import Settings
+    s = Settings()
+    assert s.corpus_version == "v2.0.0"
