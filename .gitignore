@@ -57,3 +57,7 @@ skills-lock.json
 
 # Scratch / dry-run output (local only)
 backend/dry.txt
+
+# Dev server logs (local only)
+*.dev.log
+*.dev.err.log
