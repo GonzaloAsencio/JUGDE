@@ -12,6 +12,12 @@ jest.mock('@/lib/cardIndex', () => ({
       set_label: 'Unleashed',
       riftbound_id: 'unl-169-219',
     },
+    {
+      clean_name: 'ahri nine tailed fox',
+      image_url: 'https://example.com/ahri.png',
+      set_label: 'Origins',
+      riftbound_id: 'ogn-001-219',
+    },
     // single-word card — must NOT be detected in free text
     {
       clean_name: 'eclipse',
@@ -57,6 +63,14 @@ describe('detectCards', () => {
   it('is case-insensitive', () => {
     const segments = detectCards('JHIN VIRTUOSO triggers');
     expect(segments.some(s => s.card?.riftbound_id === 'unl-181-219')).toBe(true);
+  });
+
+  it('matches a display name with " - " and hyphenated words against the slug', () => {
+    const segments = detectCards('The Ahri - Nine-Tailed Fox reduces Might');
+    const tagged = segments.filter(s => s.card);
+    expect(tagged).toHaveLength(1);
+    expect(tagged[0].card?.riftbound_id).toBe('ogn-001-219');
+    expect(tagged[0].text).toBe('Ahri - Nine-Tailed Fox');
   });
 
   it('returns a single plain segment for empty input', () => {

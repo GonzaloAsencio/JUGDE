@@ -7,8 +7,10 @@ import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { KeywordBadge } from '@/components/KeywordBadge';
 import { CardChip } from '@/components/CardChip';
 import { CardPreview } from '@/components/CardPreview';
+import { RuneIcon } from '@/components/RuneIcon';
 import { detectKeywords } from '@/lib/keywordDetection';
 import { detectCards } from '@/lib/cardDetection';
+import { detectRuneTokens } from '@/lib/runeTokens';
 import ruleAnchors from '@/content/rule-anchors.json';
 import type { ApiError, Citation } from '@/lib/types';
 import type { Components } from 'react-markdown';
@@ -65,25 +67,38 @@ function splitWithRuleRefs(text: string, baseKey: string): React.ReactNode[] {
   });
 }
 
-// Highlight cards first (multi-word names), then keywords inside the remaining
-// plain text. Cards win so a keyword sitting inside a card name is not split out.
+// Pipeline order: rune/symbol tokens first (they are delimited ":rb_*:" and
+// unambiguous), then cards (multi-word names), then keywords inside the leftover
+// plain text. Cards win over keywords so a keyword inside a card name is not split.
 function renderEntities(text: string, baseKey: string): React.ReactNode {
-  const cardSegments = detectCards(text);
-  return cardSegments.map((cseg, ci) => {
-    if (cseg.card) {
-      return (
-        <CardPreview key={`${baseKey}-c${ci}`} cardName={cseg.card.clean_name}>
-          <CardChip name={cseg.card.clean_name} />
-        </CardPreview>
-      );
+  const runeSegments = detectRuneTokens(text);
+  return runeSegments.map((rseg, ri) => {
+    if (rseg.token) {
+      return <RuneIcon key={`${baseKey}-t${ri}`} token={rseg.token} />;
     }
-    const kwSegments = detectKeywords(cseg.text);
-    if (kwSegments.length === 1 && !kwSegments[0].keyword) return cseg.text;
-    return kwSegments.map((kseg, ki) =>
-      kseg.keyword
-        ? <KeywordBadge key={`${baseKey}-c${ci}-k${ki}`} def={kseg.keyword} />
-        : kseg.text
-    );
+    const cardSegments = detectCards(rseg.text);
+    return cardSegments.map((cseg, ci) => {
+      if (cseg.card) {
+        return (
+          <CardPreview key={`${baseKey}-t${ri}-c${ci}`} cardName={cseg.card.clean_name}>
+            <CardChip name={cseg.card.clean_name} />
+          </CardPreview>
+        );
+      }
+      const kwSegments = detectKeywords(cseg.text);
+      if (kwSegments.length === 1 && !kwSegments[0].keyword) return cseg.text;
+      return kwSegments.map((kseg, ki) => {
+        if (kseg.keyword) {
+          return <KeywordBadge key={`${baseKey}-t${ri}-c${ci}-k${ki}`} def={kseg.keyword} />;
+        }
+        // Card text wraps keywords in brackets ("[HIDDEN]"). Drop a bracket that
+        // sits directly against a keyword we just rendered, so it reads "HIDDEN".
+        let t = kseg.text;
+        if (kwSegments[ki + 1]?.keyword) t = t.replace(/\[\s*$/, '');
+        if (kwSegments[ki - 1]?.keyword) t = t.replace(/^\s*\]/, '');
+        return t;
+      });
+    });
   });
 }
 

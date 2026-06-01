@@ -43,12 +43,24 @@ describe('AnswerDisplay', () => {
     expect(bg).toHaveStyle({ backgroundColor: '#26705f' });
   });
 
-  it('renders plain text for general game keywords', () => {
+  it('renders general game keywords as a dotted-underline tooltip trigger (no badge)', () => {
     render(
       <AnswerDisplay answer="The banish effect removes" loading={false} error={null} />
     );
-    const el = screen.getByText(/banish/);
-    expect(el.tagName).not.toBe('SPAN');
+    const el = screen.getByText('banish');
+    // not a colored badge: no skewed background sibling
+    expect(el.previousElementSibling).toBeNull();
+    expect(el.className).toContain('underline');
+  });
+
+  it('strips the brackets around a bracketed keyword like [HIDDEN]', () => {
+    render(
+      <AnswerDisplay answer="hide a card with [HIDDEN] now" loading={false} error={null} />
+    );
+    expect(screen.getByText('HIDDEN')).toBeInTheDocument();
+    // the literal "[" / "]" should not survive next to the badge
+    expect(screen.queryByText(/\[\s*HIDDEN/)).toBeNull();
+    expect(screen.queryByText(/HIDDEN\s*\]/)).toBeNull();
   });
 
   it('renders multiple badges in one answer', () => {
@@ -72,6 +84,32 @@ describe('AnswerDisplay', () => {
       <AnswerDisplay answer="A solar eclipse occurs at night" loading={false} error={null} />
     );
     expect(document.querySelector('[data-slot="hover-card-trigger"]')).toBeNull();
+  });
+
+  it('renders an icon for a known :rb_*: symbol token', () => {
+    render(
+      <AnswerDisplay answer="Pay to gain :rb_might: now" loading={false} error={null} />
+    );
+    const icon = screen.getByAltText('Might');
+    expect(icon.tagName).toBe('IMG');
+    expect(icon).toHaveAttribute('src', '/rb_might.svg');
+  });
+
+  it('renders a CSS circle for an energy token', () => {
+    render(
+      <AnswerDisplay answer="Costs :rb_energy_2: energy" loading={false} error={null} />
+    );
+    const el = screen.getByLabelText('2 energy');
+    expect(el.tagName).toBe('SPAN');
+    expect(el).toHaveTextContent('2');
+  });
+
+  it('leaves unknown :rb_*: noise as plain text', () => {
+    render(
+      <AnswerDisplay answer="trace :rb_kwargs: here" loading={false} error={null} />
+    );
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByText(/:rb_kwargs:/)).toBeInTheDocument();
   });
 
   it('renders three bouncing dots when loading', () => {

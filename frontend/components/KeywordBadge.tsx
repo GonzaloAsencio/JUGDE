@@ -1,14 +1,25 @@
 import type { KeywordDef } from '@/lib/gameKeywords';
+import { Tooltip } from '@/components/ui/tooltip';
 
 interface KeywordBadgeProps {
   def: KeywordDef;
 }
 
 export function KeywordBadge({ def }: KeywordBadgeProps) {
+  // Plain-text keyword (no colored badge): show the label, with a dotted
+  // underline as a hover affordance when we have an explanation.
   if (!def.color) {
-    return <>{def.label}</>;
+    if (!def.description) return <>{def.label}</>;
+    return (
+      <Tooltip content={def.description}>
+        <span className="underline decoration-dotted decoration-from-font underline-offset-2">
+          {def.label}
+        </span>
+      </Tooltip>
+    );
   }
-  return (
+
+  const badge = (
     <span
       className="relative inline-block text-xs font-bold italic tracking-wide"
       style={{
@@ -32,4 +43,7 @@ export function KeywordBadge({ def }: KeywordBadgeProps) {
       <span className="relative">{def.label}</span>
     </span>
   );
+
+  if (!def.description) return badge;
+  return <Tooltip content={def.description}>{badge}</Tooltip>;
 }
