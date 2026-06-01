@@ -26,13 +26,9 @@ export function ChatView({ onReset }: ChatViewProps) {
       <div className="flex flex-col h-screen bg-[#f6f3ee] page-fade-in">
         <header className="flex-shrink-0 px-8 md:px-16 py-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#111111] flex items-center justify-center shadow-sm p-2">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/Order.png" alt="Riftbound" className="w-full h-full object-contain" style={{ filter: 'brightness(0) invert(1)' }} />
-            </div>
             <div>
-              <div className="text-[10px] uppercase tracking-[0.35em] text-[#777777] font-bold">Riftbound Competitive</div>
-              <div className="text-2xl font-black italic uppercase tracking-tight">Judge System</div>
+              <div className="text-2xl font-display font-black uppercase tracking-tight">Riftward</div>
+              <div className="text-[10px] uppercase tracking-[0.35em] text-[#777777] font-bold">Competitive Rules Judge</div>
             </div>
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm tracking-[0.18em] text-[#666666] font-semibold">
@@ -49,7 +45,7 @@ export function ChatView({ onReset }: ChatViewProps) {
                   <span className="text-[10px] uppercase tracking-[0.28em] text-[#888888] font-bold">Judge</span>
                 </div>
                 <p className="text-[15px] leading-relaxed text-[#111111]">
-                  What&apos;s your ruling question?
+                  Hey! What ruling can I help you sort out?
                 </p>
               </div>
             </div>
@@ -65,9 +61,9 @@ export function ChatView({ onReset }: ChatViewProps) {
             {currentQuestion === '' && (
               <div className="flex flex-wrap gap-2 justify-center">
                 {[
-                  { label: 'Use @ to tag keywords', value: '@' },
-                  { label: 'Can I chain two Quick effects?', value: 'Can I chain two Quick effects?' },
-                  { label: 'What if both players trigger simultaneously?', value: 'What if both players trigger simultaneously?' },
+                  { label: 'Type @ to mention a card', value: '@' },
+                  { label: 'Type # to tag a keyword', value: '#' },
+                  { label: 'Try: "what does hidden do?"', value: 'What does hidden do?' },
                 ].map(tip => (
                   <button
                     key={tip.label}

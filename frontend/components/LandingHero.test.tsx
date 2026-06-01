@@ -9,7 +9,9 @@ describe('LandingHero', () => {
 
   it('renders JUDGE? heading', () => {
     render(<LandingHero onCallJudge={jest.fn()} />);
-    expect(screen.getByText('JUDGE?')).toBeInTheDocument();
+    expect(
+      screen.getByText((_, el) => el?.textContent === 'JUDGE?' && el.children.length > 0)
+    ).toBeInTheDocument();
   });
 
   it('renders the call button', () => {
@@ -26,6 +28,6 @@ describe('LandingHero', () => {
 
   it('renders branding header', () => {
     render(<LandingHero onCallJudge={jest.fn()} />);
-    expect(screen.getByText('Judge System')).toBeInTheDocument();
+    expect(screen.getByText('Riftward')).toBeInTheDocument();
   });
 });

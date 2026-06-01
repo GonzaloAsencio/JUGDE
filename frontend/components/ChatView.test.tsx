@@ -25,7 +25,7 @@ beforeEach(() => {
 describe('ChatView', () => {
   it('renders hero subtitle when there are no messages', () => {
     render(<ChatView onReset={jest.fn()} />);
-    expect(screen.getByText(/ruling question/i)).toBeInTheDocument();
+    expect(screen.getByText(/what ruling can i help you sort out/i)).toBeInTheDocument();
   });
 
   it('does not render hero subtitle when messages exist', () => {

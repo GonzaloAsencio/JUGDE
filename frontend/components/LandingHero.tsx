@@ -93,21 +93,12 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
       {/* Header */}
       <header className="relative z-20 px-8 md:px-16 py-8 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#111111] flex items-center justify-center shadow-sm p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/Order.png"
-              alt="Riftbound"
-              className="w-full h-full object-contain"
-              style={{ filter: 'brightness(0) invert(1)' }}
-            />
-          </div>
           <div>
-            <div className="text-[10px] uppercase tracking-[0.35em] text-[#777777] font-bold">
-              Riftbound Competitive
+            <div className="text-2xl font-display font-black uppercase tracking-tight">
+              Riftward
             </div>
-            <div className="text-2xl font-black italic uppercase tracking-tight">
-              Judge System
+            <div className="text-[10px] uppercase tracking-[0.35em] text-[#777777] font-bold">
+              Competitive Rules Judge
             </div>
           </div>
         </div>
@@ -119,13 +110,13 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
       {/* Hero */}
       <section className="relative z-10 flex items-center justify-center px-8 md:px-16 pt-8 pb-20">
         <div className="max-w-5xl mx-auto w-full text-center flex flex-col items-center">
-          <div className="mt-14 leading-none uppercase italic font-black">
+          <div className="mt-14 leading-none uppercase font-display font-black">
             <div className="text-6xl md:text-8xl text-[#111111]">NEED A</div>
-            <div className="text-7xl md:text-[11rem] text-[#111111]">JUDGE?</div>
+            <div className="text-7xl md:text-[11rem] text-[#d4620a]">JUDGE<span className="text-[#111111]">?</span></div>
           </div>
 
           <p className="mt-10 max-w-2xl text-xl leading-relaxed text-[#555555]">
-            Resolve complex rulings, look up competitive interactions, and get answers backed by citations from the official Riftbound rulebook.
+            Resolve complex rulings, look up competitive interactions, and get answers backed by citations from the official <strong className="font-bold text-[#111111]">Riftbound</strong> rulebook.
           </p>
 
           <button
@@ -135,7 +126,7 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
           >
             <span className="cjb-content">
               <span className="cjb-text">
-                <span className="cjb-label cjb-label-idle">CHAT WITH A JUDGE</span>
+                <span className="cjb-label cjb-label-idle">CHAT WITH AN AI JUDGE</span>
                 <span className="cjb-label cjb-label-hover">CALL THE JUDGE</span>
               </span>
             </span>
