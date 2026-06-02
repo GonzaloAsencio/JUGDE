@@ -51,7 +51,7 @@ export function ChatView({ onReset }: ChatViewProps) {
                 {[
                   { label: 'Type @ to mention a card', value: '@' },
                   { label: 'Type # to tag a keyword', value: '#' },
-                  { label: 'Try: "what does hidden do?"', value: 'What does hidden do?' },
+                  { label: 'What does the Hidden keyword do?', value: 'What does the Hidden keyword do?' },
                 ].map(tip => (
                   <button
                     key={tip.label}

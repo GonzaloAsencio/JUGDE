@@ -155,6 +155,16 @@ async def answer_question(
     valid_ids = {chunk.id for chunk in chunks}
     answer, _ = post_gen_validate(answer, citations, valid_chunk_ids=valid_ids)
 
+    # Strip trailing no-info disclaimer when the model appended it to a real answer.
+    _no_info_variants = [
+        f"Therefore, {_NO_INFO_ANSWER}",
+        _NO_INFO_ANSWER,
+    ]
+    for _variant in _no_info_variants:
+        if answer.endswith(_variant) and len(answer) > len(_variant):
+            answer = answer[: -len(_variant)].rstrip(" \n.,;")
+            break
+
     if answer == _NO_INFO_ANSWER and chunks:
         logger.warning(
             "query.no_info_despite_context",

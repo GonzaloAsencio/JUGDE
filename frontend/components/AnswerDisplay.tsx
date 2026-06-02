@@ -23,7 +23,7 @@ interface AnswerDisplayProps {
   onRetry?: () => void;
 }
 
-const CITATION_RE = /\[#[\d,\s]+\]/g;
+const CITATION_RE = /\[:?#[\d,\s]+\]/g;
 const RULE_REF_RE = /(\b\d{3,}\.\d[\d.a-z]*)/g;
 
 const anchors = ruleAnchors as Record<string, string>;
