@@ -73,7 +73,7 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
       {FACTIONS.map(({ src, wrapperClass, rotate, blobColor, blobSize }) => (
         <div
           key={src}
-          className={`absolute pointer-events-none select-none ${wrapperClass}`}
+          className={`absolute pointer-events-none select-none max-w-[26vw] md:max-w-none ${wrapperClass}`}
           style={{ transform: `rotate(${rotate})` }}
         >
           {/* Glow centered on this icon */}

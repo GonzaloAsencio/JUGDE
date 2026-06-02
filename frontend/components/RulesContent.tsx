@@ -408,7 +408,7 @@ export function RulesContent({ markdown, toc }: RulesContentProps) {
         </div>
 
         {/* Article */}
-        <article ref={articleRef} style={{ padding: '40px 72px 80px 64px', flex: 1, minWidth: 0 }}>
+        <article ref={articleRef} style={{ padding: '40px clamp(20px, 6vw, 72px) 80px clamp(20px, 5vw, 64px)', flex: 1, minWidth: 0 }}>
           <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSlug]} components={mdComponents}>
             {markdown}
           </ReactMarkdown>
