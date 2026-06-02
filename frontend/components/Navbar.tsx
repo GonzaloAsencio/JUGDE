@@ -94,7 +94,7 @@ export function Navbar({
           id="mobile-menu"
           data-testid="mobile-menu"
           aria-label="Mobile"
-          className="md:hidden absolute top-full left-0 right-0 z-50 flex flex-col gap-1 px-8 py-4 bg-brand-surface border-t border-brand-ink/10 shadow-lg text-sm tracking-[0.18em] text-brand-muted-ink font-semibold"
+          className="md:hidden absolute top-full left-0 right-0 z-50 flex flex-col items-start gap-1 px-8 py-4 bg-brand-surface border-t border-brand-ink/10 shadow-lg text-sm tracking-[0.18em] text-brand-muted-ink font-semibold"
         >
           {homeControl(() => setOpen(false))}
           {rulesLink(() => setOpen(false))}
