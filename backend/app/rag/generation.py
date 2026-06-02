@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Optional
 from app.rag.retrieval import Chunk
 
 if TYPE_CHECKING:
-    import google.generativeai as genai
+    from google import genai
 
 logger = logging.getLogger(__name__)
 
@@ -66,23 +66,24 @@ def build_prompt(question: str, chunks: list[Chunk]) -> str:
 
 
 def _call_gemini(
-    client: "genai.GenerativeModel",
+    client: "genai.Client",
+    model: str,
     prompt: str,
     *,
     temperature: float = 0.1,
     timeout_s: float = 10.0,
 ) -> str:
     import google.api_core.exceptions as _gapi_exc
-    import google.generativeai as genai
+    from google.genai import types
 
-    generation_config = genai.types.GenerationConfig(temperature=temperature)
-    request_options = {"timeout": timeout_s}
+    generation_config = types.GenerateContentConfig(temperature=temperature)
 
     try:
-        response = client.generate_content(
-            prompt,
-            generation_config=generation_config,
-            request_options=request_options,
+        response = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=generation_config,
+            http_options={"timeout": timeout_s},
         )
         return response.text
     except (_gapi_exc.DeadlineExceeded, _gapi_exc.GatewayTimeout) as e:

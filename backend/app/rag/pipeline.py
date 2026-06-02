@@ -155,6 +155,15 @@ async def answer_question(
     valid_ids = {chunk.id for chunk in chunks}
     answer, _ = post_gen_validate(answer, citations, valid_chunk_ids=valid_ids)
 
+    if answer == _NO_INFO_ANSWER and chunks:
+        logger.warning(
+            "query.no_info_despite_context",
+            query_id=query_id,
+            top_sim=round(chunks[0].similarity, 4),
+            chunk_count=len(chunks),
+        )
+        citations.clear()
+
     latency_ms = round((time.time() - t0) * 1000)
 
     confidence = round(citations[0].similarity, 4) if citations else 0.0

@@ -15,8 +15,9 @@ class LLMProvider(ABC):
 
 
 class GeminiProvider(LLMProvider):
-    def __init__(self, client, temperature: float, timeout_s: float) -> None:
+    def __init__(self, client, model: str, temperature: float, timeout_s: float) -> None:
         self._client = client
+        self._model = model
         self._temperature = temperature
         self._timeout_s = timeout_s
 
@@ -24,14 +25,20 @@ class GeminiProvider(LLMProvider):
         from app.rag.generation import _call_gemini, build_prompt
         return _call_gemini(
             self._client,
+            self._model,
             build_prompt(question, chunks),
             temperature=self._temperature,
             timeout_s=self._timeout_s,
         )
 
     def health_check(self) -> str | None:
+        from google.genai import types
         try:
-            self._client.generate_content("ping", request_options={"timeout": 5})
+            self._client.models.generate_content(
+                model=self._model,
+                contents="ping",
+                http_options={"timeout": 5},
+            )
             return None
         except Exception as e:
             err = str(e)
@@ -87,6 +94,7 @@ def create_provider(settings, llm_client=None) -> LLMProvider:
         )
     return GeminiProvider(
         client=llm_client,
+        model=settings.gemini_model,
         temperature=settings.gemini_temperature,
         timeout_s=settings.gemini_timeout_s,
     )

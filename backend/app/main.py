@@ -11,7 +11,7 @@ from app.db import close_pool, get_conn, init_pool
 from app.health import router as health_router
 from app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
 from app.observability import get_logger, init_observability
-import google.generativeai as genai
+from google import genai
 
 from app.rag.embedder import Embedder
 from app.rag.provider import create_provider
@@ -69,15 +69,16 @@ async def lifespan(app: FastAPI):
 
     # 5. Init LLM client
     if settings.llm_provider == "gemini":
-        genai.configure(api_key=settings.gemini_api_key)
-        llm_client = genai.GenerativeModel(settings.gemini_model)
+        from google.genai import types as genai_types
+        llm_client = genai.Client(api_key=settings.gemini_api_key)
         logger.info("Gemini client initialized.")
 
         # 6. Ping Gemini to validate API key (rate limit errors are warnings, not fatal)
         try:
-            llm_client.generate_content(
-                "ping",
-                generation_config=genai.types.GenerationConfig(max_output_tokens=5),
+            llm_client.models.generate_content(
+                model=settings.gemini_model,
+                contents="ping",
+                config=genai_types.GenerateContentConfig(max_output_tokens=5),
             )
             logger.info("Gemini ping successful.")
         except Exception as e:
