@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Navbar } from './Navbar';
+import { useMounted } from '@/lib/useMounted';
 
 interface LandingHeroProps {
   onCallJudge: (x: number, y: number) => void;
@@ -56,8 +56,7 @@ const FACTIONS = [
 
 export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
   const isDark = mounted && resolvedTheme === 'dark';
 
   // Dark bg needs the opposite treatment: 'multiply' + grayscale hides the icons,

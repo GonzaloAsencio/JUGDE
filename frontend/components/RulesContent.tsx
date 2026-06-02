@@ -60,24 +60,21 @@ function TocSidebar({
     () => new Set(sections.length > 0 ? [sections[0].header.id] : [])
   );
 
-  // Auto-expand the section containing the active item
-  useEffect(() => {
-    if (!activeId) return;
-    for (const section of sections) {
-      const ownsActive =
+  // Auto-expand the section containing the active item. Done during render
+  // (guarded by the previous activeId) rather than in an effect, which is the
+  // React-recommended way to adjust state when a prop changes.
+  const [prevActiveId, setPrevActiveId] = useState<string | null>(null);
+  if (activeId && activeId !== prevActiveId) {
+    setPrevActiveId(activeId);
+    const active = sections.find(
+      (section) =>
         section.header.id === activeId ||
-        section.children.some((c) => c.id === activeId);
-      if (ownsActive) {
-        setOpenSections((prev) => {
-          if (prev.has(section.header.id)) return prev;
-          const next = new Set(prev);
-          next.add(section.header.id);
-          return next;
-        });
-        break;
-      }
+        section.children.some((c) => c.id === activeId)
+    );
+    if (active && !openSections.has(active.header.id)) {
+      setOpenSections((prev) => new Set(prev).add(active.header.id));
     }
-  }, [activeId, sections]);
+  }
 
   const toggle = (id: string) => {
     setOpenSections((prev) => {
