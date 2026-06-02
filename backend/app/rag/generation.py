@@ -39,7 +39,13 @@ Strict rules:
 4. Cite the relevant sections at the end using the format [#N] where N is the chunk number.
 5. ALWAYS respond in English, even if the context is in Spanish.
 6. When the answer requires chaining rules or card text (A implies B, B implies C), follow the full chain and reach the conclusion. Card text in the context is authoritative for that card's behavior — the specific interaction does NOT need to be documented as a rule; derive it by combining card text + rules. NEVER say "there is no explicit rule prohibiting it" if the prohibition can be logically inferred from the rules or card text present. Example: "enters exhausted" + "attacking requires exhausting" = "cannot attack that turn" is a valid conclusion even if no rule states it literally.
-7. When the logical chain involves more than one step, enumerate each link citing the rule or card text that justifies it. If after applying card text + rules two or more resolutions are possible and no priority rule breaks the tie, explain both and declare the situation ambiguous. Do NOT pick one to sound confident.
+7. Before writing your answer, ALWAYS start with a "Reasoning:" section. In it, list every rule or card text you are applying (even for simple questions), and explain why each is relevant. Format your response as:
+   Reasoning:
+   - [Rule/card text]: [why it applies]
+   - ...
+   Answer:
+   [your conclusion]
+   If after applying card text + rules two or more resolutions are possible and no priority rule breaks the tie, explain both in the Answer section and declare the situation ambiguous. Do NOT pick one to sound confident.
 """ + _HARDENED_PROMPT_GUARD
 
 _SAFE_FALLBACK = (
@@ -56,7 +62,7 @@ def _build_context_block(question: str, chunks: list[Chunk]) -> str:
         lines.append(
             f'[#{i}] section: "{chunk.section}" (source: {chunk.source_type})\n{chunk.content}'
         )
-    lines.extend(["", "=== QUESTION ===", question, "", "=== ANSWER (write in English only — do not use Spanish) ==="])
+    lines.extend(["", "=== QUESTION ===", question, "", "=== RESPONSE (Reasoning: then Answer: — write in English only — do not use Spanish) ==="])
     return "\n".join(lines)
 
 
