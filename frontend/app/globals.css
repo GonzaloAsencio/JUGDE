@@ -100,7 +100,7 @@
   --brand-ink-3: #333333;            /* h2 headings */
   --brand-ink-4: #444444;            /* h3 subheadings */
   --brand-ink-soft: #555555;         /* secondary paragraph text */
-  --brand-ink-faint: #888888;        /* tertiary / hints */
+  --brand-ink-faint: #666666;        /* tertiary / hints — WCAG AA (4.5:1+) on surface and sidebar */
   --brand-muted-ink: #27484f;        /* teal label/nav text */
   --brand-card: rgba(255, 255, 255, 0.72); /* floating glass cards */
   --brand-sidebar: #eae6df;          /* rules TOC sidebar background */
@@ -251,8 +251,9 @@
   display: inline-block;
   width: 380px;
   max-width: 90vw;
-  height: 90px;
-  border-radius: 45px;
+  /* Fluid height on mobile; radius tracks half the height to stay a pill. */
+  height: clamp(72px, 18vw, 90px);
+  border-radius: clamp(36px, 9vw, 45px);
   border: 2px solid var(--brand-ink);
   background: transparent;
   cursor: pointer;

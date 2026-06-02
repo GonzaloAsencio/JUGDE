@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { Navbar } from './Navbar';
+import { useMounted } from '@/lib/useMounted';
 
 interface LandingHeroProps {
   onCallJudge: (x: number, y: number) => void;
@@ -56,8 +56,7 @@ const FACTIONS = [
 
 export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useMounted();
   const isDark = mounted && resolvedTheme === 'dark';
 
   // Dark bg needs the opposite treatment: 'multiply' + grayscale hides the icons,
@@ -73,7 +72,7 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
       {FACTIONS.map(({ src, wrapperClass, rotate, blobColor, blobSize }) => (
         <div
           key={src}
-          className={`absolute pointer-events-none select-none ${wrapperClass}`}
+          className={`absolute pointer-events-none select-none max-w-[26vw] md:max-w-none ${wrapperClass}`}
           style={{ transform: `rotate(${rotate})` }}
         >
           {/* Glow centered on this icon */}
@@ -106,7 +105,7 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
       <Navbar sticky={false} transparent showHomeLink={false} />
 
       {/* Hero */}
-      <section className="relative z-10 flex items-center justify-center px-8 md:px-16 pt-8 pb-20">
+      <main id="main-content" className="relative z-10 flex items-center justify-center px-8 md:px-16 pt-8 pb-20">
         <div className="max-w-5xl mx-auto w-full text-center flex flex-col items-center">
           <div className="mt-14 leading-none uppercase font-hero font-black">
             <div className="text-6xl md:text-8xl text-brand-ink">NEED A</div>
@@ -130,7 +129,7 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
             </span>
           </button>
         </div>
-      </section>
+      </main>
     </div>
   );
 }

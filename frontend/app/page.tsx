@@ -1,9 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useQueryStore } from '@/store/useQueryStore';
 import { LandingHero } from '@/components/LandingHero';
-import { ChatView } from '@/components/ChatView';
+
+// Chat (and its heavy deps: the card index, markdown, card detection) only
+// mount after "Call Judge", so code-split it out of the initial landing bundle.
+const ChatView = dynamic(() => import('@/components/ChatView').then(m => m.ChatView));
 
 type AppState = 'landing' | 'chat';
 interface PopupPos { x: number; y: number; rotation: number; }

@@ -13,20 +13,20 @@ describe('QueryInput', () => {
   it('calls onSubmit on Enter', async () => {
     const onSubmit = jest.fn();
     render(<QueryInput value="some question" onChange={noop} onSubmit={onSubmit} loading={false} />);
-    await userEvent.type(screen.getByRole('textbox'), '{Enter}');
+    await userEvent.type(screen.getByRole('combobox'), '{Enter}');
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
   it('does NOT call onSubmit on Shift+Enter', async () => {
     const onSubmit = jest.fn();
     render(<QueryInput value="some question" onChange={noop} onSubmit={onSubmit} loading={false} />);
-    await userEvent.type(screen.getByRole('textbox'), '{Shift>}{Enter}{/Shift}');
+    await userEvent.type(screen.getByRole('combobox'), '{Shift>}{Enter}{/Shift}');
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('disables input and button when loading', () => {
     render(<QueryInput value="q" onChange={noop} onSubmit={noop} loading={true} />);
-    expect(screen.getByRole('textbox')).toBeDisabled();
+    expect(screen.getByRole('combobox')).toBeDisabled();
     expect(screen.getByRole('button')).toBeDisabled();
   });
 
@@ -40,7 +40,7 @@ describe('QueryInput', () => {
   it('renders the send button inside the same wrapper as the input', () => {
     render(<QueryInput value="valid question" onChange={noop} onSubmit={noop} loading={false} />);
     const button = screen.getByRole('button');
-    const input = screen.getByRole('textbox');
+    const input = screen.getByRole('combobox');
     expect(button.parentElement).toBe(input.parentElement);
   });
 
@@ -48,7 +48,7 @@ describe('QueryInput', () => {
     const user = userEvent.setup();
     const onChange = jest.fn((v: string) => v);
     render(<QueryInput value="" onChange={onChange} onSubmit={noop} loading={false} />);
-    await user.type(screen.getByRole('textbox'), '@');
+    await user.type(screen.getByRole('combobox'), '@');
     await waitFor(() => {
       const dropdown = screen.queryByTestId('mention-dropdown');
       if (dropdown) {
