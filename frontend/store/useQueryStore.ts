@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { ApiErrorInstance, postQuery } from '@/lib/api';
-import { lookupCard } from '@/lib/cardLookup';
 import type { ApiError, Citation } from '@/lib/types';
 
 // Pull every `@token` mention out of the raw question and resolve it to a card's
@@ -8,9 +7,15 @@ import type { ApiError, Citation } from '@/lib/types';
 // matches against the corpus section, which stores clean_name with spaces — so the
 // hyphenated slug must be resolved back to the space form, not sent verbatim.
 const MENTION = /@([a-z0-9-]+)/gi;
-function extractCardMentions(text: string): string[] {
+async function extractCardMentions(text: string): Promise<string[]> {
+  const tokens = [...text.matchAll(MENTION)].map(([, token]) => token);
+  if (tokens.length === 0) return [];
+  // Lazy-load the ~196KB card index only when the question actually has
+  // @mentions, keeping it out of the initial bundle (it's also code-split
+  // behind the dynamically imported ChatView).
+  const { lookupCard } = await import('@/lib/cardLookup');
   const names = new Set<string>();
-  for (const [, token] of text.matchAll(MENTION)) {
+  for (const token of tokens) {
     const card = lookupCard(token);
     if (card) names.add(card.clean_name);
   }
@@ -48,7 +53,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
 
     const id = `msg-${Date.now()}-${Math.random()}`;
     const displayQuestion = currentQuestion.trim();
-    const cardMentions = extractCardMentions(displayQuestion);
+    const cardMentions = await extractCardMentions(displayQuestion);
     const apiQuestion = displayQuestion.replace(/@/g, '');
 
     const newMessage: Message = {

@@ -123,6 +123,8 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
                     src={item.card.image_url}
                     alt={item.card.clean_name}
                     loading="lazy"
+                    width={26}
+                    height={36}
                     className="h-9 w-auto rounded shrink-0 bg-brand-ink/5"
                   />
                   <span className="truncate capitalize">{item.card.clean_name}</span>
