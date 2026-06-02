@@ -100,7 +100,7 @@
   --brand-ink-3: #333333;            /* h2 headings */
   --brand-ink-4: #444444;            /* h3 subheadings */
   --brand-ink-soft: #555555;         /* secondary paragraph text */
-  --brand-ink-faint: #888888;        /* tertiary / hints */
+  --brand-ink-faint: #666666;        /* tertiary / hints — WCAG AA (4.5:1+) on surface and sidebar */
   --brand-muted-ink: #27484f;        /* teal label/nav text */
   --brand-card: rgba(255, 255, 255, 0.72); /* floating glass cards */
   --brand-sidebar: #eae6df;          /* rules TOC sidebar background */

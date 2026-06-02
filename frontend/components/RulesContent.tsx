@@ -393,7 +393,7 @@ export function RulesContent({ markdown, toc }: RulesContentProps) {
       </nav>
 
       {/* Content column */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <main id="main-content" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
         {/* Mobile TOC */}
         <div className="lg:hidden" style={{ borderBottom: `1px solid ${HAIRLINE}`, backgroundColor: SIDEBAR_BG, padding: '12px 20px' }}>
@@ -413,7 +413,7 @@ export function RulesContent({ markdown, toc }: RulesContentProps) {
             {markdown}
           </ReactMarkdown>
         </article>
-      </div>
+      </main>
     </div>
   );
 }

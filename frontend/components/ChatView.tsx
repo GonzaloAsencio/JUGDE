@@ -24,7 +24,7 @@ export function ChatView({ onReset }: ChatViewProps) {
     return (
       <div className="flex flex-col h-screen bg-brand-surface page-fade-in">
         <Navbar onHomeClick={onReset} sticky={false} />
-        <div className="flex-1 flex flex-col justify-center px-4">
+        <main id="main-content" className="flex-1 flex flex-col justify-center px-4">
           <div className="max-w-2xl mx-auto w-full flex flex-col gap-6">
             <div className="flex justify-start pointer-events-none select-none judge-welcome-bubble">
               <div className="max-w-[85%] rounded-[28px] border border-brand-muted-ink/15 bg-brand-muted-ink/5 backdrop-blur-xl px-6 py-5 shadow-sm">
@@ -64,7 +64,7 @@ export function ChatView({ onReset }: ChatViewProps) {
               </div>
             )}
           </div>
-        </div>
+        </main>
       </div>
     );
   }
@@ -73,13 +73,18 @@ export function ChatView({ onReset }: ChatViewProps) {
     <div className="flex flex-col h-screen bg-brand-surface page-fade-in">
       <Navbar onHomeClick={onReset} />
 
+      {/* Screen-reader status: announces when the judge is working. */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {isAnyLoading ? 'The judge is consulting the rules…' : ''}
+      </div>
+
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
+      <main id="main-content" className="flex-1 overflow-y-auto px-4 md:px-8 py-6">
         <div className="space-y-8 max-w-3xl mx-auto">
           {messages.map(msg => <ChatMessage key={msg.id} message={msg} />)}
         </div>
         <div ref={messagesEndRef} />
-      </div>
+      </main>
 
       {/* Input footer */}
       <div className="flex-shrink-0 px-4 md:px-8 py-4">

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import { Loader2, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { GAME_KEYWORDS, type KeywordDef } from '@/lib/gameKeywords';
@@ -23,6 +23,7 @@ const MENTION_RE = /([#@])([\w-]*)$/;
 export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: QueryInputProps) {
   const trimmed = value.trim();
   const isValid = trimmed.length >= 3 && trimmed.length <= 1000;
+  const label = placeholder ?? 'Ask the judge a rules question';
 
   const [mentionActive, setMentionActive] = useState(false);
   const [mentionItems, setMentionItems] = useState<MentionItem[]>([]);
@@ -30,6 +31,11 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const activeItemRef = useRef<HTMLLIElement>(null);
+
+  // Stable ids for the ARIA combobox wiring (input ↔ listbox ↔ active option).
+  const inputId = useId();
+  const listboxId = useId();
+  const optionId = (i: number) => `${listboxId}-opt-${i}`;
 
   useEffect(() => {
     if (!mentionActive) return;
@@ -113,18 +119,35 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
       }
     }
 
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter') {
+      // Single-line field: always suppress the form's implicit submit so
+      // Shift+Enter never sends. Plain Enter submits explicitly below.
       e.preventDefault();
-      if (!loading && isValid) onSubmit();
+      if (!e.shiftKey && !loading && isValid) onSubmit();
     }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!loading && isValid) onSubmit();
   }
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div className="relative flex items-center w-full rounded-full border border-brand-ink/10 bg-card shadow-md focus-within:border-brand-muted-ink/40 focus-within:shadow-lg transition-shadow">
+      <label htmlFor={inputId} className="sr-only">{label}</label>
+      <form
+        onSubmit={handleSubmit}
+        className="relative flex items-center w-full rounded-full border border-brand-ink/10 bg-card shadow-md focus-within:border-brand-muted-ink/40 focus-within:shadow-lg transition-shadow"
+      >
         <input
           ref={inputRef}
+          id={inputId}
           type="text"
+          role="combobox"
+          aria-expanded={mentionActive}
+          aria-controls={listboxId}
+          aria-autocomplete="list"
+          aria-activedescendant={mentionActive ? optionId(mentionIndex) : undefined}
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -133,7 +156,8 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
           className="flex-1 bg-transparent py-4 pl-6 pr-14 text-sm text-brand-ink placeholder:text-brand-ink-faint outline-none disabled:opacity-50 min-w-0"
         />
         <button
-          onClick={onSubmit}
+          type="submit"
+          aria-label="Send question"
           disabled={loading || !isValid}
           className={cn(
             'absolute right-2 w-10 h-10 rounded-full flex items-center justify-center transition-colors flex-shrink-0',
@@ -147,16 +171,22 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
             : <ArrowUp className="w-4 h-4" />
           }
         </button>
-      </div>
+      </form>
 
       {mentionActive && (
         <ul
+          id={listboxId}
+          role="listbox"
+          aria-label={`${label} — suggestions`}
           data-testid="mention-dropdown"
           className="absolute left-0 right-0 bottom-full mb-2 z-50 max-h-64 overflow-y-auto rounded-2xl border border-brand-ink/10 bg-card shadow-lg"
         >
           {mentionItems.map((item, i) => (
             <li
               key={item.kind === 'keyword' ? `k-${item.keyword.name}` : `c-${item.card.riftbound_id}`}
+              id={optionId(i)}
+              role="option"
+              aria-selected={i === mentionIndex}
               ref={i === mentionIndex ? activeItemRef : null}
               className={cn(
                 'cursor-pointer px-4 py-2 text-sm first:rounded-t-2xl last:rounded-b-2xl',

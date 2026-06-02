@@ -106,7 +106,7 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
       <Navbar sticky={false} transparent showHomeLink={false} />
 
       {/* Hero */}
-      <section className="relative z-10 flex items-center justify-center px-8 md:px-16 pt-8 pb-20">
+      <main id="main-content" className="relative z-10 flex items-center justify-center px-8 md:px-16 pt-8 pb-20">
         <div className="max-w-5xl mx-auto w-full text-center flex flex-col items-center">
           <div className="mt-14 leading-none uppercase font-hero font-black">
             <div className="text-6xl md:text-8xl text-brand-ink">NEED A</div>
@@ -130,7 +130,7 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
             </span>
           </button>
         </div>
-      </section>
+      </main>
     </div>
   );
 }
