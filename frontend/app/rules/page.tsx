@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { RulesContent } from '@/components/RulesContent';
+import { RulesContent } from '@/components/rules/RulesContent';
 
 interface TocEntry {
   id: string;
