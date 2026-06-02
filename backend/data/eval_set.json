@@ -1,7 +1,8 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "created": "2026-05-14",
-  "description": "Eval set for Riftbound Judge AI RAG pipeline. 10 curated questions with canonical answers derived from the official rulebook and errata.",
+  "updated": "2026-06-02",
+  "description": "Eval set for Riftbound Judge AI RAG pipeline. Curated questions with canonical answers derived from the official rulebook, errata, and community rulings.",
   "questions": [
     {
       "id": "eval-001",
@@ -91,6 +92,96 @@
       "source": "errata",
       "rule_reference": "errata/origins/dark-child-starter",
       "tags": ["errata", "origins", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-011",
+      "question": "I move a unit to an open battlefield. My opponent plays Rengar Trophy Hunter from hand to that battlefield. I attack and Rengar defends. If I win the combat, do I get a point? If Rengar wins, does my opponent get a point?",
+      "canonical_answer": "Yes to both. If the battlefield is open, whoever wins the combat scores 1 point. If the attacker wins, they conquer the battlefield and score. If Rengar wins the defense, the defending player scores.",
+      "source": "rulebook",
+      "rule_reference": null,
+      "tags": ["combat", "scoring", "rengar", "open-battlefield", "specific-card"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-012",
+      "question": "If a gear card has the Temporary keyword and is attached to a unit, when does the gear die?",
+      "canonical_answer": "If an attached gear has Temporary, only the gear has that ability and only the gear will die from the Temporary effect. The gear will die regardless of whether it is attached or not — the Temporary ability is active on it at all times. Note: some gear cards print Temporary in the upper section which is only relevant when unattached; when attached, only the bottom box text applies.",
+      "source": "faq",
+      "rule_reference": null,
+      "tags": ["temporary", "gear", "keywords", "attached"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-013",
+      "question": "My opponent controls Vex Apathetic. I play Tideturner during my opponent's turn. Can Tideturner move before Vex's stun resolves?",
+      "canonical_answer": "Yes. When multiple players control triggered abilities that trigger simultaneously, starting with the Turn Player and proceeding in Turn Order, each player orders their triggered abilities on the chain. On the Vex controller's turn, Vex's trigger goes on the chain first and therefore resolves after Tideturner's ability, allowing Tideturner to move before getting stunned.",
+      "source": "rulebook",
+      "rule_reference": "383.3.d.1",
+      "tags": ["triggered-ability", "chain", "priority", "turn-order", "vex", "stun", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-014",
+      "question": "My opponent controls Vex Apathetic. I play Tideturner on my own turn. Can Tideturner move before Vex's stun resolves?",
+      "canonical_answer": "No. Playing Tideturner on your own turn results in Vex resolving first, which prevents Tideturner from moving before it is stunned. The turn player orders triggers first, so Vex's trigger resolves before Tideturner's ability.",
+      "source": "rulebook",
+      "rule_reference": "383.3.d.1",
+      "tags": ["triggered-ability", "chain", "priority", "turn-order", "vex", "stun", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-015",
+      "question": "My opponent controls Vex Apathetic. I play an Ambush unit to the battlefield on my turn. Can I flash the unit back before Vex's stun trigger resolves?",
+      "canonical_answer": "Yes. You can react to the Vex trigger on the chain and flash the ambush unit back, as long as you do so in response to the Vex trigger before it resolves.",
+      "source": "rulebook",
+      "rule_reference": "383.3.d.1",
+      "tags": ["ambush", "triggered-ability", "chain", "vex", "stun", "reaction", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-016",
+      "question": "On my turn, I play Moonfall targeting my opponent's unit to move it to the battlefield I am attacking. My opponent reveals a Hidden Evelynn and attempts to move my attacking unit. Does Evelynn's ability trigger on my turn?",
+      "canonical_answer": "No. Evelynn's ability states 'when you play me from facedown on your turn.' Since it is the attacker's turn, not Evelynn's controller's turn, Evelynn's triggered ability does not fire. Evelynn simply adds her might to the battlefield without moving the attacker's unit. Moonfall resolves normally.",
+      "source": "rulebook",
+      "rule_reference": null,
+      "tags": ["hidden", "triggered-ability", "turn-order", "evelynn", "moonfall", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-017",
+      "question": "My opponent defends with Fiora Peerless. I move a unit into the battlefield, then immediately try to play Rengar Trophy Hunter as a reaction to add another attacker. Does Fiora's triggered ability still resolve and grant double might?",
+      "canonical_answer": "Yes. Fiora Peerless has a 'when I attack or defend' trigger that goes on the chain as soon as she is assigned defender designation. This happens before there is a chance to play Rengar Trophy Hunter as a reaction. Once the ability is on the chain, it resolves even if Rengar is played afterward. The same applies to Kha'Zix.",
+      "source": "rulebook",
+      "rule_reference": "383.4.e, 459.2.d",
+      "tags": ["triggered-ability", "combat", "chain", "fiora", "rengar", "reaction", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-018",
+      "question": "Does the Challenge spell create a showdown? Does the unit dealt damage by Challenge get healed afterward?",
+      "canonical_answer": "No. Challenge does not create a showdown — it is just a spell. Damage dealt by Challenge remains on the unit until either a Combat Showdown cleanup occurs or the end of turn. No healing occurs as a result of Challenge itself.",
+      "source": "rulebook",
+      "rule_reference": null,
+      "tags": ["challenge", "showdown", "healing", "damage", "spell"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-019",
+      "question": "When a unit is sacrificed as an additional cost to play a card, does the unit die before or after the card is placed on the chain? Can the opponent react to the sacrifice?",
+      "canonical_answer": "The unit must be killed before the card is placed on the chain. When the reaction window opens, the unit is already dead. Paying the additional cost is not a reflexive trigger, so opponents cannot react to the sacrifice itself.",
+      "source": "rulebook",
+      "rule_reference": null,
+      "tags": ["cost", "chain", "death", "sacrifice", "reaction"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-020",
+      "question": "If both Angel Guardian and the unit it is attached to are given the Temporary keyword, what happens when Temporary triggers?",
+      "canonical_answer": "Both units have separate Temporary triggers that fire during the beginning phase. You can choose the order of those triggers, allowing the unit's Temporary to resolve first, which kills the Angel Guardian. However, the unit still has Temporary and will attempt to kill itself again at the beginning of the following turn.",
+      "source": "rulebook",
+      "rule_reference": null,
+      "tags": ["temporary", "angel-guardian", "triggered-ability", "beginning-phase", "ordering", "specific-card"],
       "difficulty": "hard"
     }
   ]
