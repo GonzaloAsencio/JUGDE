@@ -23,15 +23,7 @@ interface AnswerDisplayProps {
   onRetry?: () => void;
 }
 
-function CitationChip({ section }: { section: string }) {
-  return (
-    <span className="inline-flex items-center mx-0.5 px-1.5 py-0.5 text-[0.72em] font-medium rounded-md bg-brand-ink/5 text-brand-ink-soft border border-brand-ink/10 align-middle leading-none">
-      §&nbsp;{section}
-    </span>
-  );
-}
-
-const CITATION_RE = /(\[#\d+\])/g;
+const CITATION_RE = /\[#[\d,\s]+\]/g;
 const RULE_REF_RE = /(\b\d{3,}\.\d[\d.a-z]*)/g;
 
 const anchors = ruleAnchors as Record<string, string>;
@@ -102,20 +94,16 @@ function renderEntities(text: string, baseKey: string): React.ReactNode {
   });
 }
 
-function processText(children: React.ReactNode, citations: Citation[]): React.ReactNode {
+function processText(children: React.ReactNode): React.ReactNode {
   const mapped = React.Children.map(children, (child) => {
     if (typeof child !== 'string') return child;
 
     const parts = child.split(CITATION_RE);
 
     return parts.map((part, i) => {
-      const citMatch = part.match(/^\[#(\d+)\]$/);
-      if (citMatch) {
-        const idx = parseInt(citMatch[1]) - 1;
-        const citation = citations[idx];
-        return citation
-          ? <CitationChip key={i} section={citation.section} />
-          : <span key={i} className="text-brand-ink-faint text-[0.75em]">{part}</span>;
+      if (CITATION_RE.test(part)) {
+        CITATION_RE.lastIndex = 0;
+        return null;
       }
       return splitWithRuleRefs(part, String(i));
     });
@@ -123,10 +111,10 @@ function processText(children: React.ReactNode, citations: Citation[]): React.Re
   return mapped ?? children;
 }
 
-function makeComponents(citations: Citation[]): Components {
+function makeComponents(): Components {
   return {
-    p: ({ children, ...props }) => <p {...props}>{processText(children, citations)}</p>,
-    li: ({ children, ...props }) => <li {...props}>{processText(children, citations)}</li>,
+    p: ({ children, ...props }) => <p {...props}>{processText(children)}</p>,
+    li: ({ children, ...props }) => <li {...props}>{processText(children)}</li>,
   };
 }
 
@@ -138,13 +126,19 @@ export function AnswerDisplay({ answer, loading, error, citations = [], onRetry 
   }
 
   if (answer) {
+    const cleaned = answer
+      .replace(CITATION_RE, '')
+      .replace(/\brelevant sections?\s*:\s*[,\s]*/gi, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         className="prose prose-neutral dark:prose-invert max-w-none"
-        components={makeComponents(citations)}
+        components={makeComponents()}
       >
-        {answer}
+        {cleaned}
       </ReactMarkdown>
     );
   }
