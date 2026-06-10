@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # Runtime environment
     app_env: str = "development"
 
+    # Shared secret between the Next.js proxy and this backend.
+    # When set, every endpoint except shallow /health requires the
+    # X-Proxy-Secret header. When None, auth is disabled (local dev).
+    proxy_shared_secret: str | None = None
+
     # Upstash Redis (optional — cache disabled if not set)
     upstash_redis_url: str | None = None
     upstash_redis_token: str | None = None

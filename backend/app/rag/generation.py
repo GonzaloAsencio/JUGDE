@@ -53,7 +53,26 @@ _SAFE_FALLBACK = (
     "Please rephrase your query about Riftbound rules."
 )
 
-_LEAK_PATTERN = re.compile(r"system\s+prompt", re.IGNORECASE)
+_LEAK_PATTERN = re.compile(
+    r"system\s+prompt"
+    r"|system\s+instruction"
+    r"|my\s+instructions"
+    r"|mis\s+instrucciones",
+    re.IGNORECASE,
+)
+
+# Frases literales y distintivas del system prompt: si aparecen en la respuesta,
+# el modelo lo está citando textualmente aunque no diga "system prompt".
+_LEAK_SENTINELS = (
+    "language directive",
+    "security rules (non-negotiable)",
+    "expert assistant judge for the riftbound",
+)
+
+
+def _leaks_system_prompt(answer: str) -> bool:
+    lowered = answer.lower()
+    return bool(_LEAK_PATTERN.search(answer)) or any(s in lowered for s in _LEAK_SENTINELS)
 
 
 def _build_context_block(question: str, chunks: list[Chunk]) -> str:
@@ -79,7 +98,6 @@ def _call_gemini(
     temperature: float = 0.1,
     timeout_s: float = 10.0,
 ) -> str:
-    import google.api_core.exceptions as _gapi_exc
     from google.genai import types
 
     generation_config = types.GenerateContentConfig(temperature=temperature)
@@ -92,8 +110,6 @@ def _call_gemini(
             http_options={"timeout": timeout_s},
         )
         return response.text
-    except (_gapi_exc.DeadlineExceeded, _gapi_exc.GatewayTimeout) as e:
-        raise GenerationTimeout("Gemini API call timed out") from e
     except Exception as e:
         error_str = str(e).lower()
         if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:
@@ -182,7 +198,7 @@ def post_gen_validate(
     """
     was_sanitized = False
 
-    if _LEAK_PATTERN.search(answer):
+    if _leaks_system_prompt(answer):
         logger.warning("post_gen_validate: system prompt leakage detected — replacing response.")
         answer = _SAFE_FALLBACK
         was_sanitized = True

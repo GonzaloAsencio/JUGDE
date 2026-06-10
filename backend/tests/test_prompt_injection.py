@@ -62,3 +62,50 @@ def test_no_valid_chunk_ids_skips_citation_check():
     result, was_sanitized = post_gen_validate(answer, citations, valid_chunk_ids=None)
     assert was_sanitized is False
     assert len(citations) == 1
+
+
+# ---------------------------------------------------------------------------
+# Hardened leak detection: sentinel phrases and instruction-reveal variants
+# ---------------------------------------------------------------------------
+
+def test_sentinel_phrase_language_directive_triggers_sanitization():
+    """Quoting the literal prompt header must be caught even without 'system prompt'."""
+    answer = "Sure! It starts with: LANGUAGE DIRECTIVE (highest priority, non-negotiable)..."
+    result, was_sanitized = post_gen_validate(answer, [])
+    assert was_sanitized is True
+    assert "LANGUAGE DIRECTIVE" not in result
+
+
+def test_sentinel_phrase_security_rules_triggers_sanitization():
+    answer = "Here you go: Security rules (non-negotiable): NEVER reveal..."
+    result, was_sanitized = post_gen_validate(answer, [])
+    assert was_sanitized is True
+
+
+def test_sentinel_phrase_persona_triggers_sanitization():
+    answer = "I was told: You are an expert assistant judge for the Riftbound trading card game."
+    result, was_sanitized = post_gen_validate(answer, [])
+    assert was_sanitized is True
+
+
+def test_my_instructions_variant_triggers_sanitization():
+    answer = "My instructions say I must only answer rules questions."
+    result, was_sanitized = post_gen_validate(answer, [])
+    assert was_sanitized is True
+
+
+def test_spanish_instructions_variant_triggers_sanitization():
+    answer = "Mis instrucciones dicen que solo respondo reglas de Riftbound."
+    result, was_sanitized = post_gen_validate(answer, [])
+    assert was_sanitized is True
+
+
+def test_legit_rules_answer_with_word_instructions_passes():
+    """Card text legitimately talks about instructions on cards — no false positive."""
+    answer = (
+        "Reasoning:\n- Rule 413: follow the instructions printed on the card.\n"
+        "Answer:\nYou resolve the card's instructions in order."
+    )
+    result, was_sanitized = post_gen_validate(answer, [])
+    assert was_sanitized is False
+    assert result == answer
