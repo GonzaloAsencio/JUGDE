@@ -70,8 +70,8 @@ def test_build_prompt_includes_section():
 def test_build_prompt_empty_chunks():
     """Empty chunk list must not crash and must still produce a valid prompt."""
     prompt = build_prompt("Can I ask with no context?", [])
-    assert "=== PREGUNTA ===" in prompt
-    assert "=== RESPUESTA ===" in prompt
+    assert "=== QUESTION ===" in prompt
+    assert "=== RESPONSE" in prompt
     assert len(prompt) > 0
 
 
@@ -121,7 +121,7 @@ async def test_pipeline_empty_chunks_returns_fallback():
                 )
 
     assert result.citations == []
-    assert "No tengo información" in result.answer
+    assert "I don't have enough information" in result.answer
 
 
 async def test_pipeline_latency_ms_populated():

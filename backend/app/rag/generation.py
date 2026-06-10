@@ -79,7 +79,6 @@ def _call_gemini(
     temperature: float = 0.1,
     timeout_s: float = 10.0,
 ) -> str:
-    import google.api_core.exceptions as _gapi_exc
     from google.genai import types
 
     generation_config = types.GenerateContentConfig(temperature=temperature)
@@ -92,8 +91,6 @@ def _call_gemini(
             http_options={"timeout": timeout_s},
         )
         return response.text
-    except (_gapi_exc.DeadlineExceeded, _gapi_exc.GatewayTimeout) as e:
-        raise GenerationTimeout("Gemini API call timed out") from e
     except Exception as e:
         error_str = str(e).lower()
         if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:

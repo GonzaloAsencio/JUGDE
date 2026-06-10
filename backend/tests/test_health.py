@@ -14,8 +14,7 @@ def _make_health_client():
         patch("app.main.init_pool", return_value=MagicMock()),
         patch("app.main.close_pool"),
         patch("app.main.Embedder.load", return_value=MagicMock()),
-        patch("app.main.genai.configure"),
-        patch("app.main.genai.GenerativeModel", return_value=MagicMock()),
+        patch("app.main.genai.Client", return_value=MagicMock()),
         patch("app.main.get_settings", return_value=_fake_settings()),
     ):
         with TestClient(app) as c:

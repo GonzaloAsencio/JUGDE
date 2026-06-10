@@ -55,7 +55,8 @@ def test_rule_7_exists():
 def test_rule_7_requires_enumerating_chain_steps():
     """Multi-step chains must enumerate each link with its justification."""
     text = _SYSTEM_INSTRUCTION.lower()
-    assert "enumerate" in text or "each link" in text or "each step" in text
+    assert "list every rule" in text or "each link" in text or "each step" in text
+    assert "why each is relevant" in text
 
 
 def test_rule_7_handles_ambiguity_explicitly():

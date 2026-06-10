@@ -35,10 +35,19 @@ FakeGeminiClient = FakeLLMProvider
 FakeGeminiTimeout = FakeLLMProviderTimeout
 
 
+def _reset_limiter() -> None:
+    """Clear in-memory rate-limit buckets so tests don't leak state across modules."""
+    from app.middleware.rate_limit import limiter
+
+    limiter._storage.reset()  # type: ignore[attr-defined]
+
+
 def _make_client(provider_override=None):
     """Build a TestClient with all heavy startup steps mocked out."""
     from app.api.v1.query import get_db_pool, get_embedder, get_llm_provider
     from app.main import app
+
+    _reset_limiter()
 
     provider = provider_override if provider_override is not None else FakeLLMProvider()
 
@@ -50,8 +59,7 @@ def _make_client(provider_override=None):
         patch("app.main.init_pool", return_value=MagicMock()),
         patch("app.main.close_pool"),
         patch("app.main.Embedder.load", return_value=FakeEmbedder()),
-        patch("app.main.genai.configure"),
-        patch("app.main.genai.GenerativeModel", return_value=MagicMock()),
+        patch("app.main.genai.Client", return_value=MagicMock()),
         patch("app.main.get_conn"),
         patch("app.main.get_settings", return_value=_fake_settings()),
     ]
@@ -87,6 +95,8 @@ def client():
     from app.api.v1.query import get_db_pool, get_embedder, get_llm_provider
     from app.main import app
 
+    _reset_limiter()
+
     app.dependency_overrides[get_embedder] = lambda: FakeEmbedder()
     app.dependency_overrides[get_db_pool] = lambda: FakePool()
     app.dependency_overrides[get_llm_provider] = lambda: FakeLLMProvider()
@@ -95,8 +105,7 @@ def client():
         patch("app.main.init_pool", return_value=MagicMock()),
         patch("app.main.close_pool"),
         patch("app.main.Embedder.load", return_value=FakeEmbedder()),
-        patch("app.main.genai.configure"),
-        patch("app.main.genai.GenerativeModel", return_value=MagicMock()),
+        patch("app.main.genai.Client", return_value=MagicMock()),
         patch("app.main.get_settings", return_value=_fake_settings()),
     ):
         with TestClient(app) as c:
@@ -111,6 +120,8 @@ def timeout_client():
     from app.api.v1.query import get_db_pool, get_embedder, get_llm_provider
     from app.main import app
 
+    _reset_limiter()
+
     app.dependency_overrides[get_embedder] = lambda: FakeEmbedder()
     app.dependency_overrides[get_db_pool] = lambda: FakePool()
     app.dependency_overrides[get_llm_provider] = lambda: FakeLLMProviderTimeout()
@@ -119,8 +130,7 @@ def timeout_client():
         patch("app.main.init_pool", return_value=MagicMock()),
         patch("app.main.close_pool"),
         patch("app.main.Embedder.load", return_value=FakeEmbedder()),
-        patch("app.main.genai.configure"),
-        patch("app.main.genai.GenerativeModel", return_value=MagicMock()),
+        patch("app.main.genai.Client", return_value=MagicMock()),
         patch("app.main.get_settings", return_value=_fake_settings()),
     ):
         with TestClient(app) as c:
