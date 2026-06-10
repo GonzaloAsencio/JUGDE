@@ -16,10 +16,22 @@ export async function POST(req: NextRequest) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+  // Shared secret: proves to the backend that this request comes from the
+  // trusted proxy (enables auth + per-user rate limiting backend-side).
+  const proxySecret = process.env.PROXY_SHARED_SECRET;
+  if (proxySecret) headers['X-Proxy-Secret'] = proxySecret;
+
+  // Real client IP (first hop of x-forwarded-for) so the backend rate-limits
+  // per user instead of per proxy egress IP.
+  const realIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+  if (realIp) headers['X-Real-IP'] = realIp;
+
   try {
     const upstream = await fetch(`${FASTAPI_URL}/api/v1/query`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ question: body.question, card_mentions: cardMentions }),
       signal: controller.signal,
     });
@@ -42,7 +54,9 @@ export async function POST(req: NextRequest) {
     if (upstream.status === 504) {
       return NextResponse.json({ detail: 'The judge took too long. Try again.' }, { status: 504 });
     }
-    if (upstream.status === 502 || upstream.status === 503) {
+    // 401 = proxy/backend secret mismatch (deploy misconfig) — never the
+    // user's fault; don't leak the auth detail to the client.
+    if (upstream.status === 401 || upstream.status === 502 || upstream.status === 503) {
       return NextResponse.json({ detail: 'Service temporarily unavailable.' }, { status: 503 });
     }
     if (upstream.status >= 400 && upstream.status < 500) {
