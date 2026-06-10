@@ -61,3 +61,4 @@ backend/dry.txt
 # Dev server logs (local only)
 *.dev.log
 *.dev.err.log
+backend/*.log

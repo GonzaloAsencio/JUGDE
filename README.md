@@ -150,6 +150,8 @@ pip install -r requirements.txt
 cp .env.example .env
 # Required: DATABASE_URL, GEMINI_API_KEY
 # Optional: UPSTASH_REDIS_URL, UPSTASH_REDIS_TOKEN, LANGFUSE_*, SENTRY_DSN
+# Optional: PROXY_SHARED_SECRET — locks the API to requests coming from the
+#           Next.js proxy (required in production; leave unset for local dev)
 
 # Ingest the corpus — first run downloads bge-m3 (~1.2 GB)
 python -m scripts.ingest --source data/corpus/rulebook.md
@@ -167,6 +169,9 @@ npm install
 
 cp .env.example .env.local
 # Required: FASTAPI_URL=http://localhost:8000
+# Production: PROXY_SHARED_SECRET — same value as the backend secret.
+# Set it in BOTH Vercel and HF Spaces BEFORE deploying the backend change,
+# otherwise every query returns 503.
 
 npm run dev     # http://localhost:3000
 ```
