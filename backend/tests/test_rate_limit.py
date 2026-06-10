@@ -119,6 +119,48 @@ def test_x_real_ip_ignored_without_configured_secret(rate_limit_client: TestClie
     assert resp.status_code == 429
 
 
+@pytest.fixture
+def low_limit_client():
+    """Client where settings define a per-minute limit of 3 — the decorator
+    must honor settings instead of hardcoding 10/minute."""
+    from app.api.v1.query import get_db_pool, get_embedder, get_llm_provider
+    from app.middleware.rate_limit import limiter
+    from app.main import app
+
+    limiter._storage.reset()  # type: ignore[attr-defined]
+
+    app.dependency_overrides[get_embedder] = lambda: FakeEmbedder()
+    app.dependency_overrides[get_db_pool] = lambda: MagicMock()
+    app.dependency_overrides[get_llm_provider] = lambda: FakeLLMProvider()
+
+    settings = _fake_settings()
+    settings.rate_limit_enabled = True
+    settings.rate_limit_per_min = 3
+
+    with (
+        patch("app.main.init_pool", return_value=MagicMock()),
+        patch("app.main.close_pool"),
+        patch("app.main.Embedder.load", return_value=FakeEmbedder()),
+        patch("app.main.genai.Client", return_value=MagicMock()),
+        patch("app.main.get_settings", return_value=settings),
+        patch("app.api.v1.query.get_settings", return_value=settings),
+    ):
+        with TestClient(app) as c:
+            yield c
+
+    app.dependency_overrides.clear()
+
+
+def test_limits_come_from_settings(low_limit_client: TestClient):
+    """With rate_limit_per_min=3, the 4th request must hit 429."""
+    for i in range(3):
+        resp = _post(low_limit_client, f"Question {i}?")
+        assert resp.status_code == 200, f"Request {i + 1} failed: {resp.status_code}"
+
+    resp = _post(low_limit_client, "Question 4?")
+    assert resp.status_code == 429
+
+
 def test_rate_limit_429_on_11th_request(rate_limit_client: TestClient):
     """The 11th request within 1 minute must return 429 with Retry-After."""
     with (

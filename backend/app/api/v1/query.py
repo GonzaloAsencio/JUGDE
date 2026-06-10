@@ -14,6 +14,12 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
+def _query_limits() -> str:
+    """Límite leído de settings en cada request (slowapi evalúa callables lazy)."""
+    settings = get_settings()
+    return f"{settings.rate_limit_per_min}/minute;{settings.rate_limit_per_day}/day"
+
+
 def get_embedder(request: Request):
     return request.app.state.embedder
 
@@ -27,7 +33,7 @@ def get_llm_provider(request: Request) -> LLMProvider:
 
 
 @router.post("/query", response_model=QueryResponse)
-@limiter.limit("10/minute;100/day")
+@limiter.limit(_query_limits)
 async def query(
     body: QueryRequest,
     request: Request,
