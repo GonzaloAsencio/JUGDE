@@ -145,7 +145,8 @@ Full ADR index: [docs/adrs/README.md](docs/adrs/README.md)
 cd backend
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt        # runtime (correr la API)
+pip install -r requirements-dev.txt    # + tests y scripts de corpus
 
 cp .env.example .env
 # Required: DATABASE_URL, GEMINI_API_KEY
