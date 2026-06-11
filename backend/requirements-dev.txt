@@ -1,0 +1,10 @@
+# Dev & build — testing + scripts de construcción del corpus. Instala runtime también.
+-r requirements.txt
+
+# Testing
+pytest>=8.2.2
+pytest-asyncio>=0.23.7
+
+# Corpus build (parseo PDF/HTML en scripts/)
+pymupdf>=1.25.0
+beautifulsoup4>=4.12.3
