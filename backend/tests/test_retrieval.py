@@ -296,7 +296,9 @@ def test_tagged_lookup_empty_tags_returns_empty():
     assert tagged_lookup(MagicMock(), [], "v1") == []
 
 
-def test_tagged_lookup_returns_chunk_with_similarity_1(monkeypatch):
+def test_tagged_lookup_returns_chunk_with_zero_similarity(monkeypatch):
+    """Tagged lookup is a lexical section match — it computes no cosine, so it
+    must NOT fabricate a 1.0 similarity that would inflate downstream confidence."""
     rows = [("id1", "content", "Accelerate", None, "rulebook", None)]
     fake_conn, _ = _make_conn_ctx(rows)
     monkeypatch.setattr("app.rag.retrieval.get_conn", fake_conn)
@@ -306,7 +308,7 @@ def test_tagged_lookup_returns_chunk_with_similarity_1(monkeypatch):
 
     assert len(result) == 1
     assert result[0].id == "id1"
-    assert result[0].similarity == 1.0
+    assert result[0].similarity == 0.0
 
 
 def test_tagged_lookup_deduplicates_same_chunk_across_tags(monkeypatch):
@@ -340,7 +342,7 @@ def test_tagged_lookup_returns_card_chunk_when_tag_matches_card_section(monkeypa
     result = tagged_lookup(MagicMock(), ["yasuo"], "v1")
     assert len(result) == 1
     assert result[0].source_type == "card"
-    assert result[0].similarity == 1.0
+    assert result[0].similarity == 0.0
 
 
 def test_tagged_lookup_multiple_tags_merges_distinct_chunks(monkeypatch):

@@ -113,6 +113,12 @@ async def answer_question(
         rrf_k=settings.rrf_k,
     )
 
+    # Confidence reflects the strength of REAL semantic retrieval: the best cosine
+    # similarity among the vector-search results. Captured BEFORE tagged chunks are
+    # prepended, because tagged_lookup is a lexical match with no cosine — letting
+    # it set confidence would report 1.0 for any query that merely matches a tag.
+    semantic_confidence = max((c.similarity for c in chunks), default=0.0)
+
     if tagged_chunks:
         seen = {c.id for c in tagged_chunks}
         semantic = [c for c in chunks if c.id not in seen]
@@ -176,7 +182,7 @@ async def answer_question(
 
     latency_ms = round((time.time() - t0) * 1000)
 
-    confidence = round(citations[0].similarity, 4) if citations else 0.0
+    confidence = round(semantic_confidence, 4) if citations else 0.0
 
     response = QueryResponse(
         answer=answer,
