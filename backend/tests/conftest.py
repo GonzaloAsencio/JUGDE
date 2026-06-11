@@ -87,6 +87,12 @@ def _fake_settings():
         gemini_api_key="fake-api-key",
         corpus_version="v1",  # pre-resolved, no MAX query needed
     )
+    # Isolate auth from the developer's local .env: Settings reads
+    # PROXY_SHARED_SECRET from env_file, so without this a dev with the secret
+    # set would have auth enforced and every generic test would get 401. Tests
+    # that exercise auth (test_auth.py, the secured rate-limit test) set this
+    # explicitly after calling _fake_settings(), so they are unaffected.
+    settings.proxy_shared_secret = None
     return settings
 
 
