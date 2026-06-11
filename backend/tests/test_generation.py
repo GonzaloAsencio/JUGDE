@@ -26,6 +26,27 @@ def _citation(chunk_id: str, source_type: str = "card") -> Citation:
 
 
 # ---------------------------------------------------------------------------
+# Authority chain — errata supersedes the base rule
+#
+# The product's pitch is "a judge that knows errata and patch notes". The prompt
+# must declare the authority chain, not merely mention that a rule "comes from
+# errata". When sources conflict, the errata wins.
+# ---------------------------------------------------------------------------
+
+def test_prompt_declares_errata_supersedes_base_rule():
+    text = _SYSTEM_INSTRUCTION.lower()
+    assert "errata" in text
+    assert "supersede" in text or "supersedes" in text or "overrides" in text or "takes precedence" in text
+
+
+def test_prompt_declares_conflict_resolution_order():
+    """When sources conflict the prompt must instruct applying the errata/patch over the base rule."""
+    text = _SYSTEM_INSTRUCTION.lower()
+    assert "conflict" in text
+    assert "patch" in text  # patch notes named in the authority chain
+
+
+# ---------------------------------------------------------------------------
 # Rule 6 — extended to make card text authoritative
 # ---------------------------------------------------------------------------
 
