@@ -384,6 +384,80 @@ async def test_pipeline_no_card_mentions_does_not_alter_existing_tag_flow():
     assert tags_arg == ["accelerate"]
 
 
+# ---------------------------------------------------------------------------
+# Confidence honesty
+#
+# confidence must reflect the strength of REAL semantic retrieval (max cosine
+# similarity), not the fabricated 1.0 of a tagged section match, and not the
+# position-dependent first citation.
+# ---------------------------------------------------------------------------
+
+async def test_pipeline_confidence_not_inflated_by_tagged_match():
+    """A tagged exact-match must NOT push confidence to 1.0 when the semantic
+    signal is weak. Confidence reflects real cosine, not the section match."""
+    from app.rag.retrieval import Chunk
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    tagged_chunk = Chunk("tag_id", "Accelerate content", "Accelerate", None, "rulebook", 1.0)
+    weak_semantic = Chunk("sem_id", "Weakly related", "Other", None, "rulebook", 0.31)
+
+    with patch("app.rag.pipeline.tagged_lookup", return_value=[tagged_chunk]):
+        with patch("app.rag.pipeline.hybrid_search", return_value=[weak_semantic]):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    result = await answer_question(
+                        "@accelerate what does it do?",
+                        FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                    )
+
+    assert result.confidence == 0.31
+
+
+async def test_pipeline_confidence_is_max_semantic_cosine_not_first():
+    """Confidence is the MAX cosine among semantic chunks, not citations[0]."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    chunks = [
+        _make_chunk(section="A", similarity=0.5),
+        _make_chunk(section="B", similarity=0.82),
+        _make_chunk(section="C", similarity=0.6),
+    ]
+    # distinct ids so they don't dedup
+    for i, c in enumerate(chunks):
+        object.__setattr__(c, "id", f"id{i}")
+
+    with patch("app.rag.pipeline.hybrid_search", return_value=chunks):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                result = await answer_question(
+                    "How does it work?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                )
+
+    assert result.confidence == 0.82
+
+
+async def test_pipeline_confidence_zero_without_semantic_signal():
+    """Tagged match but empty hybrid retrieval → no real cosine → confidence 0.0."""
+    from app.rag.retrieval import Chunk
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    tagged_chunk = Chunk("tag_id", "Accelerate content", "Accelerate", None, "rulebook", 1.0)
+
+    with patch("app.rag.pipeline.tagged_lookup", return_value=[tagged_chunk]):
+        with patch("app.rag.pipeline.hybrid_search", return_value=[]):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    result = await answer_question(
+                        "@accelerate what does it do?",
+                        FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                    )
+
+    assert result.confidence == 0.0
+
+
 async def test_pipeline_tagged_deduplicates_with_semantic():
     """A chunk returned by both tagged_lookup and hybrid_search appears only once in citations."""
     from app.rag.retrieval import Chunk

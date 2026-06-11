@@ -192,7 +192,11 @@ def tagged_lookup(
     tags: list[str],
     corpus_version: str,
 ) -> list[Chunk]:
-    """Direct lookup by section name. Returns chunks with similarity=1.0."""
+    """Direct lookup by section name. This is a lexical match (section ILIKE tag),
+    not a vector search, so it computes NO cosine similarity. Chunks are returned
+    with similarity=0.0 — fabricating a 1.0 here would inflate the pipeline's
+    reported confidence on any query that merely matches a tag.
+    """
     if not tags:
         return []
     results: list[Chunk] = []
@@ -212,6 +216,6 @@ def tagged_lookup(
                             parent_section=row[3],
                             source_type=row[4],
                             metadata=row[5],
-                            similarity=1.0,
+                            similarity=0.0,
                         ))
     return results
