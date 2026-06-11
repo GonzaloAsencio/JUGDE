@@ -7,7 +7,9 @@ every functional test on a small corpus, so only a static cross-check catches it
 import pathlib
 import re
 
-MIGRATIONS_DIR = pathlib.Path(__file__).resolve().parent.parent / "migrations"
+BACKEND_DIR = pathlib.Path(__file__).resolve().parent.parent
+MIGRATIONS_DIR = BACKEND_DIR / "migrations"
+INGEST_PY = BACKEND_DIR / "scripts" / "ingest.py"
 
 
 def _migration_files() -> list[pathlib.Path]:
@@ -74,3 +76,52 @@ def test_fts_index_config_matches_query():
             f"FTS index {name} uses to_tsvector('{cfg}', ...) but _FTS_SQL queries "
             f"with '{query_cfg}'. The index will never be used."
         )
+
+
+# ---------------------------------------------------------------------------
+# source_type CHECK constraint consistency
+# ---------------------------------------------------------------------------
+
+_CHECK_RE = re.compile(
+    r"CHECK\s*\(\s*source_type\s+IN\s*\(([^)]*)\)",
+    re.IGNORECASE,
+)
+_INGEST_SOURCE_RE = re.compile(
+    r'\(\s*["\'][^"\']+\.md["\']\s*,\s*["\'](\w+)["\']\s*\)',
+)
+
+
+def _effective_source_type_check() -> set[str]:
+    """The source_type set allowed by the LAST CHECK constraint across migrations
+    (replayed in order — a later migration that re-adds the constraint wins)."""
+    last: str | None = None
+    for stmt in _statements():
+        m = _CHECK_RE.search(stmt)
+        if m:
+            last = m.group(1)
+    assert last is not None, "no source_type CHECK constraint found in migrations"
+    return {tok.strip().strip("'\"") for tok in last.split(",") if tok.strip()}
+
+
+def _ingested_source_types() -> set[str]:
+    """The source_type values the ingest pipeline actually writes (parsed as text,
+    so the test doesn't import pymupdf-laden script modules)."""
+    text = INGEST_PY.read_text(encoding="utf-8")
+    return set(_INGEST_SOURCE_RE.findall(text))
+
+
+def test_ingested_source_types_are_non_empty():
+    """Sanity: we can actually read the ingest source_type contract."""
+    assert _ingested_source_types(), "could not parse any source_type from ingest.py SOURCES"
+
+
+def test_migration_check_allows_every_ingested_source_type():
+    """Every source_type the ingest writes MUST be allowed by the migration CHECK —
+    otherwise a fresh DB built from migrations rejects the corpus the code produces."""
+    allowed = _effective_source_type_check()
+    ingested = _ingested_source_types()
+    missing = ingested - allowed
+    assert not missing, (
+        f"ingest.py writes source_type(s) {sorted(missing)} that the migration CHECK "
+        f"constraint rejects (allows {sorted(allowed)}). A fresh DB would fail to ingest."
+    )
