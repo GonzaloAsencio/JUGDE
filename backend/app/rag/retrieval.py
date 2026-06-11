@@ -106,8 +106,19 @@ def fts_search(
     ]
 
 
-_OFFICIAL_SOURCES = frozenset({"rulebook", "tournament_rules", "patch_notes", "rules_faq"})
-_OFFICIAL_BOOST = 1.05  # official rule sources get a 5% score boost over errata
+# Authority chain: an errata exists to CORRECT the base rule, so when sources
+# conflict the errata supersedes the rule — always. Patch notes sit between
+# errata and the base rulebook. We REWARD authority (multiplier > 1.0); we never
+# penalize a source. Anything not listed keeps the neutral 1.0 weight.
+_AUTHORITY_BOOST = {
+    "errata": 1.10,
+    "patch_notes": 1.05,
+}
+_DEFAULT_BOOST = 1.0
+
+
+def _authority_boost(source_type: str) -> float:
+    return _AUTHORITY_BOOST.get(source_type, _DEFAULT_BOOST)
 
 
 def _rrf_fuse(
@@ -122,8 +133,9 @@ def _rrf_fuse(
     1 / (rrf_k + rank_l(d)), where rank_l(d) is 1-based (only counted if d
     appears in l).
 
-    Rulebook chunks receive a _RULEBOOK_BOOST multiplier so base-rule chunks
-    rank above errata chunks when scores are comparable.
+    Authoritative chunks receive an _authority_boost multiplier so errata rank
+    above patch_notes, and both rank above the base rulebook, when scores are
+    comparable (errata > patch_notes > rulebook).
 
     Dedup key: chunk.id.
     Tie-break: chunk that appeared in vector_results wins (stable).
@@ -138,14 +150,14 @@ def _rrf_fuse(
 
     for rank_0, chunk in enumerate(vector_results):
         rank = rank_0 + 1  # 1-based
-        boost = _OFFICIAL_BOOST if chunk.source_type in _OFFICIAL_SOURCES else 1.0
+        boost = _authority_boost(chunk.source_type)
         scores[chunk.id] = scores.get(chunk.id, 0.0) + boost / (rrf_k + rank)
         chunks_by_id[chunk.id] = chunk  # vector side wins for Chunk object
         in_vector.add(chunk.id)
 
     for rank_0, chunk in enumerate(fts_results):
         rank = rank_0 + 1  # 1-based
-        boost = _OFFICIAL_BOOST if chunk.source_type in _OFFICIAL_SOURCES else 1.0
+        boost = _authority_boost(chunk.source_type)
         scores[chunk.id] = scores.get(chunk.id, 0.0) + boost / (rrf_k + rank)
         if chunk.id not in chunks_by_id:
             chunks_by_id[chunk.id] = chunk  # FTS-only: use FTS chunk (similarity=0.0)

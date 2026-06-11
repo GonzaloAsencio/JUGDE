@@ -13,13 +13,13 @@ _RRF_K = 60
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _chunk(id: str = "c1", similarity: float = 0.9) -> Chunk:
+def _chunk(id: str = "c1", similarity: float = 0.9, source_type: str = "rulebook") -> Chunk:
     return Chunk(
         id=id,
         content="Some content.",
         section="Section",
         parent_section=None,
-        source_type="rulebook",
+        source_type=source_type,
         similarity=similarity,
     )
 
@@ -107,6 +107,67 @@ def test_rrf_preserves_similarity_from_vector_side():
     # same id in both lists; similarity must come from vector chunk (0.95), not FTS (0.0)
     result = _rrf_fuse([_chunk("a", 0.95)], [_chunk("a", 0.0)], rrf_k=_RRF_K, top_k=10)
     assert result[0].similarity == 0.95
+
+
+# ---------------------------------------------------------------------------
+# Authority chain: errata > patch_notes > rulebook
+#
+# An errata exists to CORRECT the base rule; when they conflict the errata
+# supersedes the rule — always. Retrieval must surface authoritative sources
+# above the base rule, never below it.
+#
+# Each test mirrors the two source chunks across vector/fts at swapped ranks,
+# so their base RRF scores are identical and ONLY the authority boost decides.
+# ---------------------------------------------------------------------------
+
+def test_rrf_errata_outranks_rulebook_on_equal_base_score():
+    errata = _chunk("e", source_type="errata")
+    rulebook = _chunk("r", source_type="rulebook")
+    result = _rrf_fuse(
+        [errata, rulebook],   # vector: errata rank1, rulebook rank2
+        [rulebook, errata],   # fts:    rulebook rank1, errata rank2
+        rrf_k=_RRF_K,
+        top_k=10,
+    )
+    assert result[0].id == "e", "errata must supersede the base rule"
+
+
+def test_rrf_patch_notes_outranks_rulebook_on_equal_base_score():
+    patch = _chunk("p", source_type="patch_notes")
+    rulebook = _chunk("r", source_type="rulebook")
+    result = _rrf_fuse(
+        [patch, rulebook],
+        [rulebook, patch],
+        rrf_k=_RRF_K,
+        top_k=10,
+    )
+    assert result[0].id == "p", "patch_notes must outrank the base rule"
+
+
+def test_rrf_errata_outranks_patch_notes_on_equal_base_score():
+    errata = _chunk("e", source_type="errata")
+    patch = _chunk("p", source_type="patch_notes")
+    result = _rrf_fuse(
+        [errata, patch],
+        [patch, errata],
+        rrf_k=_RRF_K,
+        top_k=10,
+    )
+    assert result[0].id == "e", "errata must outrank patch_notes"
+
+
+def test_rrf_authority_order_errata_patch_rulebook():
+    errata = _chunk("e", source_type="errata")
+    patch = _chunk("p", source_type="patch_notes")
+    rulebook = _chunk("r", source_type="rulebook")
+    # all three at identical mirrored ranks → equal base score, authority decides
+    result = _rrf_fuse(
+        [errata, patch, rulebook],
+        [rulebook, patch, errata],
+        rrf_k=_RRF_K,
+        top_k=10,
+    )
+    assert [c.id for c in result] == ["e", "p", "r"]
 
 
 # ---------------------------------------------------------------------------
