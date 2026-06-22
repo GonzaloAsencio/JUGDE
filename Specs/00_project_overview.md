@@ -1,5 +1,12 @@
 # 00 - Project Overview
 
+> **Status (histórico):** Plan original del proyecto. Algunas decisiones
+> pivotearon durante la implementación — sobre todo la evaluación, que pasó de
+> RAGAS a un harness LLM-as-judge (ver **ADR-006**), y el orden del roadmap, que
+> se construyó "al revés" (pipeline → frontend → hardening → eval). Para el
+> estado real, ver el **README** y los **ADRs**. Esta spec se conserva como
+> registro del diseño inicial.
+
 ## Qué es esto
 
 Un asistente RAG (Retrieval-Augmented Generation) para responder preguntas de reglas del juego de cartas Riftbound (Riot Games).

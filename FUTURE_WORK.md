@@ -6,22 +6,22 @@ Items in this file are deferred from v1. They are not aspirational — each entr
 
 ## Short-term (1–2 weeks)
 
-### Run the full ablation and publish numbers
+### Wire the vector-only baseline and complete the ablation
 
-The results table in the README currently shows TBD for all metric cells. The eval set (`Specs/03_eval_set_spec.md`) is defined; RAGAS is the framework. The blocking work is:
+A baseline run already exists against the production hybrid config using the LLM-as-judge harness (`backend/scripts/eval.py`) — see the README Results table. What's still missing:
 
-1. Execute Config A (vector-only baseline) against the eval set and record RAGAS scores + p95 latency
-2. Execute Config B (hybrid dense + FTS + RRF, current production config) and compare
-3. Fill the TBD cells in README and remove the disclaimer
-4. Run a per-category failure analysis to validate or refute the entity resolution threshold (ADR-004)
+1. Wire a vector-only path (Config A) into the harness so it can be compared against the hybrid config — today the harness only runs the production pipeline
+2. Expand the eval set beyond the current 20 questions (`backend/data/eval_set.json`)
+3. Improve baseline answer quality — the recorded baseline (25% correct) is low and worth diagnosing per `difficulty`/`source`
+4. Use the per-source/per-difficulty breakdown to validate or refute the entity resolution threshold (ADR-004)
 
 ### Streaming responses (SSE)
 
 The current API returns a complete JSON response after the full generate call completes. This creates a perceptible pause for users. The fix is to stream the LLM response via Server-Sent Events from FastAPI and consume the stream in the Next.js frontend. The backend skeleton exists; the blocking piece is integrating SSE with the Upstash cache (cached responses should still stream, not return instantly, to avoid a jarring UX difference).
 
-### Per-category failure analysis script
+### Extend the failure-analysis breakdown
 
-Add a script under `backend/scripts/` that reads an eval run JSON and breaks down failures by query category (factual, multi-step, card-specific, edge case, adversarial). This is a prerequisite for the entity resolution trigger check from ADR-004.
+`backend/scripts/eval_judge.py` already aggregates verdicts by `difficulty` and `source` (`aggregate_by_difficulty`, `aggregate_by_source`). Extend this to break failures down by `tags` (the per-question labels) so card-specific vs keyword vs golden-rule failures can be isolated. This sharpens the entity resolution trigger check from ADR-004.
 
 ---
 
@@ -60,7 +60,15 @@ The frontend spec (`Specs/08`) included thumbs up/down buttons that were descope
 
 1. Select a cross-encoder model (e.g., `cross-encoder/ms-marco-MiniLM-L-6-v2`)
 2. Wire it in `retrieval.py` after RRF fusion: take the top-5 RRF results, rerank with the cross-encoder, return reranked top-k
-3. Run Config C eval and compare to Config B
+3. Run the harness with the reranker enabled and compare to the hybrid baseline
+
+### Faithfulness measurement (RAGAS — optional)
+
+The current harness measures answer correctness (LLM-as-judge) and retrieval recall, but it does **not** measure *faithfulness* — whether the answer is actually grounded in the retrieved corpus versus the model's own training knowledge. That is the metric most aligned with this project's core promise ("the judge never invents rules").
+
+Today that risk is mitigated by **behaviour**, not measurement: the system prompt forces grounding and citations, `post_gen_validate` strips hallucinated citations, and `query.no_info_despite_context` is logged. Adding [RAGAS](https://github.com/explodinggradients/ragas) would put a *number* on faithfulness (plus answer relevancy and context precision).
+
+This is a **nice-to-have, not a blocker** — see ADR-006 for why LLM-as-judge was chosen over RAGAS for v1. Only worth the extra dependency if grounding quality becomes a measured concern.
 
 ---
 

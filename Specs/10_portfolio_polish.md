@@ -1,5 +1,10 @@
 # 10 - Portfolio Polish + Launch
 
+> **Status (histórico):** Plan de pulido para el launch. Las tablas de resultados
+> y la mención a RAGAS de abajo reflejan el plan original; la evaluación final usa
+> LLM-as-judge (ver **ADR-006**) y los números reales están en el README. Se
+> conserva como registro del plan inicial.
+
 ## Objetivo
 
 Convertir el código funcional en un **activo de portfolio** que abra puertas en entrevistas.

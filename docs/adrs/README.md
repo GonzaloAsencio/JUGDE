@@ -35,3 +35,9 @@ Card-specific entity resolution (detecting card names in queries and injecting c
 ### [ADR-005 — LLM Choice: Gemini 2.0 Flash over GPT-4o-mini and Claude Haiku](ADR-005-llm-choice.md)
 
 The generation step uses `gemini-2.0-flash` via Google AI Studio. The decision was cost-driven: Gemini offers a 1 million token per day free tier, making it viable for a free-tier project with open demo access. The LLM call is isolated in `backend/app/rag/generation.py` to allow model swaps without touching the pipeline. The main risks are rate limiting under sustained traffic and Google's free tier terms.
+
+---
+
+### [ADR-006 — Eval Framework: LLM-as-Judge over RAGAS](ADR-006-eval-framework.md)
+
+The evaluation harness (`backend/scripts/eval.py`, `eval_judge.py`) uses a self-contained LLM-as-judge (verdict: correct/partial/wrong) plus deterministic retrieval recall, instead of the RAGAS framework originally planned in `Specs/03` and `Specs/06`. The decision was driven by prioritization — eval was built last, and a dependency-light harness reusing the existing LLM provider got a measured baseline fastest. The tradeoff is coarser metrics and no measured faithfulness; RAGAS remains optional future work. Supersedes the eval plan in those specs.

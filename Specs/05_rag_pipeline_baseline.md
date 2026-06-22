@@ -6,6 +6,11 @@
 > ADR-001 en `10_portfolio_polish.md` y la tabla "Lo que NO usamos" en
 > `01_tech_stack.md`). El diseño conceptual de abajo sigue siendo válido; solo
 > cambió la herramienta.
+>
+> Además, la evaluación final **no usa RAGAS** (los snippets `from ragas import
+> evaluate` de abajo son del plan original): se implementó un harness
+> LLM-as-judge — ver **ADR-006** y el README. El racional del eval sigue válido;
+> cambió el framework de medición.
 
 ## Objetivo
 

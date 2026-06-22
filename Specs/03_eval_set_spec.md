@@ -1,5 +1,12 @@
 # 03 - Eval Set Specification
 
+> **Status (histórico):** El concepto del eval set (preguntas curadas a mano,
+> con canonical answer y rule_reference) sigue vigente. Pero el **framework de
+> medición cambió**: la implementación usa LLM-as-judge (verdict correct/partial/
+> wrong) + retrieval recall determinístico, no RAGAS — ver **ADR-006** y el
+> README. El esquema real vive en `backend/data/eval_set.json` (20 preguntas,
+> campos `difficulty`/`source`/`tags`).
+
 ## Por qué esta spec existe primera
 
 Sin eval set, no podés:

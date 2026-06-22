@@ -1,5 +1,10 @@
 # 02 - Roadmap 6 semanas
 
+> **Status (histórico):** Plan de 6 semanas original. El orden real fue distinto
+> (el eval se construyó al final, no en la Semana 1) y la evaluación usa
+> LLM-as-judge, no RAGAS — ver **ADR-006** y el README. Se conserva como registro
+> del plan inicial.
+
 ## Semana 1: Foundation (Eval set + Corpus)
 
 **Objetivo:** Tener datos para experimentar. **Esta es la semana más importante.**

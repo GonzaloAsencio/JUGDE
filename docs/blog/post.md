@@ -128,9 +128,9 @@ The lesson here is that "it seems like it would help" is not an architectural ju
 | Upstash Redis | Response cache | Optional — disabled if env vars not set |
 | Langfuse | LLM tracing | Traces retrieval + generation steps |
 | Sentry | Error reporting | Optional — disabled if DSN not set |
-| Next.js 15 | Frontend | App Router, deployed on Vercel |
+| Next.js 16 | Frontend | App Router, deployed on Vercel |
 | slowapi | Rate limiting | Per-IP limits on the API |
-| RAGAS | Eval framework | Faithfulness, answer relevancy, context precision/recall |
+| LLM-as-judge (Gemini) | Eval framework | `correct`/`partial`/`wrong` verdict + retrieval recall (see update below) |
 
 ---
 
@@ -143,3 +143,14 @@ The lesson here is that "it seems like it would help" is not an architectural ju
 - [Blog (this post)](#) — you are here
 
 The eval set, ADRs, and future work roadmap are all in the repository. If you have feedback on the retrieval approach or the eval design, open an issue.
+
+---
+
+## Update — 2026-06-22
+
+This post shipped with TBD results and named RAGAS as the eval framework. Two things changed after publishing, and I'd rather correct the record than leave it stale:
+
+- **The eval did run.** A baseline against the production hybrid pipeline: ~25% correct (35% correct+partial), 14% retrieval recall on the 20-question set. Low — and that's the honest starting point I now optimize from. Rough numbers beat no numbers.
+- **It does not use RAGAS.** Evaluation was the last thing built, so I shipped a dependency-light LLM-as-judge harness (verdict correct/partial/wrong) plus a deterministic retrieval-recall check, instead of integrating RAGAS. The full reasoning — and what that costs me (no measured faithfulness) — is in [ADR-006](../adrs/ADR-006-eval-framework.md). RAGAS is now optional future work.
+
+The retrospective above stands as written; this is just the follow-through.
