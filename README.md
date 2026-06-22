@@ -105,10 +105,12 @@ See [docs/architecture.md](docs/architecture.md) for a standalone version with n
 
 | Config | Correct | Correct + Partial | Retrieval recall | Avg latency | Avg confidence |
 |---|---|---|---|---|---|
-| Hybrid (dense + FTS + RRF, production) | 25% | 35% | 14% (2/14 evaluable) | pending run | pending run |
+| Hybrid (dense + FTS + RRF, production) | 30% | 30% | 36% (5/14 evaluable) | 7177 ms | 0.639 |
 | Vector-only (baseline A) | pending | pending | pending | pending | pending |
 
-**Methodology**: Eval set of 20 hand-curated questions. Evaluation: an LLM-as-judge returns a `correct`/`partial`/`wrong` verdict per answer; retrieval recall is computed deterministically by matching the expected `rule_reference` against the returned citations. Latency and confidence are measured server-side, excluding network. Run it yourself: `cd backend && python -m scripts.eval`.
+**Methodology**: Eval set of 20 hand-curated questions. Evaluation: an LLM-as-judge returns a `correct`/`partial`/`wrong` verdict per answer; retrieval recall is computed deterministically by matching the expected `rule_reference` against the returned citations (by rule-code lineage over each chunk's full content). Latency and confidence are measured server-side, excluding network. Run it yourself: `cd backend && python -m scripts.eval`.
+
+> **Reading the numbers**: retrieval recall is the bottleneck. The right rule is retrieved for only ~1/3 of evaluable questions, and answer correctness tracks it closely — when the rule isn't retrieved, the answer is wrong. The next lever is retrieval quality (finer chunking, `top_k`, reranker), not the prompt. (An earlier run reported 14% recall; that was a measurement artifact in the matcher — see the eval-recall-metric fix — not a real retrieval result.)
 
 ---
 

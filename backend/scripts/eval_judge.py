@@ -86,10 +86,31 @@ def _sub_prefix(ref: str) -> str | None:
     return f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else None
 
 
+def _rule_codes_cover(ref: str, codes) -> bool:
+    """True if any rule code shares *ref*'s numeric lineage.
+
+    A chunk covers the ref when it lists the exact rule, a sub-rule of it
+    (``103`` covers ``103.2``), or its parent (``103.2`` covers ``103.2.b``).
+    """
+    for code in codes:
+        if code == ref or code.startswith(ref + ".") or ref.startswith(code + "."):
+            return True
+    return False
+
+
 def _single_ref_hit(ref: str, citations) -> bool:
     if ref.startswith("errata/"):
         return any(c.source_type == "errata" for c in citations)
 
+    # Primary: structured rule-code lineage. Derived from each chunk's FULL
+    # content at query time, so it doesn't depend on the section header number
+    # or on the rule landing inside the 200-char preview.
+    for c in citations:
+        if _rule_codes_cover(ref, getattr(c, "rule_codes", None) or []):
+            return True
+
+    # Fallback (legacy): section prefix + content_preview. Kept for citations
+    # that predate rule_codes or carry no codes.
     prefix = _numeric_prefix(ref)
     sub = _sub_prefix(ref)
 

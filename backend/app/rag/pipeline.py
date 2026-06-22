@@ -10,6 +10,7 @@ from app.rag.embedder import Embedder
 from app.rag.generation import post_gen_validate
 from app.rag.provider import LLMProvider
 from app.rag.retrieval import hybrid_search, tagged_lookup
+from app.rag.rules import extract_rule_codes
 from app.rag.schemas import Citation, QueryResponse
 
 logger = get_logger(__name__)
@@ -154,6 +155,7 @@ async def answer_question(
             similarity=chunk.similarity,
             chunk_id=chunk.id,
             set=(chunk.metadata or {}).get("set"),
+            rule_codes=sorted(extract_rule_codes(chunk.content)),
         )
         for chunk in chunks
     ]
