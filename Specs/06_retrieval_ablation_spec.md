@@ -6,6 +6,12 @@
 > FTS de Postgres y un Reciprocal Rank Fusion propio (`app/rag/retrieval.py`,
 > `_rrf_fuse`). El estudio de ablation y su razonamiento siguen vigentes; solo
 > cambió cómo está construido el retriever. Ver ADR-001.
+>
+> Las métricas marcadas "RAGAS" abajo **no** se implementaron así: el harness
+> final (`backend/scripts/eval.py`) usa LLM-as-judge (verdict correct/partial/
+> wrong) + retrieval recall determinístico — ver **ADR-006**. Y el ablation por
+> configs A/B/C/D todavía no está cableado: hoy el harness corre solo el config
+> hybrid de producción (ver `FUTURE_WORK.md`).
 
 ## Por qué esta spec es el corazón de tu portfolio
 

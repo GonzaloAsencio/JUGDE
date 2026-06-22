@@ -13,7 +13,7 @@ graph TB
     end
 
     subgraph Frontend
-        Next[Next.js 15 / Vercel]
+        Next[Next.js 16 / Vercel]
         Proxy[API Proxy Route]
     end
 
@@ -76,14 +76,15 @@ graph TB
 2. Next.js proxies the request to the FastAPI backend via an API route (`/api/query`).
 3. FastAPI validates the request with Pydantic and passes it through the `slowapi` rate limiter (10 req/min, 100 req/day per IP by default).
 4. The pipeline checks the Upstash Redis cache. On a hit, the cached response is returned immediately.
-5. On a cache miss, the query is encoded with `BAAI/bge-m3` (local inference, 1024-dimensional output).
-6. Two parallel retrieval queries run against Postgres (Supabase):
+5. Known game keywords are detected in the question (`pipeline.py` `_detect_keywords`), and any `@mentions` or `card_mentions` are extracted. A direct `tagged_lookup` by section name pins the matching keyword chunk to the front of the results.
+6. On a cache miss, the query is encoded with `BAAI/bge-m3` (local inference, 1024-dimensional output).
+7. Two retrieval queries run sequentially against Postgres (Supabase):
    - Dense ANN query using the pgvector `<=>` cosine distance operator, fetching `top_k_fetch=15` results.
    - Full-text search using `plainto_tsquery('simple', query)`, fetching `top_k_fetch=15` results.
-7. The two result lists are fused with Reciprocal Rank Fusion (`rrf_k=60`), producing a ranked list of `top_k=5` chunks.
-8. A grounding prompt is constructed containing the question and the 5 retrieved chunks, then sent to Gemini 2.0 Flash.
-9. The answer is post-validated (citation IDs checked against retrieved chunk IDs), stored in Redis, and returned.
-10. Langfuse traces the retrieval and generation steps. Sentry captures any unhandled exceptions.
+8. The two result lists are fused with Reciprocal Rank Fusion (`rrf_k=60`), producing a ranked list of `top_k=5` chunks. An authority boost (`errata` 1.10 > `patch_notes` 1.05 > `rulebook` 1.0) ensures a correcting source ranks above the base rule it supersedes.
+9. A grounding prompt is constructed containing the question and the retrieved chunks. The system instruction forces a `Reasoning:` chain-of-thought block before the `Answer:`, then it is sent to Gemini 2.0 Flash.
+10. The answer is post-validated (system-prompt leakage check + citation IDs stripped if not in the retrieved chunk set), stored in Redis, and returned.
+11. Langfuse traces the retrieval and generation steps. Sentry captures any unhandled exceptions.
 
 ## Ingestion Path (offline)
 

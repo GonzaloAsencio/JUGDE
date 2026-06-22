@@ -18,7 +18,7 @@
 
 | Componente | Elección | Razón |
 |---|---|---|
-| Framework | Next.js 15 | App Router, estándar moderno |
+| Framework | Next.js 16 | App Router, estándar moderno |
 | Lenguaje | TypeScript | Type safety |
 | Styling | Tailwind CSS + shadcn/ui | Rápido, buen default visual |
 | State | Zustand o Context | Simple, suficiente para scope |
@@ -36,10 +36,13 @@
 
 ## Evaluación
 
-| Componente | Elección | Razón |
+> **Status (histórico):** RAGAS fue el plan; la implementación final usa
+> LLM-as-judge — ver **ADR-006** y el README.
+
+| Componente | Elección (real) | Razón |
 |---|---|---|
-| Framework | RAGAS | Estándar para eval de RAG |
-| Métricas | faithfulness, answer_relevancy, context_precision, context_recall | Estándar RAGAS |
+| Framework | LLM-as-judge (Gemini) | Sin dependencia extra, reusa el `LLMProvider` (ver ADR-006) |
+| Métricas | verdict `correct`/`partial`/`wrong` + retrieval recall determinístico | Suficiente para un baseline medido rápido |
 
 ## Data sources
 
