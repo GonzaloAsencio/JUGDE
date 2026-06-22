@@ -25,6 +25,7 @@ backend/data/cards/cards.json
 backend/data/cards/keywords_dictionary.json
 backend/data/eval_runs/*
 !backend/data/eval_runs/.gitkeep
+backend/data/eval_results_*.json
 
 # Keep eval_set.json and eval_set_metadata.json in git (curated, versioned)
 !backend/data/eval_set.json
