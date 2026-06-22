@@ -37,6 +37,7 @@ class Citation(BaseModel):
     similarity: float
     chunk_id: Optional[str] = None
     set: Optional[str] = None  # expansión del chunk (origins/spiritforged/unleashed/core)
+    rule_codes: list[str] = Field(default_factory=list)  # rule codes covered by the full chunk
 
 
 class QueryResponse(BaseModel):

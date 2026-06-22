@@ -17,12 +17,18 @@ from app.rag.schemas import Citation
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _citation(section: str, source_type: str = "rulebook", content_preview: str = "") -> Citation:
+def _citation(
+    section: str,
+    source_type: str = "rulebook",
+    content_preview: str = "",
+    rule_codes: list[str] | None = None,
+) -> Citation:
     return Citation(
         section=section,
         source_type=source_type,
         content_preview=content_preview,
         similarity=0.9,
+        rule_codes=rule_codes or [],
     )
 
 
@@ -184,6 +190,31 @@ def test_match_short_numeric_ref():
 
 def test_match_empty_citations():
     assert match_rule_reference("103.2.b", []) is False
+
+
+def test_match_via_rule_codes_when_section_and_preview_miss():
+    # The retriever returned the CORRECT chunk (it covers rule 143.4), but the
+    # section header is a coarser number (140) and 143.4 lives beyond the 200-char
+    # preview. Only rule_codes carries the truth. Before the fix this was a false
+    # negative — recall was undercounted whenever the rule code wasn't the section
+    # number and wasn't in the first 200 chars.
+    cit = _citation(
+        section="140. Units",
+        content_preview="### 140. Units\n140. A unit is a game object on the board...",
+        rule_codes=["140", "143", "143.4"],
+    )
+    assert match_rule_reference("143.4", [cit]) is True
+
+
+def test_match_via_rule_codes_parent_covers_subrule():
+    # ref is more specific than what the chunk lists: chunk has 103.2, ref is 103.2.b
+    cit = _citation(section="101. Deck Construction", rule_codes=["101", "103", "103.2"])
+    assert match_rule_reference("103.2.b", [cit]) is True
+
+
+def test_match_rule_codes_unrelated_lineage_miss():
+    cit = _citation(section="200. Other", rule_codes=["200", "201", "201.3"])
+    assert match_rule_reference("143.4", [cit]) is False
 
 
 # ---------------------------------------------------------------------------
