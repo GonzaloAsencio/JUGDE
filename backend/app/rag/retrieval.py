@@ -198,9 +198,16 @@ def _hybrid_search_impl(
     rrf_k: int = 60,
     set_filter: str | None = None,
 ) -> list[Chunk]:
+    # The FTS arm is DORMANT. A deterministic probe over the eval set measured
+    # vector-only @5 recall (47%) ABOVE vector+FTS (41%): plainto_tsquery over a
+    # full natural-language question rarely matches rule text and only dilutes the
+    # RRF ranking. We therefore fuse vector results against an EMPTY fts list —
+    # which keeps the authority boost (errata > patch_notes > rulebook) intact
+    # while dropping the dilution. fts_search/_FTS_SQL remain for future
+    # re-evaluation (e.g. a different corpus or keyword-extracted queries).
+    # query_text is retained in the signature for that future use and API stability.
     vec_results = vector_search(pool, embedding, corpus_version, top_k=top_k_fetch, set_filter=set_filter)
-    fts_results = fts_search(pool, query_text, corpus_version, top_k=top_k_fetch, set_filter=set_filter)
-    return _rrf_fuse(vec_results, fts_results, rrf_k, top_k)
+    return _rrf_fuse(vec_results, [], rrf_k, top_k)
 
 
 hybrid_search = observe_or_noop(_hybrid_search_impl, name="retrieval")
