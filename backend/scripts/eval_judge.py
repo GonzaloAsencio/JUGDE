@@ -202,13 +202,16 @@ def _get_judge_config() -> dict | None:
 
 def _judge_openai_compat(prompt: str, config: dict) -> str:
     import openai
+
+    from app.rag.generation import _completion_with_retry
+
     client = openai.OpenAI(base_url=config["base_url"], api_key=config["api_key"])
-    response = client.chat.completions.create(
+    response = _completion_with_retry(lambda: client.chat.completions.create(
         model=config["model"],
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
         timeout=30.0,
-    )
+    ))
     return response.choices[0].message.content or ""
 
 

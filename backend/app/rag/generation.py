@@ -1,6 +1,7 @@
 import logging
 import re
-from typing import TYPE_CHECKING, Optional
+import time
+from typing import TYPE_CHECKING, Callable, Optional, TypeVar
 
 from app.rag.retrieval import Chunk
 
@@ -8,6 +9,48 @@ if TYPE_CHECKING:
     from google import genai
 
 logger = logging.getLogger(__name__)
+
+
+_T = TypeVar("_T")
+
+_RATE_LIMIT_MAX_RETRIES = 4
+_RATE_LIMIT_BASE_DELAY = 2.0
+
+
+def _is_rate_limit(exc: Exception) -> bool:
+    """True if *exc* is an HTTP 429 / rate-limit error from the LLM endpoint."""
+    try:
+        import openai
+        if isinstance(exc, openai.RateLimitError):
+            return True
+    except Exception:
+        pass
+    return getattr(exc, "status_code", None) == 429
+
+
+def _completion_with_retry(
+    call: Callable[[], _T],
+    *,
+    max_retries: int = _RATE_LIMIT_MAX_RETRIES,
+    base_delay: float = _RATE_LIMIT_BASE_DELAY,
+    sleep: Callable[[float], None] = time.sleep,
+) -> _T:
+    """Run an OpenAI-compat completion *call*, retrying on 429 with exponential
+    backoff (base_delay * 2**attempt). Non-rate-limit errors propagate
+    immediately; the last 429 is re-raised once retries are exhausted.
+
+    A single LLM endpoint serves HyDE + generation + judge, so transient
+    throttling must be absorbed here rather than corrupting eval results.
+    """
+    for attempt in range(max_retries + 1):
+        try:
+            return call()
+        except Exception as exc:
+            if not _is_rate_limit(exc) or attempt == max_retries:
+                raise
+            logger.warning("llm.rate_limited", extra={"attempt": attempt + 1})
+            sleep(base_delay * (2 ** attempt))
+    raise AssertionError("unreachable")  # loop either returns or raises
 
 
 class GenerationTimeout(Exception):
@@ -168,13 +211,13 @@ def _hyde_openai_compat(question: str, *, base_url: str, api_key: str, model: st
     try:
         import openai
         client = openai.OpenAI(base_url=base_url, api_key=api_key)
-        response = client.chat.completions.create(
+        response = _completion_with_retry(lambda: client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": _HYDE_PROMPT.format(question=question)}],
             temperature=0.0,
             max_tokens=160,
             timeout=5.0,
-        )
+        ))
         out = response.choices[0].message.content
         if out:
             return out.strip()
@@ -197,7 +240,7 @@ def _call_openai_compat_raw(
 
     client = openai.OpenAI(base_url=base_url, api_key=api_key)
     try:
-        response = client.chat.completions.create(
+        response = _completion_with_retry(lambda: client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": _SYSTEM_INSTRUCTION},
@@ -205,7 +248,7 @@ def _call_openai_compat_raw(
             ],
             temperature=temperature,
             timeout=timeout_s,
-        )
+        ))
         choices = response.choices
         if not choices:
             raise GenerationError("OpenAI-compat returned empty choices — check LLM_MODEL matches the loaded model name")
