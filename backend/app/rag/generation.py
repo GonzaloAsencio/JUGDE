@@ -148,6 +148,41 @@ def _rewrite_openai_compat(question: str, *, base_url: str, api_key: str, model:
     return question
 
 
+_HYDE_PROMPT = """\
+You answer rules questions about the Riftbound trading card game.
+Write a short, confident hypothetical answer (2-3 sentences) to the question
+below, using official rulebook terminology. It does not need to be perfectly
+correct — it will be used to retrieve the real rule by semantic similarity.
+Output only the answer.
+
+Question: {question}
+Answer:"""
+
+
+def _hyde_openai_compat(question: str, *, base_url: str, api_key: str, model: str) -> str:
+    """Generate a hypothetical answer (HyDE) for the retrieval HyDE arm.
+
+    Returns "" on any error or empty output so the pipeline cleanly degrades to
+    raw-only retrieval instead of paying for a second, identical arm.
+    """
+    try:
+        import openai
+        client = openai.OpenAI(base_url=base_url, api_key=api_key)
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": _HYDE_PROMPT.format(question=question)}],
+            temperature=0.0,
+            max_tokens=160,
+            timeout=5.0,
+        )
+        out = response.choices[0].message.content
+        if out:
+            return out.strip()
+    except Exception:
+        pass
+    return ""
+
+
 def _call_openai_compat_raw(
     question: str,
     chunks: list[Chunk],

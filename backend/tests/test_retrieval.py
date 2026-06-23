@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.rag.retrieval import Chunk, _rrf_fuse
+from app.rag.retrieval import Chunk, _rrf_fuse, fuse_results
 
 _RRF_K = 60
 
@@ -168,6 +168,53 @@ def test_rrf_authority_order_errata_patch_rulebook():
         top_k=10,
     )
     assert [c.id for c in result] == ["e", "p", "r"]
+
+
+# ---------------------------------------------------------------------------
+# fuse_results: public two-arm fusion for the raw + HyDE strategy (fuse_eq).
+#
+# This is the production surface of the experiment's winner: RRF-fuse two FULL
+# hybrid_search result lists (raw question arm + HyDE arm) with equal weight.
+# It must behave like _rrf_fuse but with honest "primary/secondary" semantics:
+# the primary (raw) arm wins ties so a question that already retrieves well is
+# never displaced by the HyDE arm (protects eval-010: stays rank 1).
+# ---------------------------------------------------------------------------
+
+def test_fuse_results_combines_both_arms():
+    result = fuse_results([_chunk("a")], [_chunk("b", 0.0)], rrf_k=_RRF_K, top_k=10)
+    assert {c.id for c in result} == {"a", "b"}
+
+
+def test_fuse_results_tie_break_favors_primary_arm():
+    # identical rank in each arm → tie; primary (raw) arm must win position
+    result = fuse_results([_chunk("p")], [_chunk("s", 0.0)], rrf_k=_RRF_K, top_k=10)
+    assert result[0].id == "p"
+
+
+def test_fuse_results_same_chunk_sums_score_and_keeps_primary_object():
+    # a chunk retrieved by both arms must dedup to one, summing scores, and keep
+    # the primary-side similarity (a real cosine), not the secondary one
+    result = fuse_results([_chunk("x", 0.95)], [_chunk("x", 0.40)], rrf_k=_RRF_K, top_k=10)
+    assert len(result) == 1
+    assert result[0].similarity == 0.95
+
+
+def test_fuse_results_empty_secondary_returns_primary_ordering():
+    result = fuse_results([_chunk("a"), _chunk("b", 0.5)], [], rrf_k=_RRF_K, top_k=10)
+    assert [c.id for c in result] == ["a", "b"]
+
+
+def test_fuse_results_truncates_to_top_k():
+    arm_a = [_chunk(str(i)) for i in range(5)]
+    assert len(fuse_results(arm_a, [], rrf_k=_RRF_K, top_k=3)) == 3
+
+
+def test_fuse_results_authority_boost_applies_across_arms():
+    # equal mirrored ranks → base scores equal; errata must still outrank rulebook
+    errata = _chunk("e", source_type="errata")
+    rulebook = _chunk("r", source_type="rulebook")
+    result = fuse_results([errata, rulebook], [rulebook, errata], rrf_k=_RRF_K, top_k=10)
+    assert result[0].id == "e"
 
 
 # ---------------------------------------------------------------------------
