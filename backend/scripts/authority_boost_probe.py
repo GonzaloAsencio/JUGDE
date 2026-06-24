@@ -11,6 +11,12 @@ errata>rulebook ordering benefit without burying rulebook gold. It fetches the
 vector slice ONCE per question and re-ranks locally per config (deterministic,
 no extra DB round trips, no LLM).
 
+SCOPE — this models the RAW retrieval arm only (single arm, vector vs empty FTS,
+one boost application). Production runs fuse_eq: a second HyDE arm is RRF-fused
+in and the boost applies again at that fusion. So these numbers are DIRECTIONAL
+(less boost → less rulebook demotion), not the exact production recall — confirm
+the production effect with a full-pipeline eval (scripts.eval).
+
 Usage (from backend/):
     python -m scripts.authority_boost_probe
 """
@@ -39,8 +45,11 @@ CONFIGS = {
 
 
 def rank_with_boost(vec_results: list[Chunk], boost: dict, rrf_k: int = RRF_K) -> list[Chunk]:
-    """Re-rank a vector result slice by RRF score scaled by the per-source boost
-    (the production fuse path with FTS dormant: vector vs empty)."""
+    """Re-rank a vector result slice by RRF score scaled by the per-source boost.
+
+    Mirrors a SINGLE retrieval arm of the production path (FTS dormant: vector vs
+    empty). It does not model the second HyDE arm of fuse_eq — see module docstring.
+    """
     scores: dict[str, float] = {}
     by_id: dict[str, Chunk] = {}
     for rank0, ch in enumerate(vec_results):
