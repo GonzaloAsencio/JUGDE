@@ -143,14 +143,18 @@ def _call_gemini(
 ) -> str:
     from google.genai import types
 
-    generation_config = types.GenerateContentConfig(temperature=temperature)
+    generation_config = types.GenerateContentConfig(
+        temperature=temperature,
+        # HttpOptions.timeout va en MILISEGUNDOS y vive dentro del config (no como
+        # kwarg de generate_content) en google-genai >=1.0.
+        http_options=types.HttpOptions(timeout=int(timeout_s * 1000)),
+    )
 
     try:
         response = client.models.generate_content(
             model=model,
             contents=prompt,
             config=generation_config,
-            http_options={"timeout": timeout_s},
         )
         return response.text
     except Exception as e:

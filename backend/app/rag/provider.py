@@ -42,7 +42,9 @@ class GeminiProvider(LLMProvider):
             self._client.models.generate_content(
                 model=self._model,
                 contents="ping",
-                http_options={"timeout": 5},
+                config=types.GenerateContentConfig(
+                    http_options=types.HttpOptions(timeout=5000),
+                ),
             )
             return None
         except Exception as e:
