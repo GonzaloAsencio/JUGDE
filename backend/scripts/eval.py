@@ -100,6 +100,15 @@ def stratified_subset(
     return [q for q in questions if q.get("id") in chosen_ids]
 
 
+def select_by_ids(questions: list[dict], ids) -> list[dict]:
+    """Filter to the questions whose id is in *ids*, preserving the original
+    order. Unknown ids are ignored. Used to run explicit disjoint batches so a
+    full clean eval can be assembled across several runs without exceeding the
+    LLM daily token budget in any single run."""
+    wanted = set(ids)
+    return [q for q in questions if q.get("id") in wanted]
+
+
 def _resolve_corpus_version(pool, settings: Settings) -> str:
     if settings.corpus_version and settings.corpus_version != "latest":
         return settings.corpus_version
@@ -249,6 +258,11 @@ def _parse_args(argv=None) -> argparse.Namespace:
         "--seed", type=int, default=42,
         help="Seed for the stratified subset pick (reproducible runs). Default: 42.",
     )
+    p.add_argument(
+        "--ids", type=str, default=None,
+        help="Comma-separated question ids to run (explicit disjoint batch). "
+             "Overrides --limit. Lets you assemble a clean full eval across runs.",
+    )
     return p.parse_args(argv)
 
 
@@ -259,9 +273,15 @@ def main() -> None:
     questions = _load_eval_set()
     print(f"  {len(questions)} questions loaded.")
 
-    if args.limit is not None and args.limit < len(questions):
+    from collections import Counter
+    if args.ids:
+        ids = [s.strip() for s in args.ids.split(",") if s.strip()]
+        questions = select_by_ids(questions, ids)
+        mix = dict(Counter(q.get("difficulty", "unknown") for q in questions))
+        print(f"  Explicit ids: {len(questions)} questions, difficulty mix {mix}")
+        print(f"  ids: {', '.join(q.get('id', '?') for q in questions)}")
+    elif args.limit is not None and args.limit < len(questions):
         questions = stratified_subset(questions, args.limit, seed=args.seed)
-        from collections import Counter
         mix = dict(Counter(q.get("difficulty", "unknown") for q in questions))
         print(f"  Stratified subset: {len(questions)} questions (seed={args.seed}), difficulty mix {mix}")
         print(f"  ids: {', '.join(q.get('id', '?') for q in questions)}")

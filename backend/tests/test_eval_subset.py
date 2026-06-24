@@ -6,7 +6,7 @@ deterministic (reproducible runs) and preserve the proportion of each stratum.
 """
 from collections import Counter
 
-from scripts.eval import stratified_subset
+from scripts.eval import select_by_ids, stratified_subset
 
 
 def _q(id_, difficulty):
@@ -68,3 +68,24 @@ def test_every_stratum_represented_when_room():
     qs = _dataset()
     counts = Counter(q["difficulty"] for q in stratified_subset(qs, 6))
     assert set(counts) == {"a", "b", "c"}
+
+
+# ---------------------------------------------------------------------------
+# select_by_ids — explicit disjoint batches
+# ---------------------------------------------------------------------------
+
+def test_select_by_ids_filters_and_preserves_order():
+    qs = _dataset()
+    out = select_by_ids(qs, ["eval-005", "eval-001", "eval-008"])
+    # original order preserved, not the order given
+    assert [q["id"] for q in out] == ["eval-001", "eval-005", "eval-008"]
+
+
+def test_select_by_ids_ignores_unknown_ids():
+    qs = _dataset()
+    out = select_by_ids(qs, ["eval-099", "eval-003", "nope"])
+    assert [q["id"] for q in out] == ["eval-003"]
+
+
+def test_select_by_ids_empty_returns_empty():
+    assert select_by_ids(_dataset(), []) == []
