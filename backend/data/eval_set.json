@@ -1,7 +1,7 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "created": "2026-05-14",
-  "updated": "2026-06-02",
+  "updated": "2026-06-23",
   "description": "Eval set for Riftbound Judge AI RAG pipeline. Curated questions with canonical answers derived from the official rulebook, errata, and community rulings.",
   "questions": [
     {
@@ -183,6 +183,186 @@
       "rule_reference": null,
       "tags": ["temporary", "angel-guardian", "triggered-ability", "beginning-phase", "ordering", "specific-card"],
       "difficulty": "hard"
+    },
+    {
+      "id": "eval-021",
+      "question": "Can Brambleback, when he has conquered a battlefield and is mighty with an equipment, tap 2 runes to draw 2 cards at Sunken Temple?",
+      "canonical_answer": "Yes. While a battlefield is controlled, its controller controls its abilities (CR 187.6.a). Brambleback doubles your conquer effects. Sunken Temple is your conquer effect because you now control the battlefield, so it triggers twice provided you pay the appropriate cost and Brambleback was mighty when conquering.",
+      "source": "ruling",
+      "rule_reference": "187.6.a",
+      "tags": ["brambleback", "sunken-temple", "conquer", "battlefield-ability", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-022",
+      "question": "If my opponent has Fiora Peerless on the battlefield and I attack with a unit, then react with an Ambush unit during the showdown, does Fiora's trigger still resolve?",
+      "canonical_answer": "Yes. If you react with an Ambush unit during the showdown, you are doing so in reaction to Fiora's trigger, which will already be on the chain and will resolve. To prevent Fiora's trigger, you would need to Ambush in response to a movement trigger that opens before the combat begins, if your unit had one.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["fiora", "ambush", "triggered-ability", "chain", "combat", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-023",
+      "question": "If I attack a battlefield controlled by Fiora Peerless with Master Yi Legend, what is Fiora's final might?",
+      "canonical_answer": "Fiora's final might is 10. Master Yi Legend's passive is a continuous effect: the moment Fiora defends alone she gets +2 might instantly, making her 5 might, which is then doubled to 10 by her own ability. If at any point during combat a reaction unit is played alongside her, she would lose the +2 from Yi's passive.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["fiora", "master-yi", "passive", "continuous-effect", "might", "combat", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-024",
+      "question": "If I move an Irresistible Faefolk and a Vi into an empty battlefield and pull an enemy unit in, does Vi get her attack trigger to stun?",
+      "canonical_answer": "Yes. Vi still gets the attack trigger. Units moving to a battlefield apply Contested status if that battlefield is not already contested and the unit's controller does not already control it (CR 187.3.a.1). All units get their Attack or Defend triggers the first time they gain Attacker or Defender designations each combat. Note that if Vi is removed in response to her trigger, the stun will not resolve.",
+      "source": "ruling",
+      "rule_reference": "187.3.a.1",
+      "tags": ["vi", "attack-trigger", "contested", "movement", "stun", "specific-card"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-025",
+      "question": "Can I activate Irelia Legend's Blade Dancer ability to ready a unit even if she is already readied, and still get value?",
+      "canonical_answer": "Yes, in one specific scenario. After winning combat with Irelia, you can activate Blade Dancer's conquer effect even if she is already ready, placing the ability on the chain. You can then chain Blade Dancer's conquer effect with another card such as En Garde, then activate Blade Dancer's exhaust ability to ready a unit and pay the recycle cost. Because everything is on the chain, the order resolves as: Blade Dancer conquer effect, then En Garde, then Blade Dancer exhaust-to-ready effect. This allows you to ready your unit and your Legend even though she was already ready when combat was won.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["irelia", "blade-dancer", "chain", "ready", "exhaust", "conquer", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-026",
+      "question": "If I play Marching Orders with Repeat, do both damage instances happen simultaneously or sequentially? Can I kill two enemy units of equal power to my unit?",
+      "canonical_answer": "The damage instances happen sequentially, but units only die from damage during the next cleanup after the spell fully resolves. This means both instances of damage are applied before any unit dies, so you can effectively remove two enemy units of equal power to your unit with a single Repeated Marching Orders.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["marching-orders", "repeat", "damage", "cleanup", "sequencing"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-027",
+      "question": "I have a Reflection Token of the Soaring Scout with Temporary. My opponent argues the 2 runes channeled by its Deathknell are ready because of the Awaken step. Is that correct?",
+      "canonical_answer": "No. The turn phases resolve in order: (A) Awaken — all runes and units ready; (B) Beginning — Temporary triggers fire and Deathknell goes on the chain; (C) Channel — new ready rune is channeled; (D) Draw. Since the Awaken step is fully completed before the Beginning step, the 2 runes channeled by the Reflection Token's Deathknell enter exhausted. The Awaken step has already passed by the time those runes are created.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["reflection-token", "soaring-scout", "temporary", "deathknell", "awaken", "beginning-phase", "runes", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-028",
+      "question": "If I have Consult the Past hidden and pay 1 Power to play it from facedown, does Jhin Legend's ability trigger?",
+      "canonical_answer": "No. Jhin's ability requires that you spend 4 or more Energy to play the spell. When playing Consult the Past from facedown, you spend 1 Power, not 4 Energy, so Jhin's condition is not met and his ability does not trigger.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["jhin", "consult-the-past", "hidden", "power", "energy", "triggered-ability", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-029",
+      "question": "How many banish zones does the game have? Can Jhin Legend recycle a spell that banished itself, like Time Warp?",
+      "canonical_answer": "Formally, there is one banishment zone. However, the game tracks what banished each card per CR 427.3, for purposes of cards like Jhin, Cursed Sarcophagus, and Zero Drive. Jhin Legend specifically requires that the four spells were banished by him, so spells banished by other effects do not count. Whether Jhin can banish a spell that banishes itself (such as Time Warp) is an unresolved rules debate pending future clarification.",
+      "source": "ruling",
+      "rule_reference": "427.3",
+      "tags": ["jhin", "time-warp", "banish", "zone", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-030",
+      "question": "My opponent defends a battlefield with a crab equipped with a Battlefield Sword and a hidden card. I attack with 2 sprites. He kills one sprite, I kill his crab. He reacts to the Deathknell trigger by revealing the hidden card and playing Guards!, which lets him play a Sand Soldier that uses the Battlefield Sword to kill my other sprite. Is this legal?",
+      "canonical_answer": "Yes, it is legal. You do not lose control of a battlefield while there is still a chain on the stack. When the Deathknell triggers, the opponent is still the controller of the battlefield, so hidden cards on that battlefield are not sent to the trash. He can legally react to the Deathknell trigger and play Guards! before the chain fully resolves.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["deathknell", "hidden", "chain", "battlefield-control", "guards", "sand-soldier", "reaction"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-031",
+      "question": "Does Stupefy also deal 1 damage to a unit if it is at Void Gate?",
+      "canonical_answer": "No. A spell must deal damage in order to deal the additional damage from Void Gate. Stupefy does not deal damage, so Void Gate's effect does not apply.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["stupefy", "void-gate", "damage", "battlefield-ability", "specific-card"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-032",
+      "question": "Can I use a Hidden Blade that is hidden at Battlefield A to target a unit at Battlefield B?",
+      "canonical_answer": "No. Hidden abilities that target units must be used at the battlefield where the card is hidden. The only current exception is Tideturner.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["hidden", "hidden-blade", "tideturner", "battlefield", "targeting", "specific-card"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-033",
+      "question": "Master Yi Legend says 'While a friendly unit defends alone, it gets +2 Might.' Is this a continuous effect? If Switcheroo resolves while it is active and the unit later stops defending alone, what happens?",
+      "canonical_answer": "Yes, it is a continuous effect that is constantly rechecked. Switcheroo takes a snapshot of current might values at the time it resolves, applying a static swap. If Yi's passive later becomes inactive (e.g. an extra defender enters, combat ends), the unit immediately loses the +2 might from Yi. The might of the unit that was swapped with does not change retroactively.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["master-yi", "continuous-effect", "switcheroo", "might", "passive", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-034",
+      "question": "Does Vex Apathetic's ability create a chain? Can you miss the trigger if you don't declare it every time your opponent plays a unit?",
+      "canonical_answer": "Yes. Vex's ability is a triggered ability and goes on the chain when it fires. Yes, you can miss the trigger — you must declare the trigger each time your opponent plays a unit for it to go on the chain. If you do not declare it when relevant, the trigger is missed.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["vex", "triggered-ability", "chain", "missed-trigger", "specific-card"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-035",
+      "question": "I am at a battlefield with Draven Audacious. I play a second Draven Audacious to the battlefield, then Charm a unit of less than 5 power there. If I win combat, do I score 1 point or 2 points?",
+      "canonical_answer": "You score 2 points — one per Draven Audacious that has not yet won combat at that battlefield.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["draven", "scoring", "charm", "combat", "specific-card"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-036",
+      "question": "Akshan is at 5 might holding Fortress. Frozen Fortress dealt 1 damage to him at the start of my turn. I then use Eclipse to give him -4 might. My opponent says he survives. Who is correct?",
+      "canonical_answer": "Akshan dies. He has 5 might, takes 1 damage from Frozen Fortress, then Eclipse gives him -4 might, reducing him to 1 might with 1 damage marked on him. A unit with damage equal to or greater than its might dies, so Akshan is dead.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["akshan", "fortress", "eclipse", "damage", "might", "death", "specific-card"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-037",
+      "question": "I play Bellows Breath with Repeat, costing 2 Energy and 2 Blue Power. My opponent wants to use Defy. Can they Defy the whole spell, one instance, or neither because of the Power cost?",
+      "canonical_answer": "Repeated spells add the repeated text to the card but are still treated as a single spell. Defy only looks at the printed cost of the card, not the additional Power paid for Repeat. Your opponent can Defy the spell normally — it counters the entire spell as a single object.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["bellows-breath", "repeat", "defy", "cost", "counter", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-038",
+      "question": "My opponent sacrifices Ruined Rex to Baited Hook and grabs Ash. Can I play Not So Fast to stop the Rex Deathknell before Ash prevents me from playing spells?",
+      "canonical_answer": "Yes. As soon as Rex is sacrificed, the Deathknell trigger goes on the chain. Then Ash enters and her trigger goes on the chain above it. You can respond to the Ash trigger with Not So Fast, targeting Rex's Deathknell ability on the chain before it resolves.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["ruined-rex", "baited-hook", "ash", "not-so-fast", "deathknell", "chain", "reaction", "specific-card"],
+      "difficulty": "hard"
+    },
+    {
+      "id": "eval-039",
+      "question": "If I attack, pass priority, and my opponent also passes priority, can I still cast spells afterward?",
+      "canonical_answer": "No. When both players pass priority in sequence, the showdown ends and neither player retains focus. No further actions can be played.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["priority", "focus", "showdown", "passing", "combat"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "eval-040",
+      "question": "A player held a battlefield with Kaisa. On their next turn, they flashed Kaisa back to base and moved her back to the same battlefield. Does her 'When I conquer' effect trigger?",
+      "canonical_answer": "No. The player already scored at that battlefield through holding, so they cannot conquer it again during the same turn. Kaisa's 'When I conquer' effect does not trigger.",
+      "source": "ruling",
+      "rule_reference": null,
+      "tags": ["kaisa", "conquer", "hold", "scoring", "flash", "specific-card"],
+      "difficulty": "medium"
     }
   ]
 }

@@ -10,6 +10,11 @@ class LLMProvider(ABC):
     def rewrite_query(self, question: str) -> str:
         return question
 
+    def hyde(self, question: str) -> str:
+        """Hypothetical answer for the HyDE retrieval arm. Default: none, so the
+        pipeline degrades to raw-only retrieval. Providers override to enable it."""
+        return ""
+
     def health_check(self) -> str | None:
         return None
 
@@ -37,7 +42,9 @@ class GeminiProvider(LLMProvider):
             self._client.models.generate_content(
                 model=self._model,
                 contents="ping",
-                http_options={"timeout": 5},
+                config=types.GenerateContentConfig(
+                    http_options=types.HttpOptions(timeout=5000),
+                ),
             )
             return None
         except Exception as e:
@@ -76,6 +83,15 @@ class OpenAICompatProvider(LLMProvider):
     def rewrite_query(self, question: str) -> str:
         from app.rag.generation import _rewrite_openai_compat
         return _rewrite_openai_compat(
+            question,
+            base_url=self._base_url,
+            api_key=self._api_key,
+            model=self._model,
+        )
+
+    def hyde(self, question: str) -> str:
+        from app.rag.generation import _hyde_openai_compat
+        return _hyde_openai_compat(
             question,
             base_url=self._base_url,
             api_key=self._api_key,

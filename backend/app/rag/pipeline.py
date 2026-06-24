@@ -9,7 +9,7 @@ from app.observability import get_logger
 from app.rag.embedder import Embedder
 from app.rag.generation import post_gen_validate
 from app.rag.provider import LLMProvider
-from app.rag.retrieval import hybrid_search, tagged_lookup
+from app.rag.retrieval import fuse_results, hybrid_search, tagged_lookup
 from app.rag.rules import extract_rule_codes
 from app.rag.schemas import Citation, QueryResponse
 
@@ -100,19 +100,33 @@ async def answer_question(
     mention_tags = [m.lower() for m in (card_mentions or [])]
     tags = list(dict.fromkeys(explicit_tags + mention_tags + auto_tags))  # dedup, explicit first, then mentions, then auto
 
-    retrieval_query = provider.rewrite_query(clean_question or question)
-    embedding = embedder.encode(retrieval_query)
+    base_question = clean_question or question
 
     tagged_chunks: list = []
     if tags:
         tagged_chunks = tagged_lookup(db_pool, tags, corpus_version)
 
+    # Retrieval: fuse_eq strategy (offline experiment winner, recall@5 41%->59%).
+    # Arm A embeds the RAW question; arm B embeds a HyDE passage when the provider
+    # supplies one, and the two hybrid_search lists are RRF-fused. Without a HyDE
+    # passage we run arm A alone, so providers that don't implement HyDE keep
+    # their current raw-only behaviour. The earlier rewrite_query path is dropped
+    # here on purpose: the experiment never measured it (pending: test as a 4th arm).
     chunks = hybrid_search(
-        db_pool, embedding, clean_question or question, corpus_version,
+        db_pool, embedder.encode(base_question), base_question, corpus_version,
         top_k=settings.top_k,
         top_k_fetch=settings.top_k_fetch,
         rrf_k=settings.rrf_k,
     )
+    hyde_text = provider.hyde(base_question)
+    if hyde_text:
+        hyde_chunks = hybrid_search(
+            db_pool, embedder.encode(hyde_text), hyde_text, corpus_version,
+            top_k=settings.top_k,
+            top_k_fetch=settings.top_k_fetch,
+            rrf_k=settings.rrf_k,
+        )
+        chunks = fuse_results(chunks, hyde_chunks, rrf_k=settings.rrf_k, top_k=settings.top_k)
 
     # Confidence reflects the strength of REAL semantic retrieval: the best cosine
     # similarity among the vector-search results. Captured BEFORE tagged chunks are

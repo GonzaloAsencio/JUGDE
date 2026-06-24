@@ -77,15 +77,16 @@ def test_fts_search_with_set_filter_adds_clause_and_includes_core(monkeypatch):
 
 # --- hybrid_search propaga el filtro --------------------------------------
 
-def test_hybrid_search_forwards_set_filter(monkeypatch):
-    captured = {}
+def test_hybrid_search_forwards_set_filter_to_vector(monkeypatch):
+    # FTS is dormant, so the filter only needs to reach the vector arm.
+    captured = {"fts_called": False}
 
     def fake_vector(pool, emb, ver, top_k=5, set_filter=None):
         captured["vector"] = set_filter
         return []
 
     def fake_fts(pool, q, ver, top_k=5, set_filter=None):
-        captured["fts"] = set_filter
+        captured["fts_called"] = True
         return []
 
     monkeypatch.setattr("app.rag.retrieval.vector_search", fake_vector)
@@ -95,4 +96,4 @@ def test_hybrid_search_forwards_set_filter(monkeypatch):
     hybrid_search(MagicMock(), [0.1], "q", "v1", top_k=5, set_filter="unleashed")
 
     assert captured["vector"] == "unleashed"
-    assert captured["fts"] == "unleashed"
+    assert captured["fts_called"] is False, "FTS must not be queried while dormant"

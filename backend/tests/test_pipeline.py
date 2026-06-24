@@ -181,6 +181,124 @@ async def test_pipeline_propagates_generation_timeout():
 
 
 # ---------------------------------------------------------------------------
+# Query transform: fuse_eq (raw + HyDE). Production winner from the offline
+# experiment (recall@5 41%->59%). Arm A embeds the RAW question; arm B embeds a
+# HyDE passage; the two hybrid_search result lists are RRF-fused. When the
+# provider yields no HyDE (base providers), the pipeline degrades to raw-only.
+# ---------------------------------------------------------------------------
+
+from tests.conftest import FakeLLMProvider
+
+
+class _HydeProvider(FakeLLMProvider):
+    """Provider that supplies a HyDE passage, enabling the two-arm fusion path."""
+    def hyde(self, question: str) -> str:
+        return "A hypothetical confident answer using official terminology."
+
+
+async def test_pipeline_fuses_raw_and_hyde_when_provider_supplies_hyde():
+    """When provider.hyde() returns text, the pipeline retrieves TWICE (raw + HyDE)
+    and fuses both arms into the citations."""
+    from tests.conftest import FakeEmbedder
+
+    raw_chunk = _make_chunk(section="RAW")
+    hyde_chunk = _make_chunk(section="HYDE")
+    object.__setattr__(raw_chunk, "id", "raw_id")
+    object.__setattr__(hyde_chunk, "id", "hyde_id")
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [raw_chunk] if len(calls) == 1 else [hyde_chunk]
+
+    with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                result = await answer_question(
+                    "How many cards are in a starting deck?",
+                    FakeEmbedder(), MagicMock(), _HydeProvider(), _fake_settings(),
+                )
+
+    assert len(calls) == 2, "expected one retrieval per arm (raw + HyDE)"
+    sections = {c.section for c in result.citations}
+    assert sections == {"RAW", "HYDE"}, "both arms must contribute to the fused result"
+
+
+async def test_pipeline_arm_a_embeds_raw_question_not_rewrite():
+    """Arm A must retrieve on the RAW question text — Option A drops rewrite_query
+    from the embedding path."""
+    from tests.conftest import FakeEmbedder
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [_make_chunk()]
+
+    with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                await answer_question(
+                    "What is a unit?",
+                    FakeEmbedder(), MagicMock(), _HydeProvider(), _fake_settings(),
+                )
+
+    assert calls[0] == "What is a unit?", "arm A must use the raw question verbatim"
+
+
+async def test_pipeline_degrades_to_raw_only_when_no_hyde():
+    """Base providers return no HyDE → exactly one retrieval, no fusion."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [_make_chunk()]
+
+    with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                result = await answer_question(
+                    "How does it work?",
+                    FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                )
+
+    assert len(calls) == 1, "no HyDE → single raw retrieval, no second arm"
+    assert result.citations, "raw-only path must still produce citations"
+
+
+def test_base_provider_hyde_returns_empty():
+    """The base LLMProvider yields no HyDE so it degrades to raw-only retrieval."""
+    from app.rag.provider import LLMProvider
+
+    class _Bare(LLMProvider):
+        def generate(self, question, chunks):
+            return ""
+
+    assert _Bare().hyde("anything") == ""
+
+
+def test_hyde_openai_compat_returns_empty_on_error(monkeypatch):
+    """A failed HyDE generation must return '' so the pipeline cleanly degrades to
+    raw-only instead of wasting a second identical retrieval."""
+    import openai
+
+    from app.rag.generation import _hyde_openai_compat
+
+    class _Boom:
+        def __init__(self, *a, **k):
+            raise RuntimeError("no network")
+
+    monkeypatch.setattr(openai, "OpenAI", _Boom)
+    assert _hyde_openai_compat("q?", base_url="x", api_key="y", model="m") == ""
+
+
+# ---------------------------------------------------------------------------
 # _extract_tags tests
 # ---------------------------------------------------------------------------
 

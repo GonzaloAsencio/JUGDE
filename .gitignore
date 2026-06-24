@@ -31,6 +31,9 @@ backend/data/eval_results_*.json
 !backend/data/eval_set.json
 !backend/data/eval_set_metadata.json
 
+# Corpus backups (CSV dumps de corpus_chunks, local only)
+backend/backups/
+
 # Node
 node_modules/
 .next/

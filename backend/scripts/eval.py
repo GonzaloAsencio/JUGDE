@@ -6,11 +6,14 @@ Usage (from backend/):
 Requires: DB with corpus ingestado, GEMINI_API_KEY (or JUDGE_* + LLM_* env vars).
 Redis cache is intentionally NOT initialised — every question hits generation fresh.
 """
+import argparse
 import asyncio
 import json
 import os
+import random
 import sys
 import time
+from collections import OrderedDict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,6 +43,61 @@ _VERDICT_ICON = {"correct": "OK", "partial": "~~", "wrong": "NO", "error": "ER"}
 def _load_eval_set() -> list[dict]:
     data = json.loads(_EVAL_SET.read_text(encoding="utf-8"))
     return data["questions"] if isinstance(data, dict) and "questions" in data else data
+
+
+def stratified_subset(
+    questions: list[dict], limit: int | None, *, key: str = "difficulty", seed: int = 42
+) -> list[dict]:
+    """Deterministic stratified sample of *limit* questions.
+
+    Preserves the proportion of each *key* stratum via largest-remainder
+    allocation, so a small run stays representative across difficulty (or
+    whatever *key* is) instead of biasing toward whatever comes first. Within a
+    stratum the pick is a seeded sample, so runs are reproducible. The result
+    keeps the original question order.
+
+    Returns the full list unchanged when *limit* is None or >= the set size.
+    Why this exists: the LLM free tier can't absorb all 40 questions per run
+    without exhausting quota mid-eval and contaminating the results.
+    """
+    if limit is None or limit >= len(questions):
+        return list(questions)
+    if limit <= 0:
+        return []
+
+    groups: "OrderedDict[object, list[dict]]" = OrderedDict()
+    for q in questions:
+        groups.setdefault(q.get(key), []).append(q)
+
+    total = len(questions)
+    raw = {k: limit * len(v) / total for k, v in groups.items()}
+    alloc = {k: int(v) for k, v in raw.items()}
+
+    # Distribute the rounding remainder to the largest fractional parts; tie-break
+    # by str(key) so the allocation is fully deterministic.
+    remainder = limit - sum(alloc.values())
+    for k in sorted(groups, key=lambda k: (-(raw[k] - alloc[k]), str(k)))[:remainder]:
+        alloc[k] += 1
+
+    chosen_ids: set = set()
+    deficit = 0
+    for k, members in groups.items():
+        n = min(alloc[k], len(members))
+        deficit += alloc[k] - n
+        ordered = sorted(members, key=lambda q: str(q.get("id", "")))
+        rnd = random.Random(f"{seed}:{k}")
+        picked = ordered if n >= len(ordered) else rnd.sample(ordered, n)
+        chosen_ids.update(q.get("id") for q in picked)
+
+    # If capping a stratum left us short, top up from any leftover, deterministically.
+    if deficit:
+        leftovers = sorted(
+            (q for q in questions if q.get("id") not in chosen_ids),
+            key=lambda q: str(q.get("id", "")),
+        )
+        chosen_ids.update(q.get("id") for q in leftovers[:deficit])
+
+    return [q for q in questions if q.get("id") in chosen_ids]
 
 
 def _resolve_corpus_version(pool, settings: Settings) -> str:
@@ -180,10 +238,33 @@ def _save_results(results: list[dict]) -> Path:
     return out_path
 
 
+def _parse_args(argv=None) -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Eval harness for the Judge RAG pipeline.")
+    p.add_argument(
+        "--limit", type=int, default=None,
+        help="Run a stratified subset of N questions (preserves difficulty mix). "
+             "Default: all questions. Use when the LLM free tier can't absorb the full set.",
+    )
+    p.add_argument(
+        "--seed", type=int, default=42,
+        help="Seed for the stratified subset pick (reproducible runs). Default: 42.",
+    )
+    return p.parse_args(argv)
+
+
 def main() -> None:
+    args = _parse_args()
+
     print("Loading eval set...")
     questions = _load_eval_set()
     print(f"  {len(questions)} questions loaded.")
+
+    if args.limit is not None and args.limit < len(questions):
+        questions = stratified_subset(questions, args.limit, seed=args.seed)
+        from collections import Counter
+        mix = dict(Counter(q.get("difficulty", "unknown") for q in questions))
+        print(f"  Stratified subset: {len(questions)} questions (seed={args.seed}), difficulty mix {mix}")
+        print(f"  ids: {', '.join(q.get('id', '?') for q in questions)}")
 
     print("Loading settings...")
     settings = Settings()

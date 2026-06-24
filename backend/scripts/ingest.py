@@ -26,6 +26,10 @@ CORPUS_VERSION = os.getenv("CORPUS_VERSION", "v1.0.0")
 DATABASE_URL = os.getenv("DATABASE_URL")
 EMBED_MODEL = "BAAI/bge-m3"
 CHUNK_SIZE = 512   # tokens aproximados
+# Budget MÁS CHICO para el rulebook: con 512 el chunker greedy metía 11-13 reglas
+# por chunk y el embedding promedio quedaba difuso, dejando reglas puntuales sin
+# retrievear. Un budget menor agrupa 1-3 reglas → embeddings enfocados.
+RULEBOOK_CHUNK_SIZE = 128
 CHUNK_OVERLAP = 50
 _RULE_SPLIT = re.compile(r"(?=\b\d{3,}\.\s)")
 
@@ -83,9 +87,10 @@ def _strip_header_line(content: str) -> str:
 
 
 def _chunk_rulebook_section(content: str, header: str, parent: str, source_document: str,
-                           metadata: dict | None) -> list[dict]:
+                           metadata: dict | None, budget: int = RULEBOOK_CHUNK_SIZE) -> list[dict]:
     """Chunking fino para el rulebook: agrupa reglas NNN. sin partirlas, con el header
-    de la sección prependido a cada chunk para preservar contexto."""
+    de la sección prependido a cada chunk para preservar contexto. *budget* es el
+    presupuesto de tokens por chunk (RULEBOOK_CHUNK_SIZE, más chico que el global)."""
     body = _strip_header_line(content)
     raw_units = [u.strip() for u in _RULE_UNIT_SPLIT.split(body) if u.strip()]
 
@@ -93,7 +98,7 @@ def _chunk_rulebook_section(content: str, header: str, parent: str, source_docum
     # sola línea sin saltos — se sub-divide por límites de regla in-line (NNN. ).
     units: list[str] = []
     for u in raw_units:
-        if _approx_tokens(u) > CHUNK_SIZE:
+        if _approx_tokens(u) > budget:
             units.extend(p.strip() for p in _RULE_SPLIT.split(u) if p.strip())
         else:
             units.append(u)
@@ -114,7 +119,7 @@ def _chunk_rulebook_section(content: str, header: str, parent: str, source_docum
 
     for unit in units:
         # Mide el tamaño REAL del texto candidato (incluye header + separadores).
-        if current and _approx_tokens(render(current + [unit])) > CHUNK_SIZE:
+        if current and _approx_tokens(render(current + [unit])) > budget:
             flush()
         current.append(unit)
 
@@ -133,12 +138,15 @@ def _chunk_section(section: dict, source_type: str, source_document: str,
     if not _strip_header_line(content):
         return []
 
-    if _approx_tokens(content) <= CHUNK_SIZE:
-        return [_make_chunk(content, header, parent, source_type, source_document, metadata)]
-
-    # Rulebook con reglas numeradas → chunking fino por regla (sin partir reglas).
+    # Rulebook con reglas numeradas → chunking fino por regla (sin partir reglas),
+    # SIEMPRE — incluso si la sección entera entra en CHUNK_SIZE. Empacar varias
+    # reglas en un chunk (aunque "quepan") difumina el embedding y entierra reglas
+    # puntuales. El budget chico del rulebook agrupa 1-3 reglas por chunk.
     if source_type == "rulebook" and _RULE_LINE_START.search(_strip_header_line(content)):
         return _chunk_rulebook_section(content, header, parent, source_document, metadata)
+
+    if _approx_tokens(content) <= CHUNK_SIZE:
+        return [_make_chunk(content, header, parent, source_type, source_document, metadata)]
 
     # Dividir en párrafos y agrupar respetando el tamaño
     paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]

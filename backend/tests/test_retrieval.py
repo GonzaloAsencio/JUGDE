@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.rag.retrieval import Chunk, _rrf_fuse
+from app.rag.retrieval import Chunk, _rrf_fuse, fuse_results
 
 _RRF_K = 60
 
@@ -171,6 +171,53 @@ def test_rrf_authority_order_errata_patch_rulebook():
 
 
 # ---------------------------------------------------------------------------
+# fuse_results: public two-arm fusion for the raw + HyDE strategy (fuse_eq).
+#
+# This is the production surface of the experiment's winner: RRF-fuse two FULL
+# hybrid_search result lists (raw question arm + HyDE arm) with equal weight.
+# It must behave like _rrf_fuse but with honest "primary/secondary" semantics:
+# the primary (raw) arm wins ties so a question that already retrieves well is
+# never displaced by the HyDE arm (protects eval-010: stays rank 1).
+# ---------------------------------------------------------------------------
+
+def test_fuse_results_combines_both_arms():
+    result = fuse_results([_chunk("a")], [_chunk("b", 0.0)], rrf_k=_RRF_K, top_k=10)
+    assert {c.id for c in result} == {"a", "b"}
+
+
+def test_fuse_results_tie_break_favors_primary_arm():
+    # identical rank in each arm → tie; primary (raw) arm must win position
+    result = fuse_results([_chunk("p")], [_chunk("s", 0.0)], rrf_k=_RRF_K, top_k=10)
+    assert result[0].id == "p"
+
+
+def test_fuse_results_same_chunk_sums_score_and_keeps_primary_object():
+    # a chunk retrieved by both arms must dedup to one, summing scores, and keep
+    # the primary-side similarity (a real cosine), not the secondary one
+    result = fuse_results([_chunk("x", 0.95)], [_chunk("x", 0.40)], rrf_k=_RRF_K, top_k=10)
+    assert len(result) == 1
+    assert result[0].similarity == 0.95
+
+
+def test_fuse_results_empty_secondary_returns_primary_ordering():
+    result = fuse_results([_chunk("a"), _chunk("b", 0.5)], [], rrf_k=_RRF_K, top_k=10)
+    assert [c.id for c in result] == ["a", "b"]
+
+
+def test_fuse_results_truncates_to_top_k():
+    arm_a = [_chunk(str(i)) for i in range(5)]
+    assert len(fuse_results(arm_a, [], rrf_k=_RRF_K, top_k=3)) == 3
+
+
+def test_fuse_results_authority_boost_applies_across_arms():
+    # equal mirrored ranks → base scores equal; errata must still outrank rulebook
+    errata = _chunk("e", source_type="errata")
+    rulebook = _chunk("r", source_type="rulebook")
+    result = fuse_results([errata, rulebook], [rulebook, errata], rrf_k=_RRF_K, top_k=10)
+    assert result[0].id == "e"
+
+
+# ---------------------------------------------------------------------------
 # fts_search tests (monkeypatch get_conn)
 # ---------------------------------------------------------------------------
 
@@ -216,7 +263,13 @@ def test_fts_search_uses_simple_dictionary():
 # hybrid_search tests (monkeypatch vector_search and fts_search)
 # ---------------------------------------------------------------------------
 
-def test_hybrid_search_calls_both_sides_and_fuses(monkeypatch):
+# NOTE: the FTS arm is DORMANT. A deterministic probe measured vector-only @5
+# recall (47%) ABOVE vector+FTS (41%): plainto_tsquery over a full NL question
+# rarely matches rule text and only dilutes the RRF. hybrid_search therefore
+# returns vector results (with authority boost preserved) and does NOT query or
+# fuse FTS. fts_search/_FTS_SQL stay for future re-evaluation.
+
+def test_hybrid_search_returns_vector_only_fts_dormant(monkeypatch):
     chunk_v, chunk_f = _chunk("v1"), _chunk("f1", 0.0)
     monkeypatch.setattr("app.rag.retrieval.vector_search", lambda *a, **kw: [chunk_v])
     monkeypatch.setattr("app.rag.retrieval.fts_search", lambda *a, **kw: [chunk_f])
@@ -225,10 +278,11 @@ def test_hybrid_search_calls_both_sides_and_fuses(monkeypatch):
     result = hybrid_search(MagicMock(), [], "test", "v1", top_k=5)
 
     ids = {c.id for c in result}
-    assert "v1" in ids and "f1" in ids
+    assert "v1" in ids
+    assert "f1" not in ids, "fts-only chunks must not appear while FTS is dormant"
 
 
-def test_hybrid_search_passes_top_k_fetch_to_each_side(monkeypatch):
+def test_hybrid_search_fetches_vector_at_top_k_fetch_and_skips_fts(monkeypatch):
     vec_calls, fts_calls = [], []
 
     def fake_vector(pool, emb, corpus_version, top_k, set_filter=None):
@@ -245,7 +299,22 @@ def test_hybrid_search_passes_top_k_fetch_to_each_side(monkeypatch):
     from app.rag.retrieval import hybrid_search
     hybrid_search(MagicMock(), [], "q", "v1", top_k=5, top_k_fetch=20)
 
-    assert vec_calls == [20] and fts_calls == [20]
+    assert vec_calls == [20]
+    assert fts_calls == [], "FTS must not be queried while dormant"
+
+
+def test_hybrid_search_preserves_authority_boost(monkeypatch):
+    # Dropping FTS must NOT drop the authority chain: errata still supersedes the
+    # base rule even when vector returns it at a lower raw rank.
+    errata = _chunk("e", source_type="errata")
+    rulebook = _chunk("r", source_type="rulebook")
+    monkeypatch.setattr("app.rag.retrieval.vector_search", lambda *a, **kw: [rulebook, errata])
+    monkeypatch.setattr("app.rag.retrieval.fts_search", lambda *a, **kw: [])
+
+    from app.rag.retrieval import hybrid_search
+    result = hybrid_search(MagicMock(), [], "q", "v1", top_k=5)
+
+    assert result[0].id == "e", "errata must outrank the base rule (authority preserved)"
 
 
 def test_hybrid_search_returns_top_k_only(monkeypatch):
@@ -268,15 +337,15 @@ def test_hybrid_search_fts_empty_returns_vector_ordering(monkeypatch):
     assert result[0].id == "a" and result[1].id == "b"
 
 
-def test_hybrid_search_vector_empty_returns_fts_ordering(monkeypatch):
+def test_hybrid_search_vector_empty_returns_empty_fts_dormant(monkeypatch):
+    # With FTS dormant, an empty vector result yields no chunks — FTS does not
+    # backfill (it used to via the fusion, but that path is gone).
     chunk_a, chunk_b = _chunk("a", 0.0), _chunk("b", 0.0)
     monkeypatch.setattr("app.rag.retrieval.vector_search", lambda *a, **kw: [])
     monkeypatch.setattr("app.rag.retrieval.fts_search", lambda *a, **kw: [chunk_a, chunk_b])
 
     from app.rag.retrieval import hybrid_search
-    result = hybrid_search(MagicMock(), [], "q", "v1", top_k=5)
-
-    assert result[0].id == "a" and result[1].id == "b"
+    assert hybrid_search(MagicMock(), [], "q", "v1", top_k=5) == []
 
 
 def test_hybrid_search_both_empty_returns_empty(monkeypatch):
