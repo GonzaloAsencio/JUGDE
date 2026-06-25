@@ -144,6 +144,35 @@ async def _pipeline_run(question: str, embedder, pool, provider, settings):
         }
 
 
+def _build_question_result(
+    q: dict, idx: int, pipeline_result: dict,
+    *, has_ref: bool, retrieval_hit: bool, judgment: dict,
+) -> dict:
+    """Shape one question's eval record. Pure (no I/O) so it is unit-testable.
+
+    Persists the FULL answer and canonical_answer — not just a preview — so a
+    later run can re-judge saved answers with a different judge WITHOUT
+    regenerating. Regeneration doubles the LLM calls per question and is what
+    exhausts the free-tier quota mid-experiment.
+    """
+    return {
+        "id": q.get("id", f"q{idx}"),
+        "question": q["question"],
+        "difficulty": q.get("difficulty", "unknown"),
+        "source": q.get("source", "unknown"),
+        "rule_reference": q.get("rule_reference"),
+        "has_ref": has_ref,
+        "verdict": judgment["verdict"],
+        "justification": judgment["justification"],
+        "retrieval_hit": retrieval_hit,
+        "confidence": pipeline_result["confidence"],
+        "latency_ms": pipeline_result["latency_ms"],
+        "canonical_answer": q.get("canonical_answer", ""),
+        "answer": pipeline_result["answer"],
+        "answer_preview": pipeline_result["answer"][:300],
+    }
+
+
 async def run_eval(questions: list[dict], embedder, pool, provider, settings) -> list[dict]:
     results = []
     total = len(questions)
@@ -182,22 +211,64 @@ async def run_eval(questions: list[dict], embedder, pool, provider, settings) ->
         if i < total:
             await asyncio.sleep(2)
 
-        results.append({
-            "id": q.get("id", f"q{i}"),
-            "question": q["question"],
-            "difficulty": q.get("difficulty", "unknown"),
-            "source": q.get("source", "unknown"),
-            "rule_reference": q.get("rule_reference"),
-            "has_ref": has_ref,
-            "verdict": verdict,
-            "justification": judgment["justification"],
-            "retrieval_hit": retrieval_hit,
-            "confidence": pipeline_result["confidence"],
-            "latency_ms": pipeline_result["latency_ms"],
-            "answer_preview": pipeline_result["answer"][:300],
-        })
+        results.append(_build_question_result(
+            q, i, pipeline_result,
+            has_ref=has_ref, retrieval_hit=retrieval_hit, judgment=judgment,
+        ))
 
     return results
+
+
+def rejudge_results(saved: list[dict], *, judge=judge_answer) -> list[dict]:
+    """Re-score saved answers with the current judge, WITHOUT regenerating.
+
+    Reads back each persisted full answer + canonical_answer and re-runs only the
+    judge — no DB, embedder, or generation. Retrieval-derived fields (has_ref,
+    retrieval_hit) are deterministic and carried over unchanged. Records that
+    predate full-answer persistence (no 'answer'/'canonical_answer') are marked
+    verdict='error' since they cannot be faithfully re-judged.
+
+    Why this exists: swapping the judge (e.g. weak local vs strong cloud) used to
+    require a full re-run, doubling LLM calls and exhausting the free-tier quota.
+    """
+    out = []
+    total = len(saved)
+    for i, q in enumerate(saved, 1):
+        question = q.get("question", "")
+        label = question[:55] + ("..." if len(question) > 55 else "")
+        print(f"[{i:2}/{total}] {label}", end=" ", flush=True)
+
+        answer = q.get("answer")
+        canonical = q.get("canonical_answer")
+        if not answer or not canonical:
+            judgment = {
+                "verdict": "error",
+                "justification": "Cannot re-judge: saved result lacks full "
+                                 "answer/canonical_answer (re-run generation first)",
+            }
+        else:
+            judgment = judge(question, canonical, answer)
+
+        prev = q.get("verdict", "?")
+        rec = {**q, "verdict": judgment["verdict"], "justification": judgment["justification"]}
+        print(f"{_VERDICT_ICON.get(rec['verdict'], '?')}  (was {prev})")
+        out.append(rec)
+
+    return out
+
+
+def _judge_mode_label() -> str:
+    """Human label for which judge will run — mirrors eval_judge._get_judge_config:
+    JUDGE_PROVIDER=gemini > JUDGE_* > LLM_* > Gemini."""
+    if os.getenv("JUDGE_PROVIDER", "").lower() == "gemini":
+        return "gemini (forced via JUDGE_PROVIDER)"
+    if os.getenv("JUDGE_BASE_URL"):
+        return "openai_compat (JUDGE_*)"
+    if os.getenv("LLM_BASE_URL") and os.getenv("LLM_API_KEY") and os.getenv("LLM_MODEL"):
+        return "openai_compat (LLM_* fallback — shares quota with pipeline!)"
+    if os.getenv("GEMINI_API_KEY"):
+        return "gemini (GEMINI_API_KEY)"
+    return "NONE — judge will error (set JUDGE_*/LLM_*/GEMINI_API_KEY)"
 
 
 def _print_report(results: list[dict]) -> None:
@@ -263,11 +334,35 @@ def _parse_args(argv=None) -> argparse.Namespace:
         help="Comma-separated question ids to run (explicit disjoint batch). "
              "Overrides --limit. Lets you assemble a clean full eval across runs.",
     )
+    p.add_argument(
+        "--rejudge", type=str, default=None, metavar="RESULTS_JSON",
+        help="Re-score the saved answers in a previous eval_results_*.json with "
+             "the CURRENT judge (set via JUDGE_*/JUDGE_PROVIDER), WITHOUT "
+             "regenerating. No DB/embedder/generation. Needs a results file that "
+             "has full answers (produced by this harness version).",
+    )
     return p.parse_args(argv)
+
+
+def _load_results_file(path: str) -> list[dict]:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    return data["questions"] if isinstance(data, dict) and "questions" in data else data
 
 
 def main() -> None:
     args = _parse_args()
+
+    if args.rejudge:
+        print(f"Re-judging saved results: {args.rejudge}")
+        saved = _load_results_file(args.rejudge)
+        print(f"  {len(saved)} saved questions loaded.")
+        print(f"  Judge: {_judge_mode_label()}")
+        print("\nRe-judging (no generation — scoring the saved answers):\n")
+        results = rejudge_results(saved)
+        _print_report(results)
+        out_path = _save_results(results)
+        print(f"\nResults saved: {out_path}")
+        return
 
     print("Loading eval set...")
     questions = _load_eval_set()
@@ -309,19 +404,7 @@ def main() -> None:
     provider = create_provider(settings, llm_client)
     print(f"  Provider: {settings.llm_provider}")
 
-    # Mirror the real resolution order in eval_judge._get_judge_config:
-    # JUDGE_PROVIDER=gemini > JUDGE_* > LLM_* > Gemini.
-    if os.getenv("JUDGE_PROVIDER", "").lower() == "gemini":
-        judge_mode = "gemini (forced via JUDGE_PROVIDER)"
-    elif os.getenv("JUDGE_BASE_URL"):
-        judge_mode = "openai_compat (JUDGE_*)"
-    elif os.getenv("LLM_BASE_URL") and os.getenv("LLM_API_KEY") and os.getenv("LLM_MODEL"):
-        judge_mode = "openai_compat (LLM_* fallback — shares quota with pipeline!)"
-    elif os.getenv("GEMINI_API_KEY"):
-        judge_mode = "gemini (GEMINI_API_KEY)"
-    else:
-        judge_mode = "NONE — judge will error (set JUDGE_*/LLM_*/GEMINI_API_KEY)"
-    print(f"  Judge: {judge_mode}")
+    print(f"  Judge: {_judge_mode_label()}")
 
     print("\nRunning eval (no Redis cache — fresh generation per question):\n")
 
