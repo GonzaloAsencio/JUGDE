@@ -309,10 +309,18 @@ def main() -> None:
     provider = create_provider(settings, llm_client)
     print(f"  Provider: {settings.llm_provider}")
 
-    judge_mode = "openai_compat (JUDGE_*)" if os.getenv("JUDGE_BASE_URL") else (
-        "gemini (GEMINI_API_KEY)" if os.getenv("GEMINI_API_KEY") else
-        f"openai_compat (LLM_* fallback — shares quota with pipeline!)"
-    )
+    # Mirror the real resolution order in eval_judge._get_judge_config:
+    # JUDGE_PROVIDER=gemini > JUDGE_* > LLM_* > Gemini.
+    if os.getenv("JUDGE_PROVIDER", "").lower() == "gemini":
+        judge_mode = "gemini (forced via JUDGE_PROVIDER)"
+    elif os.getenv("JUDGE_BASE_URL"):
+        judge_mode = "openai_compat (JUDGE_*)"
+    elif os.getenv("LLM_BASE_URL") and os.getenv("LLM_API_KEY") and os.getenv("LLM_MODEL"):
+        judge_mode = "openai_compat (LLM_* fallback — shares quota with pipeline!)"
+    elif os.getenv("GEMINI_API_KEY"):
+        judge_mode = "gemini (GEMINI_API_KEY)"
+    else:
+        judge_mode = "NONE — judge will error (set JUDGE_*/LLM_*/GEMINI_API_KEY)"
     print(f"  Judge: {judge_mode}")
 
     print("\nRunning eval (no Redis cache — fresh generation per question):\n")
