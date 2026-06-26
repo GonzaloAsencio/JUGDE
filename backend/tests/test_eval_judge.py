@@ -207,6 +207,48 @@ def test_judge_timeout_s_judge_specific_overrides_gemini(monkeypatch):
     assert _judge_timeout_s() == 90.0
 
 
+def test_judge_timeout_s_non_numeric_falls_back_to_default(monkeypatch):
+    # A non-numeric value (e.g. "60s", "2m") used to raise ValueError INSIDE
+    # judge_answer's try/except, turning EVERY verdict into 'error' with the cause
+    # buried in each justification. It must fall back to the 30s default instead.
+    from scripts.eval_judge import _judge_timeout_s
+
+    monkeypatch.delenv("GEMINI_TIMEOUT_S", raising=False)
+    monkeypatch.setenv("JUDGE_TIMEOUT_S", "60s")
+    assert _judge_timeout_s() == 30.0
+
+
+def test_judge_timeout_s_zero_or_negative_falls_back_to_default(monkeypatch):
+    # JUDGE_TIMEOUT_S=0 parsed to 0.0 = immediate timeout (every call dies); a
+    # non-positive timeout is never what the operator meant — use the default.
+    from scripts.eval_judge import _judge_timeout_s
+
+    monkeypatch.delenv("GEMINI_TIMEOUT_S", raising=False)
+    monkeypatch.setenv("JUDGE_TIMEOUT_S", "0")
+    assert _judge_timeout_s() == 30.0
+    monkeypatch.setenv("JUDGE_TIMEOUT_S", "-5")
+    assert _judge_timeout_s() == 30.0
+
+
+def test_judge_gemini_uses_configurable_timeout(monkeypatch):
+    # The Gemini judge path (forced via JUDGE_PROVIDER=gemini) must honour the same
+    # JUDGE_TIMEOUT_S/GEMINI_TIMEOUT_S knob as the openai_compat path — it used to
+    # be hardcoded at 30s, so the forced-judge mode this harness supports ignored
+    # the override.
+    from scripts.eval_judge import _judge_gemini
+
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.delenv("GEMINI_TIMEOUT_S", raising=False)
+    monkeypatch.setenv("JUDGE_TIMEOUT_S", "150")
+
+    with (
+        patch("google.genai.Client"),
+        patch("app.rag.generation._call_gemini", return_value='{"verdict": "correct", "justification": "x"}') as mock_call,
+    ):
+        _judge_gemini("prompt")
+        assert mock_call.call_args.kwargs["timeout_s"] == 150.0
+
+
 # ---------------------------------------------------------------------------
 # match_rule_reference
 # ---------------------------------------------------------------------------

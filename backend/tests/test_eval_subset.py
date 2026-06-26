@@ -8,6 +8,9 @@ from collections import Counter
 
 from scripts.eval import (
     _build_question_result,
+    _judge_mode_label,
+    _load_questions,
+    _print_report,
     rejudge_results,
     select_by_ids,
     stratified_subset,
@@ -193,3 +196,81 @@ def test_rejudge_results_marks_error_when_answer_missing():
     assert out[0]["verdict"] == "error"
     assert "re-judge" in out[0]["justification"].lower()
     assert called == []  # judge must NOT be invoked without a full answer
+
+
+# ---------------------------------------------------------------------------
+# _print_report — must not crash on an empty result set
+# ---------------------------------------------------------------------------
+
+def test_print_report_empty_results_no_crash(capsys):
+    # Reachable in one keystroke: `--ids <typo>` selects 0 questions, or a
+    # --rejudge file with no questions. total=0 used to raise ZeroDivisionError on
+    # the "Correct rate" line (avg_conf/avg_latency were already guarded).
+    _print_report([])
+    out = capsys.readouterr().out
+    assert "Total questions : 0" in out
+
+
+# ---------------------------------------------------------------------------
+# _judge_mode_label — must reflect the judge actually resolved by _get_judge_config
+# ---------------------------------------------------------------------------
+
+def _clear_judge_env(monkeypatch):
+    for var in (
+        "JUDGE_PROVIDER", "JUDGE_BASE_URL", "JUDGE_API_KEY", "JUDGE_MODEL",
+        "LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL", "GEMINI_API_KEY",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
+def test_judge_mode_label_base_url_without_creds_is_not_openai_compat(monkeypatch):
+    # JUDGE_BASE_URL alone does NOT satisfy _get_judge_config (needs api_key+model
+    # too), so the judge actually runs via Gemini. The label used to lie and say
+    # "openai_compat (JUDGE_*)". It must follow the real resolution.
+    _clear_judge_env(monkeypatch)
+    monkeypatch.setenv("JUDGE_BASE_URL", "http://localhost:1234/v1")
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    assert _judge_mode_label() == "gemini (GEMINI_API_KEY)"
+
+
+def test_judge_mode_label_full_judge_vars_is_openai_compat(monkeypatch):
+    _clear_judge_env(monkeypatch)
+    monkeypatch.setenv("JUDGE_BASE_URL", "http://x")
+    monkeypatch.setenv("JUDGE_API_KEY", "k")
+    monkeypatch.setenv("JUDGE_MODEL", "m")
+    assert _judge_mode_label() == "openai_compat (JUDGE_*)"
+
+
+def test_judge_mode_label_llm_fallback_warns_shared_quota(monkeypatch):
+    _clear_judge_env(monkeypatch)
+    monkeypatch.setenv("LLM_BASE_URL", "http://x")
+    monkeypatch.setenv("LLM_API_KEY", "k")
+    monkeypatch.setenv("LLM_MODEL", "m")
+    assert "shares quota" in _judge_mode_label()
+
+
+def test_judge_mode_label_forced_gemini(monkeypatch):
+    _clear_judge_env(monkeypatch)
+    monkeypatch.setenv("LLM_BASE_URL", "http://x")
+    monkeypatch.setenv("LLM_API_KEY", "k")
+    monkeypatch.setenv("LLM_MODEL", "m")
+    monkeypatch.setenv("JUDGE_PROVIDER", "gemini")
+    assert "forced" in _judge_mode_label()
+
+
+# ---------------------------------------------------------------------------
+# _load_questions — single loader shared by eval-set and results-file paths
+# ---------------------------------------------------------------------------
+
+def test_load_questions_unwraps_dict(tmp_path):
+    import json
+    p = tmp_path / "wrapped.json"
+    p.write_text(json.dumps({"questions": [{"id": "a"}]}), encoding="utf-8")
+    assert _load_questions(p) == [{"id": "a"}]
+
+
+def test_load_questions_accepts_bare_list(tmp_path):
+    import json
+    p = tmp_path / "bare.json"
+    p.write_text(json.dumps([{"id": "b"}]), encoding="utf-8")
+    assert _load_questions(p) == [{"id": "b"}]

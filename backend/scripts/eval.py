@@ -27,6 +27,7 @@ from app.rag.embedder import Embedder
 from app.rag.pipeline import answer_question
 from app.rag.provider import create_provider
 from scripts.eval_judge import (
+    _get_judge_config,
     aggregate_by_difficulty,
     aggregate_by_source,
     compute_recall,
@@ -40,9 +41,18 @@ _RESULTS_DIR = Path(__file__).parent.parent / "data"
 _VERDICT_ICON = {"correct": "OK", "partial": "~~", "wrong": "NO", "error": "ER"}
 
 
-def _load_eval_set() -> list[dict]:
-    data = json.loads(_EVAL_SET.read_text(encoding="utf-8"))
+def _load_questions(path: Path) -> list[dict]:
+    """Load a question list from JSON, unwrapping a {"questions": [...]} envelope.
+
+    Shared by the eval set and saved results-file loaders so the unwrap rule lives
+    in ONE place — a schema change can't leave the two paths reading different shapes.
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
     return data["questions"] if isinstance(data, dict) and "questions" in data else data
+
+
+def _load_eval_set() -> list[dict]:
+    return _load_questions(_EVAL_SET)
 
 
 def stratified_subset(
@@ -258,13 +268,20 @@ def rejudge_results(saved: list[dict], *, judge=judge_answer) -> list[dict]:
 
 
 def _judge_mode_label() -> str:
-    """Human label for which judge will run — mirrors eval_judge._get_judge_config:
-    JUDGE_PROVIDER=gemini > JUDGE_* > LLM_* > Gemini."""
+    """Human label for which judge will run.
+
+    Derived from the SAME resolution _get_judge_config performs, so the banner can
+    never contradict the judge actually used. A bare JUDGE_BASE_URL (without
+    JUDGE_API_KEY/JUDGE_MODEL) does NOT yield an openai_compat config — the judge
+    falls through to Gemini — and the label must say so.
+    """
     if os.getenv("JUDGE_PROVIDER", "").lower() == "gemini":
         return "gemini (forced via JUDGE_PROVIDER)"
-    if os.getenv("JUDGE_BASE_URL"):
-        return "openai_compat (JUDGE_*)"
-    if os.getenv("LLM_BASE_URL") and os.getenv("LLM_API_KEY") and os.getenv("LLM_MODEL"):
+    if _get_judge_config() is not None:
+        # Config resolved. Distinguish the dedicated JUDGE_* endpoint from the
+        # LLM_* fallback, which shares rate-limit quota with the pipeline.
+        if os.getenv("JUDGE_BASE_URL") and os.getenv("JUDGE_API_KEY") and os.getenv("JUDGE_MODEL"):
+            return "openai_compat (JUDGE_*)"
         return "openai_compat (LLM_* fallback — shares quota with pipeline!)"
     if os.getenv("GEMINI_API_KEY"):
         return "gemini (GEMINI_API_KEY)"
@@ -282,6 +299,10 @@ def _print_report(results: list[dict]) -> None:
     print("EVAL RESULTS")
     print("=" * 60)
     print(f"  Total questions : {total}")
+    if not total:
+        print("  (no results to report)")
+        print("=" * 60)
+        return
     print(f"  Accuracy (judge): correct={verdicts['correct']} partial={verdicts['partial']} wrong={verdicts['wrong']} error={verdicts['error']}")
     print(f"  Correct rate    : {verdicts['correct'] / total:.0%}  (correct+partial: {(verdicts['correct'] + verdicts['partial']) / total:.0%})")
     print(f"  Retrieval recall: {recall['hits']}/{recall['evaluable']} evaluable questions = {recall['recall']:.0%}")
@@ -345,8 +366,7 @@ def _parse_args(argv=None) -> argparse.Namespace:
 
 
 def _load_results_file(path: str) -> list[dict]:
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    return data["questions"] if isinstance(data, dict) and "questions" in data else data
+    return _load_questions(Path(path))
 
 
 def main() -> None:
@@ -372,6 +392,9 @@ def main() -> None:
     if args.ids:
         ids = [s.strip() for s in args.ids.split(",") if s.strip()]
         questions = select_by_ids(questions, ids)
+        if not questions:
+            print(f"  No questions matched --ids {args.ids!r} — nothing to run.")
+            return
         mix = dict(Counter(q.get("difficulty", "unknown") for q in questions))
         print(f"  Explicit ids: {len(questions)} questions, difficulty mix {mix}")
         print(f"  ids: {', '.join(q.get('id', '?') for q in questions)}")

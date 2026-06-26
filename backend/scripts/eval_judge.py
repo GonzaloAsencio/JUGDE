@@ -204,14 +204,28 @@ def _get_judge_config() -> dict | None:
     return None
 
 
+_DEFAULT_JUDGE_TIMEOUT_S = 30.0
+
+
 def _judge_timeout_s() -> float:
     """Judge call timeout in seconds.
 
     JUDGE_TIMEOUT_S wins; else reuse GEMINI_TIMEOUT_S (the local-LLM knob); else 30s.
     A slow local judge needs the same headroom as generation — otherwise verdicts
     come back as timeout errors even though the answer was generated fine.
+
+    Robust against bad input: a non-numeric or non-positive value falls back to the
+    default. Without this, float("60s") raises INSIDE judge_answer's try/except and
+    turns every verdict into 'error' with the cause buried in each justification.
     """
-    return float(os.getenv("JUDGE_TIMEOUT_S") or os.getenv("GEMINI_TIMEOUT_S") or 30.0)
+    raw = os.getenv("JUDGE_TIMEOUT_S") or os.getenv("GEMINI_TIMEOUT_S")
+    if not raw:
+        return _DEFAULT_JUDGE_TIMEOUT_S
+    try:
+        value = float(raw)
+    except ValueError:
+        return _DEFAULT_JUDGE_TIMEOUT_S
+    return value if value > 0 else _DEFAULT_JUDGE_TIMEOUT_S
 
 
 def _judge_openai_compat(prompt: str, config: dict) -> str:
@@ -238,7 +252,7 @@ def _judge_gemini(prompt: str) -> str:
         raise RuntimeError("GEMINI_API_KEY not set and no JUDGE_* env vars configured")
     client = genai.Client(api_key=api_key)
     model = os.getenv("JUDGE_GEMINI_MODEL", "gemini-2.0-flash")
-    return _call_gemini(client, model, prompt, temperature=0.0, timeout_s=30.0)
+    return _call_gemini(client, model, prompt, temperature=0.0, timeout_s=_judge_timeout_s())
 
 
 def judge_answer(question: str, canonical_answer: str, generated_answer: str) -> dict:
