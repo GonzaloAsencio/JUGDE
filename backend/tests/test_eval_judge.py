@@ -131,6 +131,125 @@ def test_judge_answer_returns_error_verdict_on_exception():
 
 
 # ---------------------------------------------------------------------------
+# _get_judge_config — provider resolution
+# ---------------------------------------------------------------------------
+
+def test_get_judge_config_uses_llm_vars_when_set(monkeypatch):
+    from scripts.eval_judge import _get_judge_config
+
+    monkeypatch.delenv("JUDGE_PROVIDER", raising=False)
+    monkeypatch.delenv("JUDGE_BASE_URL", raising=False)
+    monkeypatch.delenv("JUDGE_API_KEY", raising=False)
+    monkeypatch.delenv("JUDGE_MODEL", raising=False)
+    monkeypatch.setenv("LLM_BASE_URL", "http://localhost:1234/v1")
+    monkeypatch.setenv("LLM_API_KEY", "local")
+    monkeypatch.setenv("LLM_MODEL", "google/gemma-4-e4b")
+
+    cfg = _get_judge_config()
+    assert cfg == {
+        "base_url": "http://localhost:1234/v1",
+        "api_key": "local",
+        "model": "google/gemma-4-e4b",
+    }
+
+
+def test_get_judge_config_forces_gemini_when_judge_provider_gemini(monkeypatch):
+    # Even with LLM_* fully set (needed for local generation), JUDGE_PROVIDER=gemini
+    # must force the Gemini judge path by returning None.
+    from scripts.eval_judge import _get_judge_config
+
+    monkeypatch.setenv("LLM_BASE_URL", "http://localhost:1234/v1")
+    monkeypatch.setenv("LLM_API_KEY", "local")
+    monkeypatch.setenv("LLM_MODEL", "google/gemma-4-e4b")
+    monkeypatch.setenv("JUDGE_PROVIDER", "gemini")
+
+    assert _get_judge_config() is None
+
+
+def test_get_judge_config_judge_provider_is_case_insensitive(monkeypatch):
+    from scripts.eval_judge import _get_judge_config
+
+    monkeypatch.setenv("LLM_BASE_URL", "http://localhost:1234/v1")
+    monkeypatch.setenv("LLM_API_KEY", "local")
+    monkeypatch.setenv("LLM_MODEL", "google/gemma-4-e4b")
+    monkeypatch.setenv("JUDGE_PROVIDER", "Gemini")
+
+    assert _get_judge_config() is None
+
+
+# ---------------------------------------------------------------------------
+# _judge_timeout_s — judge call timeout resolution
+# ---------------------------------------------------------------------------
+
+def test_judge_timeout_s_defaults_to_30(monkeypatch):
+    from scripts.eval_judge import _judge_timeout_s
+
+    monkeypatch.delenv("JUDGE_TIMEOUT_S", raising=False)
+    monkeypatch.delenv("GEMINI_TIMEOUT_S", raising=False)
+    assert _judge_timeout_s() == 30.0
+
+
+def test_judge_timeout_s_honors_gemini_timeout(monkeypatch):
+    # A slow local judge needs the same headroom as generation; reusing the
+    # GEMINI_TIMEOUT_S knob avoids verdicts coming back as timeout errors.
+    from scripts.eval_judge import _judge_timeout_s
+
+    monkeypatch.delenv("JUDGE_TIMEOUT_S", raising=False)
+    monkeypatch.setenv("GEMINI_TIMEOUT_S", "150")
+    assert _judge_timeout_s() == 150.0
+
+
+def test_judge_timeout_s_judge_specific_overrides_gemini(monkeypatch):
+    from scripts.eval_judge import _judge_timeout_s
+
+    monkeypatch.setenv("GEMINI_TIMEOUT_S", "150")
+    monkeypatch.setenv("JUDGE_TIMEOUT_S", "90")
+    assert _judge_timeout_s() == 90.0
+
+
+def test_judge_timeout_s_non_numeric_falls_back_to_default(monkeypatch):
+    # A non-numeric value (e.g. "60s", "2m") used to raise ValueError INSIDE
+    # judge_answer's try/except, turning EVERY verdict into 'error' with the cause
+    # buried in each justification. It must fall back to the 30s default instead.
+    from scripts.eval_judge import _judge_timeout_s
+
+    monkeypatch.delenv("GEMINI_TIMEOUT_S", raising=False)
+    monkeypatch.setenv("JUDGE_TIMEOUT_S", "60s")
+    assert _judge_timeout_s() == 30.0
+
+
+def test_judge_timeout_s_zero_or_negative_falls_back_to_default(monkeypatch):
+    # JUDGE_TIMEOUT_S=0 parsed to 0.0 = immediate timeout (every call dies); a
+    # non-positive timeout is never what the operator meant — use the default.
+    from scripts.eval_judge import _judge_timeout_s
+
+    monkeypatch.delenv("GEMINI_TIMEOUT_S", raising=False)
+    monkeypatch.setenv("JUDGE_TIMEOUT_S", "0")
+    assert _judge_timeout_s() == 30.0
+    monkeypatch.setenv("JUDGE_TIMEOUT_S", "-5")
+    assert _judge_timeout_s() == 30.0
+
+
+def test_judge_gemini_uses_configurable_timeout(monkeypatch):
+    # The Gemini judge path (forced via JUDGE_PROVIDER=gemini) must honour the same
+    # JUDGE_TIMEOUT_S/GEMINI_TIMEOUT_S knob as the openai_compat path — it used to
+    # be hardcoded at 30s, so the forced-judge mode this harness supports ignored
+    # the override.
+    from scripts.eval_judge import _judge_gemini
+
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    monkeypatch.delenv("GEMINI_TIMEOUT_S", raising=False)
+    monkeypatch.setenv("JUDGE_TIMEOUT_S", "150")
+
+    with (
+        patch("google.genai.Client"),
+        patch("app.rag.generation._call_gemini", return_value='{"verdict": "correct", "justification": "x"}') as mock_call,
+    ):
+        _judge_gemini("prompt")
+        assert mock_call.call_args.kwargs["timeout_s"] == 150.0
+
+
+# ---------------------------------------------------------------------------
 # match_rule_reference
 # ---------------------------------------------------------------------------
 

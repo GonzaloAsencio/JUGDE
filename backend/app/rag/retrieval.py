@@ -110,9 +110,17 @@ def fts_search(
 # conflict the errata supersedes the rule — always. Patch notes sit between
 # errata and the base rulebook. We REWARD authority (multiplier > 1.0); we never
 # penalize a source. Anything not listed keeps the neutral 1.0 weight.
+#
+# Boost magnitude is MILD on purpose (sim_102). A stronger boost (errata 1.10,
+# patch 1.05) flipped a clearly-better rulebook chunk below an errata several
+# ranks behind — burying rulebook gold past the top-5 cutoff and costing 6pp
+# recall@5 on the deterministic eval probe (53% vs 59% on corpus v2.1.0). At
+# 1.02/1.01 errata still wins on comparable ranks (it only needs a small edge
+# to break a near-tie) without displacing a rulebook chunk that genuinely ranks
+# higher. See scripts/authority_boost_probe.py.
 _AUTHORITY_BOOST = {
-    "errata": 1.10,
-    "patch_notes": 1.05,
+    "errata": 1.02,
+    "patch_notes": 1.01,
 }
 _DEFAULT_BOOST = 1.0
 

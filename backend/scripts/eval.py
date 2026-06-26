@@ -27,6 +27,7 @@ from app.rag.embedder import Embedder
 from app.rag.pipeline import answer_question
 from app.rag.provider import create_provider
 from scripts.eval_judge import (
+    _get_judge_config,
     aggregate_by_difficulty,
     aggregate_by_source,
     compute_recall,
@@ -40,9 +41,18 @@ _RESULTS_DIR = Path(__file__).parent.parent / "data"
 _VERDICT_ICON = {"correct": "OK", "partial": "~~", "wrong": "NO", "error": "ER"}
 
 
-def _load_eval_set() -> list[dict]:
-    data = json.loads(_EVAL_SET.read_text(encoding="utf-8"))
+def _load_questions(path: Path) -> list[dict]:
+    """Load a question list from JSON, unwrapping a {"questions": [...]} envelope.
+
+    Shared by the eval set and saved results-file loaders so the unwrap rule lives
+    in ONE place — a schema change can't leave the two paths reading different shapes.
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
     return data["questions"] if isinstance(data, dict) and "questions" in data else data
+
+
+def _load_eval_set() -> list[dict]:
+    return _load_questions(_EVAL_SET)
 
 
 def stratified_subset(
@@ -100,6 +110,15 @@ def stratified_subset(
     return [q for q in questions if q.get("id") in chosen_ids]
 
 
+def select_by_ids(questions: list[dict], ids) -> list[dict]:
+    """Filter to the questions whose id is in *ids*, preserving the original
+    order. Unknown ids are ignored. Used to run explicit disjoint batches so a
+    full clean eval can be assembled across several runs without exceeding the
+    LLM daily token budget in any single run."""
+    wanted = set(ids)
+    return [q for q in questions if q.get("id") in wanted]
+
+
 def _resolve_corpus_version(pool, settings: Settings) -> str:
     if settings.corpus_version and settings.corpus_version != "latest":
         return settings.corpus_version
@@ -133,6 +152,35 @@ async def _pipeline_run(question: str, embedder, pool, provider, settings):
             "confidence": 0.0,
             "latency_ms": round((time.time() - t0) * 1000),
         }
+
+
+def _build_question_result(
+    q: dict, idx: int, pipeline_result: dict,
+    *, has_ref: bool, retrieval_hit: bool, judgment: dict,
+) -> dict:
+    """Shape one question's eval record. Pure (no I/O) so it is unit-testable.
+
+    Persists the FULL answer and canonical_answer — not just a preview — so a
+    later run can re-judge saved answers with a different judge WITHOUT
+    regenerating. Regeneration doubles the LLM calls per question and is what
+    exhausts the free-tier quota mid-experiment.
+    """
+    return {
+        "id": q.get("id", f"q{idx}"),
+        "question": q["question"],
+        "difficulty": q.get("difficulty", "unknown"),
+        "source": q.get("source", "unknown"),
+        "rule_reference": q.get("rule_reference"),
+        "has_ref": has_ref,
+        "verdict": judgment["verdict"],
+        "justification": judgment["justification"],
+        "retrieval_hit": retrieval_hit,
+        "confidence": pipeline_result["confidence"],
+        "latency_ms": pipeline_result["latency_ms"],
+        "canonical_answer": q.get("canonical_answer", ""),
+        "answer": pipeline_result["answer"],
+        "answer_preview": pipeline_result["answer"][:300],
+    }
 
 
 async def run_eval(questions: list[dict], embedder, pool, provider, settings) -> list[dict]:
@@ -173,22 +221,71 @@ async def run_eval(questions: list[dict], embedder, pool, provider, settings) ->
         if i < total:
             await asyncio.sleep(2)
 
-        results.append({
-            "id": q.get("id", f"q{i}"),
-            "question": q["question"],
-            "difficulty": q.get("difficulty", "unknown"),
-            "source": q.get("source", "unknown"),
-            "rule_reference": q.get("rule_reference"),
-            "has_ref": has_ref,
-            "verdict": verdict,
-            "justification": judgment["justification"],
-            "retrieval_hit": retrieval_hit,
-            "confidence": pipeline_result["confidence"],
-            "latency_ms": pipeline_result["latency_ms"],
-            "answer_preview": pipeline_result["answer"][:300],
-        })
+        results.append(_build_question_result(
+            q, i, pipeline_result,
+            has_ref=has_ref, retrieval_hit=retrieval_hit, judgment=judgment,
+        ))
 
     return results
+
+
+def rejudge_results(saved: list[dict], *, judge=judge_answer) -> list[dict]:
+    """Re-score saved answers with the current judge, WITHOUT regenerating.
+
+    Reads back each persisted full answer + canonical_answer and re-runs only the
+    judge — no DB, embedder, or generation. Retrieval-derived fields (has_ref,
+    retrieval_hit) are deterministic and carried over unchanged. Records that
+    predate full-answer persistence (no 'answer'/'canonical_answer') are marked
+    verdict='error' since they cannot be faithfully re-judged.
+
+    Why this exists: swapping the judge (e.g. weak local vs strong cloud) used to
+    require a full re-run, doubling LLM calls and exhausting the free-tier quota.
+    """
+    out = []
+    total = len(saved)
+    for i, q in enumerate(saved, 1):
+        question = q.get("question", "")
+        label = question[:55] + ("..." if len(question) > 55 else "")
+        print(f"[{i:2}/{total}] {label}", end=" ", flush=True)
+
+        answer = q.get("answer")
+        canonical = q.get("canonical_answer")
+        if not answer or not canonical:
+            judgment = {
+                "verdict": "error",
+                "justification": "Cannot re-judge: saved result lacks full "
+                                 "answer/canonical_answer (re-run generation first)",
+            }
+        else:
+            judgment = judge(question, canonical, answer)
+
+        prev = q.get("verdict", "?")
+        rec = {**q, "verdict": judgment["verdict"], "justification": judgment["justification"]}
+        print(f"{_VERDICT_ICON.get(rec['verdict'], '?')}  (was {prev})")
+        out.append(rec)
+
+    return out
+
+
+def _judge_mode_label() -> str:
+    """Human label for which judge will run.
+
+    Derived from the SAME resolution _get_judge_config performs, so the banner can
+    never contradict the judge actually used. A bare JUDGE_BASE_URL (without
+    JUDGE_API_KEY/JUDGE_MODEL) does NOT yield an openai_compat config — the judge
+    falls through to Gemini — and the label must say so.
+    """
+    if os.getenv("JUDGE_PROVIDER", "").lower() == "gemini":
+        return "gemini (forced via JUDGE_PROVIDER)"
+    if _get_judge_config() is not None:
+        # Config resolved. Distinguish the dedicated JUDGE_* endpoint from the
+        # LLM_* fallback, which shares rate-limit quota with the pipeline.
+        if os.getenv("JUDGE_BASE_URL") and os.getenv("JUDGE_API_KEY") and os.getenv("JUDGE_MODEL"):
+            return "openai_compat (JUDGE_*)"
+        return "openai_compat (LLM_* fallback — shares quota with pipeline!)"
+    if os.getenv("GEMINI_API_KEY"):
+        return "gemini (GEMINI_API_KEY)"
+    return "NONE — judge will error (set JUDGE_*/LLM_*/GEMINI_API_KEY)"
 
 
 def _print_report(results: list[dict]) -> None:
@@ -202,6 +299,10 @@ def _print_report(results: list[dict]) -> None:
     print("EVAL RESULTS")
     print("=" * 60)
     print(f"  Total questions : {total}")
+    if not total:
+        print("  (no results to report)")
+        print("=" * 60)
+        return
     print(f"  Accuracy (judge): correct={verdicts['correct']} partial={verdicts['partial']} wrong={verdicts['wrong']} error={verdicts['error']}")
     print(f"  Correct rate    : {verdicts['correct'] / total:.0%}  (correct+partial: {(verdicts['correct'] + verdicts['partial']) / total:.0%})")
     print(f"  Retrieval recall: {recall['hits']}/{recall['evaluable']} evaluable questions = {recall['recall']:.0%}")
@@ -249,19 +350,56 @@ def _parse_args(argv=None) -> argparse.Namespace:
         "--seed", type=int, default=42,
         help="Seed for the stratified subset pick (reproducible runs). Default: 42.",
     )
+    p.add_argument(
+        "--ids", type=str, default=None,
+        help="Comma-separated question ids to run (explicit disjoint batch). "
+             "Overrides --limit. Lets you assemble a clean full eval across runs.",
+    )
+    p.add_argument(
+        "--rejudge", type=str, default=None, metavar="RESULTS_JSON",
+        help="Re-score the saved answers in a previous eval_results_*.json with "
+             "the CURRENT judge (set via JUDGE_*/JUDGE_PROVIDER), WITHOUT "
+             "regenerating. No DB/embedder/generation. Needs a results file that "
+             "has full answers (produced by this harness version).",
+    )
     return p.parse_args(argv)
+
+
+def _load_results_file(path: str) -> list[dict]:
+    return _load_questions(Path(path))
 
 
 def main() -> None:
     args = _parse_args()
 
+    if args.rejudge:
+        print(f"Re-judging saved results: {args.rejudge}")
+        saved = _load_results_file(args.rejudge)
+        print(f"  {len(saved)} saved questions loaded.")
+        print(f"  Judge: {_judge_mode_label()}")
+        print("\nRe-judging (no generation — scoring the saved answers):\n")
+        results = rejudge_results(saved)
+        _print_report(results)
+        out_path = _save_results(results)
+        print(f"\nResults saved: {out_path}")
+        return
+
     print("Loading eval set...")
     questions = _load_eval_set()
     print(f"  {len(questions)} questions loaded.")
 
-    if args.limit is not None and args.limit < len(questions):
+    from collections import Counter
+    if args.ids:
+        ids = [s.strip() for s in args.ids.split(",") if s.strip()]
+        questions = select_by_ids(questions, ids)
+        if not questions:
+            print(f"  No questions matched --ids {args.ids!r} — nothing to run.")
+            return
+        mix = dict(Counter(q.get("difficulty", "unknown") for q in questions))
+        print(f"  Explicit ids: {len(questions)} questions, difficulty mix {mix}")
+        print(f"  ids: {', '.join(q.get('id', '?') for q in questions)}")
+    elif args.limit is not None and args.limit < len(questions):
         questions = stratified_subset(questions, args.limit, seed=args.seed)
-        from collections import Counter
         mix = dict(Counter(q.get("difficulty", "unknown") for q in questions))
         print(f"  Stratified subset: {len(questions)} questions (seed={args.seed}), difficulty mix {mix}")
         print(f"  ids: {', '.join(q.get('id', '?') for q in questions)}")
@@ -289,11 +427,7 @@ def main() -> None:
     provider = create_provider(settings, llm_client)
     print(f"  Provider: {settings.llm_provider}")
 
-    judge_mode = "openai_compat (JUDGE_*)" if os.getenv("JUDGE_BASE_URL") else (
-        "gemini (GEMINI_API_KEY)" if os.getenv("GEMINI_API_KEY") else
-        f"openai_compat (LLM_* fallback — shares quota with pipeline!)"
-    )
-    print(f"  Judge: {judge_mode}")
+    print(f"  Judge: {_judge_mode_label()}")
 
     print("\nRunning eval (no Redis cache — fresh generation per question):\n")
 

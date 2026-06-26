@@ -170,6 +170,21 @@ def test_rrf_authority_order_errata_patch_rulebook():
     assert [c.id for c in result] == ["e", "p", "r"]
 
 
+def test_authority_boost_mild_keeps_clearly_better_rulebook_on_top():
+    # Regression guard for the sim_102 tuning. A rulebook chunk clearly ahead on
+    # real retrieval (vector rank 1) must NOT be buried below an errata chunk four
+    # ranks behind (rank 5). A strong boost flips them — errata 1.10/(60+5)=0.01692
+    # beats rulebook 1.0/(60+1)=0.01639 — pushing rulebook gold past the top-5
+    # cutoff, which cost 6pp recall@5 on the eval probe (53% vs 59%). The mild
+    # boost keeps the clearly-better rulebook on top while errata still wins on
+    # comparable ranks (the tests above). FTS is dormant, so the second list is empty.
+    rulebook = _chunk("r", source_type="rulebook")
+    fillers = [_chunk(f"f{i}", source_type="rulebook") for i in range(3)]
+    errata = _chunk("e", source_type="errata")
+    result = _rrf_fuse([rulebook, *fillers, errata], [], rrf_k=_RRF_K, top_k=10)
+    assert result[0].id == "r", "a clearly-better rulebook chunk must not be buried by a mild errata boost"
+
+
 # ---------------------------------------------------------------------------
 # fuse_results: public two-arm fusion for the raw + HyDE strategy (fuse_eq).
 #
