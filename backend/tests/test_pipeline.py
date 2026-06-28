@@ -335,6 +335,37 @@ def test_extract_tags_result_stripped():
 
 
 # ---------------------------------------------------------------------------
+# _assemble_context tests
+# ---------------------------------------------------------------------------
+
+def _ctx_chunk(cid: str, source_type: str = "rulebook", sim: float = 0.5):
+    from app.rag.retrieval import Chunk
+    return Chunk(cid, f"content-{cid}", f"sec-{cid}", None, source_type, sim)
+
+
+def test_assemble_context_no_tagged_returns_semantic_unchanged():
+    from app.rag.pipeline import _assemble_context
+    semantic = [_ctx_chunk("a"), _ctx_chunk("b")]
+    assert _assemble_context([], semantic, top_k=5) == semantic
+
+
+def test_assemble_context_tagged_prepended_before_semantic():
+    from app.rag.pipeline import _assemble_context
+    tagged = [_ctx_chunk("t1")]
+    semantic = [_ctx_chunk("s1"), _ctx_chunk("s2")]
+    out = _assemble_context(tagged, semantic, top_k=5)
+    assert out[0].id == "t1"
+
+
+def test_assemble_context_dedups_semantic_already_in_tagged():
+    from app.rag.pipeline import _assemble_context
+    tagged = [_ctx_chunk("shared")]
+    semantic = [_ctx_chunk("shared"), _ctx_chunk("s2")]
+    out = _assemble_context(tagged, semantic, top_k=5)
+    assert [c.id for c in out] == ["shared", "s2"]
+
+
+# ---------------------------------------------------------------------------
 # answer_question — @tag integration tests
 # ---------------------------------------------------------------------------
 

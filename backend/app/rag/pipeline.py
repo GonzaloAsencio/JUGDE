@@ -61,6 +61,21 @@ def _extract_tags(question: str) -> tuple[str, list[str]]:
     return clean, [t.lower() for t in tags]
 
 
+def _assemble_context(tagged_chunks: list, semantic_chunks: list, top_k: int) -> list:
+    """Merge lexical tagged chunks ahead of semantic chunks for the generator.
+
+    Tagged chunks (from tagged_lookup) are a lexical section match with no cosine
+    signal (similarity=0.0). They are prepended because an explicit @tag is a
+    user-directed lookup that should surface first. Semantic chunks fill the
+    remaining budget, deduped against the tagged set.
+    """
+    if not tagged_chunks:
+        return semantic_chunks
+    seen = {c.id for c in tagged_chunks}
+    semantic = [c for c in semantic_chunks if c.id not in seen]
+    return tagged_chunks + semantic[: top_k - len(tagged_chunks)]
+
+
 async def answer_question(
     question: str,
     embedder: Embedder,
@@ -134,10 +149,7 @@ async def answer_question(
     # it set confidence would report 1.0 for any query that merely matches a tag.
     semantic_confidence = max((c.similarity for c in chunks), default=0.0)
 
-    if tagged_chunks:
-        seen = {c.id for c in tagged_chunks}
-        semantic = [c for c in chunks if c.id not in seen]
-        chunks = tagged_chunks + semantic[:settings.top_k - len(tagged_chunks)]
+    chunks = _assemble_context(tagged_chunks, chunks, settings.top_k)
 
     retrieval_ms = round((time.time() - t0) * 1000)
 
