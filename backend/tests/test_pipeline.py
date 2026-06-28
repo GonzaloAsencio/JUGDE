@@ -343,25 +343,64 @@ def _ctx_chunk(cid: str, source_type: str = "rulebook", sim: float = 0.5):
     return Chunk(cid, f"content-{cid}", f"sec-{cid}", None, source_type, sim)
 
 
-def test_assemble_context_no_tagged_returns_semantic_unchanged():
+def test_assemble_context_no_tags_returns_semantic_bounded():
     from app.rag.pipeline import _assemble_context
-    semantic = [_ctx_chunk("a"), _ctx_chunk("b")]
-    assert _assemble_context([], semantic, top_k=5) == semantic
+    semantic = [_ctx_chunk("a"), _ctx_chunk("b"), _ctx_chunk("c")]
+    out = _assemble_context([], semantic, [], top_k=2)
+    assert [c.id for c in out] == ["a", "b"]
 
 
-def test_assemble_context_tagged_prepended_before_semantic():
+def test_assemble_context_explicit_prepended_before_semantic():
+    """Explicit @tags keep their prepend priority (user-directed lookup)."""
     from app.rag.pipeline import _assemble_context
-    tagged = [_ctx_chunk("t1")]
+    explicit = [_ctx_chunk("t1")]
     semantic = [_ctx_chunk("s1"), _ctx_chunk("s2")]
-    out = _assemble_context(tagged, semantic, top_k=5)
+    out = _assemble_context(explicit, semantic, [], top_k=5)
     assert out[0].id == "t1"
 
 
-def test_assemble_context_dedups_semantic_already_in_tagged():
+def test_assemble_context_explicit_reserves_one_semantic_slot():
+    """Explicit tags cannot consume the whole budget — semantic keeps >=1 slot."""
     from app.rag.pipeline import _assemble_context
-    tagged = [_ctx_chunk("shared")]
+    explicit = [_ctx_chunk("t1"), _ctx_chunk("t2"), _ctx_chunk("t3")]
+    semantic = [_ctx_chunk("s1")]
+    out = _assemble_context(explicit, semantic, [], top_k=3)
+    ids = [c.id for c in out]
+    assert "s1" in ids
+    assert len(out) == 3
+
+
+def test_assemble_context_auto_never_displaces_semantic():
+    """Auto keyword chunks fill only leftover budget; they never evict semantic."""
+    from app.rag.pipeline import _assemble_context
+    semantic = [_ctx_chunk("card1", "card"), _ctx_chunk("card2", "card"), _ctx_chunk("card3", "card")]
+    auto = [_ctx_chunk("junk1", "rulebook"), _ctx_chunk("junk2", "rulebook")]
+    out = _assemble_context([], semantic, auto, top_k=3)
+    assert [c.id for c in out] == ["card1", "card2", "card3"]
+
+
+def test_assemble_context_auto_fills_leftover():
+    from app.rag.pipeline import _assemble_context
+    semantic = [_ctx_chunk("s1")]
+    auto = [_ctx_chunk("a1")]
+    out = _assemble_context([], semantic, auto, top_k=3)
+    assert [c.id for c in out] == ["s1", "a1"]
+
+
+def test_assemble_context_never_exceeds_top_k():
+    from app.rag.pipeline import _assemble_context
+    explicit = [_ctx_chunk(f"e{i}") for i in range(4)]
+    semantic = [_ctx_chunk(f"s{i}") for i in range(4)]
+    auto = [_ctx_chunk(f"a{i}") for i in range(4)]
+    out = _assemble_context(explicit, semantic, auto, top_k=3)
+    assert len(out) == 3
+
+
+def test_assemble_context_dedups_across_sources():
+    from app.rag.pipeline import _assemble_context
+    explicit = [_ctx_chunk("shared")]
     semantic = [_ctx_chunk("shared"), _ctx_chunk("s2")]
-    out = _assemble_context(tagged, semantic, top_k=5)
+    out = _assemble_context(explicit, semantic, [], top_k=5)
     assert [c.id for c in out] == ["shared", "s2"]
 
 

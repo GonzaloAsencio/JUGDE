@@ -66,17 +66,19 @@ def run_probe(rulings, embedder, pool, corpus_version, top_k, top_k_fetch, rrf_k
         question = q["question"]
         clean, explicit = _extract_tags(question)
         auto = _detect_keywords(clean or question)
-        tags = list(dict.fromkeys(explicit + auto))
-        tagged = tagged_lookup(pool, tags, corpus_version) if tags else []
+        directed = list(dict.fromkeys(explicit))  # eval has no card_mentions
+        auto_only = [t for t in auto if t not in directed]
+        explicit_chunks = tagged_lookup(pool, directed, corpus_version) if directed else []
+        auto_chunks = tagged_lookup(pool, auto_only, corpus_version) if auto_only else []
         baseline = hybrid_search(
             pool, embedder.encode(clean or question), clean or question,
             corpus_version, top_k=top_k, top_k_fetch=top_k_fetch, rrf_k=rrf_k,
         )
-        assembled = _assemble_context(tagged, baseline, top_k)
+        assembled = _assemble_context(explicit_chunks, baseline, auto_chunks, top_k)
         rows.append({
             "id": q["id"],
             "auto_tags": auto,
-            "n_tagged": len(tagged),
+            "n_tagged": len(explicit_chunks) + len(auto_chunks),
             "card_base": count_card_chunks(baseline),
             "card_pipe": count_card_chunks(assembled),
             "evicted": card_eviction(baseline, assembled),
