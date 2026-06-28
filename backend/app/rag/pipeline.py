@@ -41,15 +41,28 @@ _KEYWORD_ALIASES: dict[str, str] = {
 }
 
 
-def _detect_keywords(question: str) -> list[str]:
-    """Return known keywords found in question via case-insensitive substring match.
+def _word_boundary(term: str) -> "re.Pattern[str]":
+    """Compile a case-insensitive whole-word matcher for *term*."""
+    return re.compile(r"\b" + re.escape(term) + r"\b", re.IGNORECASE)
 
-    Also resolves community aliases to their official rulebook section names.
+
+# Precompiled whole-word matchers. A substring match wrongly fired on common
+# English words embedded in other words ('ready' inside 'already', 'equip'
+# inside 'equipment'), tagging — and then evicting — the real semantic chunks.
+_KEYWORD_PATTERNS: dict[str, "re.Pattern[str]"] = {kw: _word_boundary(kw) for kw in _KNOWN_KEYWORDS}
+_ALIAS_PATTERNS: dict[str, "re.Pattern[str]"] = {alias: _word_boundary(alias) for alias in _KEYWORD_ALIASES}
+
+
+def _detect_keywords(question: str) -> list[str]:
+    """Return known keywords found in question via case-insensitive whole-word match.
+
+    Whole-word (not substring) so 'already' does not match 'ready' and
+    'equipment' does not match 'equip'. Also resolves community aliases to their
+    official rulebook section names.
     """
-    q_lower = question.lower()
-    found = [kw for kw in _KNOWN_KEYWORDS if kw in q_lower]
+    found = [kw for kw in _KNOWN_KEYWORDS if _KEYWORD_PATTERNS[kw].search(question)]
     for alias, canonical in _KEYWORD_ALIASES.items():
-        if alias in q_lower and canonical not in found:
+        if _ALIAS_PATTERNS[alias].search(question) and canonical not in found:
             found.append(canonical)
     return found
 

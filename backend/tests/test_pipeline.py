@@ -434,6 +434,30 @@ def test_detect_keywords_main_phase_direct():
     assert "main phase" in _detect_keywords("What can I do during the Main Phase?")
 
 
+def test_detect_keywords_no_substring_false_positive_ready():
+    """'already' must NOT trigger the 'ready' keyword (eval-025 false positive)."""
+    from app.rag.pipeline import _detect_keywords
+    assert "ready" not in _detect_keywords("even if she is already on the board")
+
+
+def test_detect_keywords_no_substring_false_positive_equip():
+    """'equipment' must NOT trigger the 'equip' keyword (eval-021 false positive)."""
+    from app.rag.pipeline import _detect_keywords
+    assert "equip" not in _detect_keywords("when he is mighty with an equipment")
+
+
+def test_detect_keywords_whole_word_still_matches():
+    """Whole-word occurrences must still be detected."""
+    from app.rag.pipeline import _detect_keywords
+    assert "draw" in _detect_keywords("tap 2 runes to draw 2 cards")
+    assert "mighty" in _detect_keywords("when he is mighty with gear")
+
+
+def test_detect_keywords_hyphenated_still_matches():
+    from app.rag.pipeline import _detect_keywords
+    assert "quick-draw" in _detect_keywords("Explain Quick-Draw please")
+
+
 async def test_pipeline_auto_detects_keyword_without_tag():
     """A question without @tag but mentioning a keyword triggers tagged_lookup."""
     from app.rag.retrieval import Chunk
