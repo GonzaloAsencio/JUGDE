@@ -163,17 +163,23 @@ async def answer_question(
     # passage we run arm A alone, so providers that don't implement HyDE keep
     # their current raw-only behaviour. The earlier rewrite_query path is dropped
     # here on purpose: the experiment never measured it (pending: test as a 4th arm).
+    #
+    # When fusing, each arm fetches at top_k_fetch depth and fuse_results truncates
+    # ONCE to top_k. Truncating each arm to top_k first (double truncation) dropped
+    # a chunk strong in only one arm — e.g. a card at raw rank 3 lost to the HyDE
+    # arm before fusion even ran. HyDE is resolved first so we know the arm depth.
+    hyde_text = provider.hyde(base_question)
+    arm_top_k = settings.top_k_fetch if hyde_text else settings.top_k
     chunks = hybrid_search(
         db_pool, embedder.encode(base_question), base_question, corpus_version,
-        top_k=settings.top_k,
+        top_k=arm_top_k,
         top_k_fetch=settings.top_k_fetch,
         rrf_k=settings.rrf_k,
     )
-    hyde_text = provider.hyde(base_question)
     if hyde_text:
         hyde_chunks = hybrid_search(
             db_pool, embedder.encode(hyde_text), hyde_text, corpus_version,
-            top_k=settings.top_k,
+            top_k=arm_top_k,
             top_k_fetch=settings.top_k_fetch,
             rrf_k=settings.rrf_k,
         )

@@ -272,6 +272,61 @@ async def test_pipeline_degrades_to_raw_only_when_no_hyde():
     assert result.citations, "raw-only path must still produce citations"
 
 
+async def test_pipeline_fusion_arms_fetch_deep_then_truncate_once():
+    """In the HyDE fusion path each arm must fetch at top_k_fetch depth so a strong
+    single-arm hit survives; fuse_results truncates ONCE to top_k. (B2: the double
+    truncation at top_k dropped raw-rank-3 card chunks before fusion.)"""
+    from tests.conftest import FakeEmbedder
+
+    arm_top_ks: list[int] = []
+    fuse_top_k: dict[str, int] = {}
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        arm_top_ks.append(kw.get("top_k"))
+        return [_make_chunk(section=text[:6])]
+
+    def fake_fuse(primary, secondary, rrf_k=60, top_k=5):
+        fuse_top_k["top_k"] = top_k
+        return (primary + secondary)[:top_k]
+
+    settings = _fake_settings()  # top_k=5, top_k_fetch=15
+    with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+        with patch("app.rag.pipeline.fuse_results", side_effect=fake_fuse):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    await answer_question(
+                        "How does conquer work?",
+                        FakeEmbedder(), MagicMock(), _HydeProvider(), settings,
+                    )
+
+    assert arm_top_ks == [15, 15], "both arms must fetch at top_k_fetch depth before fusing"
+    assert fuse_top_k["top_k"] == 5, "fusion truncates exactly once to top_k"
+
+
+async def test_pipeline_raw_only_arm_fetches_at_top_k():
+    """No HyDE → the single arm fetches at top_k (no deep fetch needed)."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    arm_top_ks: list[int] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        arm_top_ks.append(kw.get("top_k"))
+        return [_make_chunk()]
+
+    settings = _fake_settings()  # top_k=5
+    with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                await answer_question(
+                    "How does it work?",
+                    FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings,
+                )
+
+    assert arm_top_ks == [5], "raw-only arm fetches at top_k"
+
+
 def test_base_provider_hyde_returns_empty():
     """The base LLMProvider yields no HyDE so it degrades to raw-only retrieval."""
     from app.rag.provider import LLMProvider
