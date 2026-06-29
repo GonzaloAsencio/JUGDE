@@ -4,9 +4,70 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.rag.retrieval import Chunk, _rrf_fuse, fuse_results
+from app.rag.retrieval import Chunk, _dedup_card_printings, _printing_key, _rrf_fuse, fuse_results
 
 _RRF_K = 60
+
+
+def _card(id: str, name: str, similarity: float = 0.6) -> Chunk:
+    """A card chunk whose content carries a **Name** field (printing variant)."""
+    return Chunk(
+        id=id,
+        content=f"## {name} **Name**: {name} **Set**: SomeSet **Text**: rules text here.",
+        section=name,
+        parent_section=None,
+        source_type="card",
+        similarity=similarity,
+    )
+
+
+# ---------------------------------------------------------------------------
+# _printing_key / _dedup_card_printings (pure)
+# ---------------------------------------------------------------------------
+
+def test_printing_key_strips_variant_suffix():
+    base = _card("1", "Irelia - Blade Dancer")
+    metal = _card("2", "Irelia - Blade Dancer (Metal)")
+    assert _printing_key(base) == _printing_key(metal) == "irelia - blade dancer"
+
+
+def test_printing_key_none_for_non_card():
+    chunk = Chunk("r1", "**Name**: Foo", "Sec", None, "rulebook", 0.5)
+    assert _printing_key(chunk) is None
+
+
+def test_printing_key_none_when_no_name_field():
+    chunk = Chunk("c1", "no name field here", "Sec", None, "card", 0.5)
+    assert _printing_key(chunk) is None
+
+
+def test_dedup_keeps_first_printing_drops_rest():
+    chunks = [
+        _card("1", "Irelia - Blade Dancer", 0.65),
+        _card("2", "Irelia - Blade Dancer (Overnumbered)", 0.63),
+        _card("3", "Irelia - Blade Dancer (Metal)", 0.62),
+    ]
+    out = _dedup_card_printings(chunks)
+    assert [c.id for c in out] == ["1"]
+
+
+def test_dedup_preserves_order_and_distinct_cards():
+    chunks = [
+        _card("1", "Sunken Temple"),
+        _card("2", "Irelia - Blade Dancer"),
+        _card("3", "Irelia - Blade Dancer (Metal)"),
+        _card("4", "Red Brambleback"),
+    ]
+    out = _dedup_card_printings(chunks)
+    assert [c.id for c in out] == ["1", "2", "4"]
+
+
+def test_dedup_passes_through_non_cards_and_unparseable():
+    rule = Chunk("r1", "rule text", "Sec", None, "rulebook", 0.5)
+    bad = Chunk("c9", "card with no name", "Sec", None, "card", 0.5)
+    chunks = [rule, bad, _card("1", "Foo"), _card("2", "Foo")]
+    out = _dedup_card_printings(chunks)
+    assert [c.id for c in out] == ["r1", "c9", "1"]
 
 
 # ---------------------------------------------------------------------------
