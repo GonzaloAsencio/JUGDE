@@ -41,15 +41,28 @@ _KEYWORD_ALIASES: dict[str, str] = {
 }
 
 
-def _detect_keywords(question: str) -> list[str]:
-    """Return known keywords found in question via case-insensitive substring match.
+def _word_boundary(term: str) -> "re.Pattern[str]":
+    """Compile a case-insensitive whole-word matcher for *term*."""
+    return re.compile(r"\b" + re.escape(term) + r"\b", re.IGNORECASE)
 
-    Also resolves community aliases to their official rulebook section names.
+
+# Precompiled whole-word matchers. A substring match wrongly fired on common
+# English words embedded in other words ('ready' inside 'already', 'equip'
+# inside 'equipment'), tagging — and then evicting — the real semantic chunks.
+_KEYWORD_PATTERNS: dict[str, "re.Pattern[str]"] = {kw: _word_boundary(kw) for kw in _KNOWN_KEYWORDS}
+_ALIAS_PATTERNS: dict[str, "re.Pattern[str]"] = {alias: _word_boundary(alias) for alias in _KEYWORD_ALIASES}
+
+
+def _detect_keywords(question: str) -> list[str]:
+    """Return known keywords found in question via case-insensitive whole-word match.
+
+    Whole-word (not substring) so 'already' does not match 'ready' and
+    'equipment' does not match 'equip'. Also resolves community aliases to their
+    official rulebook section names.
     """
-    q_lower = question.lower()
-    found = [kw for kw in _KNOWN_KEYWORDS if kw in q_lower]
+    found = [kw for kw in _KNOWN_KEYWORDS if _KEYWORD_PATTERNS[kw].search(question)]
     for alias, canonical in _KEYWORD_ALIASES.items():
-        if alias in q_lower and canonical not in found:
+        if _ALIAS_PATTERNS[alias].search(question) and canonical not in found:
             found.append(canonical)
     return found
 
@@ -59,6 +72,41 @@ def _extract_tags(question: str) -> tuple[str, list[str]]:
     tags = _TAG_RE.findall(question)
     clean = _TAG_RE.sub("", question).strip()
     return clean, [t.lower() for t in tags]
+
+
+def _assemble_context(
+    explicit_chunks: list, semantic_chunks: list, auto_chunks: list, top_k: int
+) -> list:
+    """Merge the three context sources into a top_k budget, deduped by id.
+
+    Priority of the limited budget:
+      1. Explicit chunks (from @tags / card_mentions) prepend — a user-directed
+         lookup — but cannot consume the whole budget: at least one slot is
+         reserved for semantic retrieval when any is available.
+      2. Semantic chunks (real cosine) fill next.
+      3. Auto-detected keyword chunks fill ONLY leftover budget. They are a
+         lexical heuristic (similarity=0.0) and must never displace a real
+         semantic hit — the bug that evicted card chunks from rulings.
+
+    Never returns more than top_k chunks.
+    """
+    seen: set[str] = set()
+    result: list = []
+
+    def take(chunks: list, limit: int) -> None:
+        for c in chunks:
+            if len(result) >= limit:
+                break
+            if c.id not in seen:
+                seen.add(c.id)
+                result.append(c)
+
+    semantic_available = any(c.id not in seen for c in semantic_chunks)
+    explicit_limit = top_k - 1 if semantic_available and top_k > 1 else top_k
+    take(explicit_chunks, explicit_limit)
+    take(semantic_chunks, top_k)
+    take(auto_chunks, top_k)
+    return result
 
 
 async def answer_question(
@@ -98,13 +146,16 @@ async def answer_question(
     clean_question, explicit_tags = _extract_tags(question)
     auto_tags = _detect_keywords(clean_question or question)
     mention_tags = [m.lower() for m in (card_mentions or [])]
-    tags = list(dict.fromkeys(explicit_tags + mention_tags + auto_tags))  # dedup, explicit first, then mentions, then auto
+
+    # User-directed tags (@tags + card mentions) may prepend; auto-detected
+    # keywords are a heuristic and only fill leftover budget (see _assemble_context).
+    directed_tags = list(dict.fromkeys(explicit_tags + mention_tags))
+    auto_only_tags = [t for t in auto_tags if t not in directed_tags]
 
     base_question = clean_question or question
 
-    tagged_chunks: list = []
-    if tags:
-        tagged_chunks = tagged_lookup(db_pool, tags, corpus_version)
+    explicit_chunks = tagged_lookup(db_pool, directed_tags, corpus_version) if directed_tags else []
+    auto_chunks = tagged_lookup(db_pool, auto_only_tags, corpus_version) if auto_only_tags else []
 
     # Retrieval: fuse_eq strategy (offline experiment winner, recall@5 41%->59%).
     # Arm A embeds the RAW question; arm B embeds a HyDE passage when the provider
@@ -134,10 +185,7 @@ async def answer_question(
     # it set confidence would report 1.0 for any query that merely matches a tag.
     semantic_confidence = max((c.similarity for c in chunks), default=0.0)
 
-    if tagged_chunks:
-        seen = {c.id for c in tagged_chunks}
-        semantic = [c for c in chunks if c.id not in seen]
-        chunks = tagged_chunks + semantic[:settings.top_k - len(tagged_chunks)]
+    chunks = _assemble_context(explicit_chunks, chunks, auto_chunks, settings.top_k)
 
     retrieval_ms = round((time.time() - t0) * 1000)
 
