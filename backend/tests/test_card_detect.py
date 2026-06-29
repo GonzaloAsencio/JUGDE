@@ -92,3 +92,48 @@ def test_empty_vocab_returns_empty():
 
 def test_empty_question_returns_empty():
     assert detect_card_mentions("", {"Vex Apathetic"}) == []
+
+
+# ---------------------------------------------------------------------------
+# v2: window-bounded token-subset matching (recovers reversed / split names)
+#
+# The exact-phrase pass misses cards whose tokens appear out of order
+# ("Angel Guardian" -> "Guardian Angel") or split by filler words
+# ("Irelia Legend's Blade Dancer" -> "Irelia Blade Dancer"). A SECONDARY pass
+# matches a card when ALL its tokens occur in the question, capitalized, within
+# a short window. The capitalization + window guards keep incidental token
+# co-occurrence in long prose from false-firing.
+# ---------------------------------------------------------------------------
+
+def test_v2_reversed_token_order_matched():
+    out = detect_card_mentions("the Angel Guardian and its unit", {"Guardian Angel"})
+    assert out == ["Guardian Angel"]
+
+
+def test_v2_tokens_split_by_filler_matched():
+    out = detect_card_mentions(
+        "activate Irelia Legend's Blade Dancer ability", {"Irelia Blade Dancer"}
+    )
+    assert out == ["Irelia Blade Dancer"]
+
+
+def test_v2_scatter_beyond_window_not_matched():
+    # tokens present but far apart -> incidental co-occurrence, must NOT fire
+    q = "the Angel flew over the castle while a lone Guardian watched the distant gate"
+    assert detect_card_mentions(q, {"Guardian Angel"}) == []
+
+
+def test_v2_lowercase_tokens_not_matched():
+    # subset match still demands the proper-noun (capitalized) signal
+    assert detect_card_mentions("the angel guardian thing", {"Guardian Angel"}) == []
+
+
+def test_v2_partial_token_subset_not_matched():
+    # only one of the card's tokens present -> not the card
+    assert detect_card_mentions("a lone Guardian stands", {"Guardian Angel"}) == []
+
+
+def test_v2_does_not_double_count_with_exact_match():
+    # exact contiguous match must not also be re-added by the secondary pass
+    out = detect_card_mentions("play Marching Orders now", {"Marching Orders"})
+    assert out == ["Marching Orders"]
