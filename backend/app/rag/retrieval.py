@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 
 from psycopg2.pool import SimpleConnectionPool
@@ -196,6 +197,41 @@ def fuse_results(
     return _rrf_fuse(primary, secondary, rrf_k, top_k)
 
 
+# A card printed in several sets is indexed once per printing, with identical
+# rules text. Their **Name** fields differ only by a trailing "(Variant)" suffix
+# (e.g. "Irelia - Blade Dancer" vs "...(Metal)"). Left alone, near-identical
+# printings crowd the top_k and starve a ruling of its other evidence.
+_CARD_NAME_RE = re.compile(r"\*\*Name\*\*:\s*([^|*\n]+)")
+_VARIANT_SUFFIX_RE = re.compile(r"\s*\([^)]*\)\s*$")
+
+
+def _printing_key(chunk: Chunk) -> str | None:
+    """Base-card identity for a card chunk: its **Name** minus the printing
+    variant suffix, lowercased. None for non-cards or cards without a Name."""
+    if chunk.source_type != "card":
+        return None
+    match = _CARD_NAME_RE.search(chunk.content)
+    if not match:
+        return None
+    return _VARIANT_SUFFIX_RE.sub("", match.group(1).strip()).lower()
+
+
+def _dedup_card_printings(chunks: list[Chunk]) -> list[Chunk]:
+    """Drop lower-ranked printings of the same base card, keeping the first
+    (highest-ranked) occurrence. Non-card chunks and cards without a parseable
+    name pass through untouched, preserving order."""
+    seen_keys: set[str] = set()
+    out: list[Chunk] = []
+    for chunk in chunks:
+        key = _printing_key(chunk)
+        if key is not None:
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+        out.append(chunk)
+    return out
+
+
 def _hybrid_search_impl(
     pool: SimpleConnectionPool,
     embedding: list[float],
@@ -215,6 +251,9 @@ def _hybrid_search_impl(
     # re-evaluation (e.g. a different corpus or keyword-extracted queries).
     # query_text is retained in the signature for that future use and API stability.
     vec_results = vector_search(pool, embedding, corpus_version, top_k=top_k_fetch, set_filter=set_filter)
+    # Collapse duplicate card printings BEFORE truncation so freed slots go to
+    # other evidence (different cards, rules) instead of repeating one card.
+    vec_results = _dedup_card_printings(vec_results)
     return _rrf_fuse(vec_results, [], rrf_k, top_k)
 
 
