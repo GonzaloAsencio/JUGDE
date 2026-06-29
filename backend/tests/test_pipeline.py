@@ -633,6 +633,45 @@ async def test_pipeline_card_mentions_dedup_with_explicit_at_tag():
     assert tags_arg.count("yasuo") == 1
 
 
+async def test_pipeline_auto_detected_card_becomes_directed_tag():
+    """A card named in the question (no @tag, no card_mentions) must be detected
+    against the corpus vocabulary and passed to tagged_lookup as a directed tag —
+    this is the hard-bucket fix (cards absent from semantic retrieval)."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    with patch("app.rag.pipeline.load_card_names", return_value=("Marching Orders", "Tideturner")):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]) as mock_lookup:
+            with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        await answer_question(
+                            "If I play Marching Orders with Repeat, what happens?",
+                            FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                        )
+
+    # First tagged_lookup call is the directed-tags lookup (explicit + detected cards).
+    _, directed_arg, _ = mock_lookup.call_args_list[0][0]
+    assert "marching orders" in directed_arg
+
+
+async def test_pipeline_card_detection_failure_does_not_break_query():
+    """If the vocabulary load raises, the query still answers (best-effort feature)."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    with patch("app.rag.pipeline.load_card_names", side_effect=RuntimeError("db down")):
+        with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    result = await answer_question(
+                        "How does this work?",
+                        FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                    )
+
+    assert result.citations, "query must still answer when card detection fails"
+
+
 async def test_pipeline_no_card_mentions_does_not_alter_existing_tag_flow():
     """Backwards-compat: when card_mentions is None, behavior must match the previous tag pipeline."""
     from tests.conftest import FakeEmbedder, FakeLLMProvider
