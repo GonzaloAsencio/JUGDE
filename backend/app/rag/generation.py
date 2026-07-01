@@ -118,6 +118,27 @@ def _leaks_system_prompt(answer: str) -> bool:
     return bool(_LEAK_PATTERN.search(answer)) or any(s in lowered for s in _LEAK_SENTINELS)
 
 
+# Matches the [#N] citation scaffolding the model is asked to emit: a single
+# [#1], a grouped [#1, #2, #3], or adjacent [#1][#2]. The '#' is optional so a
+# model that drops it ([1, 2]) is still cleaned. Used for display only — the
+# SOURCES panel is built from chunks in the pipeline, never from these markers.
+_CITATION_MARKER_RE = re.compile(r"\s*\[\s*#?\d+(?:\s*,\s*#?\d+)*\s*\]")
+# Collapse " ." / " ," left behind when a marker sat before punctuation.
+_SPACE_BEFORE_PUNCT_RE = re.compile(r"\s+([.,;:!?])")
+
+
+def strip_citation_markers(text: str) -> str:
+    """Remove [#N] citation markers from an answer for display.
+
+    Grounding lives in the prompt (the model is told to cite chunks), but the
+    markers are noise to a reader who already sees the SOURCES panel. Strips the
+    markers, then tidies the whitespace/punctuation the removal exposes.
+    """
+    cleaned = _CITATION_MARKER_RE.sub("", text)
+    cleaned = _SPACE_BEFORE_PUNCT_RE.sub(r"\1", cleaned)
+    return cleaned
+
+
 def _build_context_block(question: str, chunks: list[Chunk]) -> str:
     lines = ["=== CONTEXT ==="]
     for i, chunk in enumerate(chunks, 1):

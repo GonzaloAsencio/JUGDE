@@ -1,5 +1,10 @@
 """Tests for the system instruction (build_prompt) and source_type-agnostic post_gen_validate."""
-from app.rag.generation import _SYSTEM_INSTRUCTION, build_prompt, post_gen_validate
+from app.rag.generation import (
+    _SYSTEM_INSTRUCTION,
+    build_prompt,
+    post_gen_validate,
+    strip_citation_markers,
+)
 from app.rag.retrieval import Chunk
 from app.rag.schemas import Citation
 
@@ -151,3 +156,34 @@ def test_post_gen_validate_keeps_valid_card_citations_untouched():
     )
     assert was_sanitized is False
     assert len(citations) == 2
+
+
+# ---------------------------------------------------------------------------
+# strip_citation_markers — removes the [#N] scaffolding from the display text.
+# The SOURCES panel is built from chunks (pipeline), never parsed from these
+# markers, so they are pure noise for the reader and must not survive to the UI.
+# ---------------------------------------------------------------------------
+
+def test_strip_citation_markers_single():
+    assert strip_citation_markers("Yasuo cannot attack [#1].") == "Yasuo cannot attack."
+
+
+def test_strip_citation_markers_grouped():
+    assert strip_citation_markers("Both rules apply [#1, #2, #3].") == "Both rules apply."
+
+
+def test_strip_citation_markers_adjacent():
+    assert strip_citation_markers("It is exhausted [#1][#2] on entry.") == "It is exhausted on entry."
+
+
+def test_strip_citation_markers_no_hash():
+    assert strip_citation_markers("See the rule [1, 2].") == "See the rule."
+
+
+def test_strip_citation_markers_midsentence_keeps_one_space():
+    assert strip_citation_markers("The unit [#2] cannot attack.") == "The unit cannot attack."
+
+
+def test_strip_citation_markers_leaves_plain_text_untouched():
+    text = "Yasuo enters exhausted and cannot attack that turn."
+    assert strip_citation_markers(text) == text
