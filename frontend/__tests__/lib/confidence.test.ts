@@ -1,25 +1,15 @@
-import { deriveConfidence } from '@/lib/confidence';
-import type { Citation } from '@/lib/types';
+import { confidenceLevel } from '@/lib/confidence';
 
-// deriveConfidence only reads `.similarity`; build full citations so the test
-// stays typed against the real Citation contract (no `any`).
-const cite = (similarity: number): Citation => ({
-  section: '',
-  source_type: '',
-  content_preview: '',
-  similarity,
-});
-
-describe('deriveConfidence', () => {
-  it('returns null for empty array', () => expect(deriveConfidence([])).toBeNull());
-  it('returns high when avg >= 0.75', () =>
-    expect(deriveConfidence([cite(0.9), cite(0.85), cite(0.88)])).toBe('high'));
-  it('returns medium when avg is between 0.55 and 0.75', () =>
-    expect(deriveConfidence([cite(0.9), cite(0.5)])).toBe('medium'));
-  it('returns low when avg < 0.55', () =>
-    expect(deriveConfidence([cite(0.4), cite(0.5)])).toBe('low'));
-  it('boundary: 0.75 exactly is high', () =>
-    expect(deriveConfidence([cite(0.75)])).toBe('high'));
-  it('boundary: 0.55 exactly is medium', () =>
-    expect(deriveConfidence([cite(0.55)])).toBe('medium'));
+describe('confidenceLevel', () => {
+  it('returns null for null/undefined', () => {
+    expect(confidenceLevel(null)).toBeNull();
+    expect(confidenceLevel(undefined)).toBeNull();
+  });
+  it('returns high when score >= 0.75', () => expect(confidenceLevel(0.9)).toBe('high'));
+  it('returns medium when score is between 0.55 and 0.75', () =>
+    expect(confidenceLevel(0.65)).toBe('medium'));
+  it('returns low when score < 0.55', () => expect(confidenceLevel(0.4)).toBe('low'));
+  it('boundary: 0.75 exactly is high', () => expect(confidenceLevel(0.75)).toBe('high'));
+  it('boundary: 0.55 exactly is medium', () => expect(confidenceLevel(0.55)).toBe('medium'));
+  it('exact card match score 1.0 is high', () => expect(confidenceLevel(1.0)).toBe('high'));
 });

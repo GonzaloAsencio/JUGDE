@@ -36,6 +36,7 @@ describe('ChatView', () => {
         question: 'What is hunt?',
         answer: 'Hunt is a keyword.',
         citations: [],
+        confidence: null,
         latencyMs: 50,
         loading: false,
         error: null,
@@ -53,6 +54,7 @@ describe('ChatView', () => {
         question: 'What is hunt?',
         answer: 'Hunt is a keyword.',
         citations: [],
+        confidence: null,
         latencyMs: 50,
         loading: false,
         error: null,
@@ -84,7 +86,7 @@ describe('ChatView', () => {
     mockUseQueryStore.mockReturnValue({
       ...defaultStore,
       messages: [{
-        id: '1', question: 'Q?', answer: 'A', citations: [], latencyMs: 10, loading: false, error: null,
+        id: '1', question: 'Q?', answer: 'A', citations: [], confidence: null, latencyMs: 10, loading: false, error: null,
       }] as Message[],
     });
     render(<ChatView onReset={jest.fn()} />);

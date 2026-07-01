@@ -122,6 +122,7 @@ describe('useQueryStore', () => {
         question: 'old',
         answer: null,
         citations: [],
+        confidence: null,
         latencyMs: null,
         loading: true,
         error: null,

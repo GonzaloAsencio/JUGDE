@@ -1,28 +1,24 @@
 import { render, screen } from '@testing-library/react';
 import { ConfidenceBadge } from '@/components/ConfidenceBadge';
-import type { Citation } from '@/lib/types';
-
-// Only `.similarity` drives the badge; build full citations to stay typed.
-const cite = (similarity: number): Citation => ({
-  section: '',
-  source_type: '',
-  content_preview: '',
-  similarity,
-});
 
 describe('ConfidenceBadge', () => {
-  it('renders nothing for empty citations', () => {
-    const { container } = render(<ConfidenceBadge citations={[]} />);
+  it('renders nothing when confidence is null', () => {
+    const { container } = render(<ConfidenceBadge confidence={null} />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders High confidence for avg >= 0.75', () => {
-    render(<ConfidenceBadge citations={[cite(0.9), cite(0.85)]} />);
+  it('renders High confidence for score >= 0.75', () => {
+    render(<ConfidenceBadge confidence={0.9} />);
     expect(screen.getByText(/High confidence/i)).toBeInTheDocument();
   });
 
-  it('renders Medium confidence for mid-range avg', () => {
-    render(<ConfidenceBadge citations={[cite(0.65)]} />);
+  it('renders Medium confidence for mid-range score', () => {
+    render(<ConfidenceBadge confidence={0.65} />);
     expect(screen.getByText(/Medium confidence/i)).toBeInTheDocument();
+  });
+
+  it('renders High confidence for an exact card match (backend score 1.0)', () => {
+    render(<ConfidenceBadge confidence={1.0} />);
+    expect(screen.getByText(/High confidence/i)).toBeInTheDocument();
   });
 });

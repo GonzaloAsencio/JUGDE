@@ -7,7 +7,7 @@ from app.cache import get_cached, make_cache_key, set_cached
 from app.config import Settings
 from app.observability import get_logger
 from app.rag.embedder import Embedder
-from app.rag.generation import post_gen_validate
+from app.rag.generation import post_gen_validate, strip_citation_markers
 from app.rag.provider import LLMProvider
 from app.rag.card_detect import detect_card_mentions, load_card_names
 from app.rag.retrieval import fuse_results, hybrid_search, tagged_lookup
@@ -210,6 +210,18 @@ async def answer_question(
 
     chunks = _assemble_context(explicit_chunks, chunks, auto_chunks, settings.top_k)
 
+    # Exact card detection (auto-detected names + user @mentions) is the most
+    # precise retrieval we have — a deterministic entity match, not a fuzzy cosine.
+    # tagged_lookup keeps per-chunk similarity at 0.0 on purpose (see retrieval.py),
+    # so the semantic-cosine confidence would UNDERSTATE these. When a detected
+    # card survived into the final context, treat confidence as maximal. This is
+    # scoped to cards only — generic @tags/keywords still must not inflate.
+    card_match_tags = set(auto_card_tags) | set(mention_tags)
+    has_exact_card_match = any(
+        any(tag in chunk.section.lower() for tag in card_match_tags)
+        for chunk in chunks
+    )
+
     retrieval_ms = round((time.time() - t0) * 1000)
 
     if not chunks:
@@ -248,6 +260,10 @@ async def answer_question(
     valid_ids = {chunk.id for chunk in chunks}
     answer, _ = post_gen_validate(answer, citations, valid_chunk_ids=valid_ids)
 
+    # Drop the [#N] citation scaffolding — the frontend renders sources from the
+    # citations list, so the inline markers are redundant noise in the text.
+    answer = strip_citation_markers(answer)
+
     # Strip trailing no-info disclaimer when the model appended it to a real answer.
     _no_info_variants = [
         f"Therefore, {_NO_INFO_ANSWER}",
@@ -270,6 +286,8 @@ async def answer_question(
     latency_ms = round((time.time() - t0) * 1000)
 
     confidence = round(semantic_confidence, 4) if citations else 0.0
+    if has_exact_card_match and citations:
+        confidence = 1.0
 
     response = QueryResponse(
         answer=answer,

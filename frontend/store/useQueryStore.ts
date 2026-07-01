@@ -27,6 +27,7 @@ export interface Message {
   question: string;
   answer: string | null;
   citations: Citation[];
+  confidence: number | null;
   latencyMs: number | null;
   loading: boolean;
   error: ApiError | null;
@@ -61,6 +62,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       question: displayQuestion,
       answer: null,
       citations: [],
+      confidence: null,
       latencyMs: null,
       loading: true,
       error: null,
@@ -73,7 +75,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       set(state => ({
         messages: state.messages.map(m =>
           m.id === id
-            ? { ...m, answer: data.answer, citations: data.citations, latencyMs: data.latency_ms, loading: false }
+            ? { ...m, answer: data.answer, citations: data.citations, confidence: data.confidence ?? null, latencyMs: data.latency_ms, loading: false }
             : m
         ),
       }));

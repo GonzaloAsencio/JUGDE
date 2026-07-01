@@ -24,6 +24,7 @@ const baseMessage: Message = {
   question: 'Can I attack with a tapped unit?',
   answer: null,
   citations: [],
+  confidence: null,
   latencyMs: null,
   loading: false,
   error: null,

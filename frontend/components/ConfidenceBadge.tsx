@@ -1,8 +1,7 @@
-import { deriveConfidence } from '@/lib/confidence';
-import type { Citation } from '@/lib/types';
+import { confidenceLevel } from '@/lib/confidence';
 
 interface ConfidenceBadgeProps {
-  citations: Citation[];
+  confidence: number | null;
 }
 
 const CONFIG = {
@@ -20,17 +19,16 @@ const CONFIG = {
   },
 } as const;
 
-export function ConfidenceBadge({ citations }: ConfidenceBadgeProps) {
-  const level = deriveConfidence(citations);
+export function ConfidenceBadge({ confidence }: ConfidenceBadgeProps) {
+  const level = confidenceLevel(confidence);
   if (!level) return null;
 
-  const avg = citations.reduce((s, c) => s + c.similarity, 0) / citations.length;
   const { className, label } = CONFIG[level];
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${className}`}
-      title={`Avg similarity: ${avg.toFixed(2)}`}
+      title={`Retrieval confidence: ${(confidence ?? 0).toFixed(2)}`}
     >
       {label}
     </span>

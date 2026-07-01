@@ -764,6 +764,31 @@ async def test_pipeline_confidence_zero_without_semantic_signal():
     assert result.confidence == 0.0
 
 
+async def test_pipeline_exact_card_match_yields_high_confidence():
+    """A card resolved by exact-name detection is the most precise retrieval
+    possible — its confidence must be high even when the semantic cosine is weak.
+    This is distinct from a generic @tag match (which must NOT inflate)."""
+    from app.rag.retrieval import Chunk
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    card_chunk = Chunk("card_id", "Kha'Zix content", "Kha'Zix - Mutating Horror", None, "card", 0.0)
+    weak_semantic = Chunk("sem_id", "Weakly related", "Other", None, "rulebook", 0.4)
+
+    with patch("app.rag.pipeline.load_card_names", return_value=()):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[card_chunk]):
+            with patch("app.rag.pipeline.hybrid_search", return_value=[weak_semantic]):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        result = await answer_question(
+                            "what does this card do?",
+                            FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                            card_mentions=["Kha'Zix - Mutating Horror"],
+                        )
+
+    assert result.confidence == 1.0
+
+
 async def test_pipeline_tagged_deduplicates_with_semantic():
     """A chunk returned by both tagged_lookup and hybrid_search appears only once in citations."""
     from app.rag.retrieval import Chunk
