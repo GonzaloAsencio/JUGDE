@@ -1,0 +1,21 @@
+name: Sync to Hugging Face Space
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git remote add hf "https://GonzaViss:${HF_TOKEN}@huggingface.co/spaces/GonzaViss/Judge"
+          git push hf main
