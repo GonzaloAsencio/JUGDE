@@ -9,6 +9,7 @@ from app.observability import get_logger
 from app.rag.embedder import Embedder
 from app.rag.generation import post_gen_validate
 from app.rag.provider import LLMProvider
+from app.rag.card_detect import detect_card_mentions, load_card_names
 from app.rag.retrieval import fuse_results, hybrid_search, tagged_lookup
 from app.rag.rules import extract_rule_codes
 from app.rag.schemas import Citation, QueryResponse
@@ -144,15 +145,31 @@ async def answer_question(
             pass  # Corrupt cache entry — fall through to generation
 
     clean_question, explicit_tags = _extract_tags(question)
-    auto_tags = _detect_keywords(clean_question or question)
+    base_question = clean_question or question
+    auto_tags = _detect_keywords(base_question)
     mention_tags = [m.lower() for m in (card_mentions or [])]
 
-    # User-directed tags (@tags + card mentions) may prepend; auto-detected
-    # keywords are a heuristic and only fill leftover budget (see _assemble_context).
-    directed_tags = list(dict.fromkeys(explicit_tags + mention_tags))
-    auto_only_tags = [t for t in auto_tags if t not in directed_tags]
+    # Auto-detect card names in the question. Multi-card interaction questions
+    # embed poorly (the scenario prose dominates the cosine), so named cards rarely
+    # surface in semantic retrieval — a deterministic probe found 9/12 named cards
+    # ABSENT from context on the hard bucket. Detected names join the user-directed
+    # tags so tagged_lookup pulls them into reserved slots (see _assemble_context).
+    # Best-effort: a vocabulary-load failure must never break query answering, so
+    # the feature degrades to the prior behaviour instead of raising.
+    auto_card_tags: list[str] = []
+    try:
+        card_vocab = load_card_names(db_pool, corpus_version)
+        auto_card_tags = [
+            c.lower()
+            for c in detect_card_mentions(base_question, card_vocab, known_keywords=_KNOWN_KEYWORDS)
+        ]
+    except Exception as e:  # pragma: no cover - defensive: never fail a query on detection
+        logger.warning("card_detect.failed", query_id=query_id, error=str(e))
 
-    base_question = clean_question or question
+    # User-directed tags (@tags + card mentions + auto-detected cards) may prepend;
+    # auto-detected KEYWORDS are a weaker heuristic and only fill leftover budget.
+    directed_tags = list(dict.fromkeys(explicit_tags + mention_tags + auto_card_tags))
+    auto_only_tags = [t for t in auto_tags if t not in directed_tags]
 
     explicit_chunks = tagged_lookup(db_pool, directed_tags, corpus_version) if directed_tags else []
     auto_chunks = tagged_lookup(db_pool, auto_only_tags, corpus_version) if auto_only_tags else []
