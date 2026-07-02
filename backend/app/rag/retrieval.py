@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 
-from psycopg2.pool import SimpleConnectionPool
+from psycopg2.pool import ThreadedConnectionPool
 
 from app.db import get_conn
 from app.observability import observe_or_noop
@@ -45,7 +45,7 @@ def _set_clause(set_filter: str | None) -> tuple[str, tuple]:
 
 
 def vector_search(
-    pool: SimpleConnectionPool,
+    pool: ThreadedConnectionPool,
     embedding: list[float],
     corpus_version: str,
     top_k: int = 5,
@@ -74,7 +74,7 @@ def vector_search(
 
 
 def fts_search(
-    pool: SimpleConnectionPool,
+    pool: ThreadedConnectionPool,
     query_text: str,
     corpus_version: str,
     top_k: int = 5,
@@ -233,7 +233,7 @@ def _dedup_card_printings(chunks: list[Chunk]) -> list[Chunk]:
 
 
 def _hybrid_search_impl(
-    pool: SimpleConnectionPool,
+    pool: ThreadedConnectionPool,
     embedding: list[float],
     query_text: str,
     corpus_version: str,
@@ -272,7 +272,7 @@ LIMIT 2
 
 
 def tagged_lookup(
-    pool: SimpleConnectionPool,
+    pool: ThreadedConnectionPool,
     tags: list[str],
     corpus_version: str,
 ) -> list[Chunk]:
