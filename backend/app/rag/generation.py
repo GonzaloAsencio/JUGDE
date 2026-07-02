@@ -1,4 +1,5 @@
 import logging
+import random
 import re
 import time
 from typing import TYPE_CHECKING, Callable, Optional, TypeVar
@@ -13,8 +14,14 @@ logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
 
-_RATE_LIMIT_MAX_RETRIES = 4
-_RATE_LIMIT_BASE_DELAY = 2.0
+# Backoff is BOUNDED on purpose. The old schedule (4 retries, base 2.0, no cap)
+# could sleep 2+4+8+16 = 30s — and since the pipeline runs in a threadpool worker,
+# a burst of 429s would tie up every worker for half a minute each, starving the
+# app. We cap total worst-case sleep to a few seconds: 2 retries, per-delay ceiling.
+_RATE_LIMIT_MAX_RETRIES = 2
+_RATE_LIMIT_BASE_DELAY = 1.0
+_RATE_LIMIT_MAX_DELAY = 4.0
+_RATE_LIMIT_JITTER = 0.5
 
 
 def _is_rate_limit(exc: Exception) -> bool:
@@ -35,12 +42,15 @@ def _completion_with_retry(
     base_delay: float = _RATE_LIMIT_BASE_DELAY,
     sleep: Callable[[float], None] = time.sleep,
 ) -> _T:
-    """Run an OpenAI-compat completion *call*, retrying on 429 with exponential
-    backoff (base_delay * 2**attempt). Non-rate-limit errors propagate
-    immediately; the last 429 is re-raised once retries are exhausted.
+    """Run an OpenAI-compat completion *call*, retrying on 429 with BOUNDED
+    exponential backoff. Each delay is ``min(base_delay * 2**attempt,
+    _RATE_LIMIT_MAX_DELAY)`` plus a little jitter; non-rate-limit errors
+    propagate immediately; the last 429 is re-raised once retries are exhausted.
 
     A single LLM endpoint serves HyDE + generation + judge, so transient
-    throttling must be absorbed here rather than corrupting eval results.
+    throttling must be absorbed here rather than corrupting eval results — but
+    the total sleep is capped so a 429 burst can't tie up a threadpool worker
+    for tens of seconds (the old unbounded schedule reached 30s).
     """
     for attempt in range(max_retries + 1):
         try:
@@ -49,7 +59,8 @@ def _completion_with_retry(
             if not _is_rate_limit(exc) or attempt == max_retries:
                 raise
             logger.warning("llm.rate_limited", extra={"attempt": attempt + 1})
-            sleep(base_delay * (2 ** attempt))
+            delay = min(base_delay * (2 ** attempt), _RATE_LIMIT_MAX_DELAY)
+            sleep(delay + random.uniform(0, _RATE_LIMIT_JITTER))
     raise AssertionError("unreachable")  # loop either returns or raises
 
 

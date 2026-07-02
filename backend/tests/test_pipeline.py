@@ -116,7 +116,7 @@ async def test_pipeline_empty_chunks_returns_fallback():
         with patch("app.rag.pipeline.get_cached", return_value=None):
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
-                result = await answer_question(
+                result = answer_question(
                     "What is a rule?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
                 )
 
@@ -135,7 +135,7 @@ async def test_pipeline_latency_ms_populated():
         with patch("app.rag.pipeline.get_cached", return_value=None):
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
-                result = await answer_question(
+                result = answer_question(
                     "How does it work?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
                 )
 
@@ -155,7 +155,7 @@ async def test_pipeline_citation_preview_truncated_to_200_chars():
         with patch("app.rag.pipeline.get_cached", return_value=None):
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
-                result = await answer_question(
+                result = answer_question(
                     "Any question?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
                 )
 
@@ -175,7 +175,7 @@ async def test_pipeline_propagates_generation_timeout():
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
                 with pytest.raises(GenerationTimeout):
-                    await answer_question(
+                    answer_question(
                         "What is a rule?", FakeEmbedder(), MagicMock(), FakeLLMProviderTimeout(), settings
                     )
 
@@ -216,7 +216,7 @@ async def test_pipeline_fuses_raw_and_hyde_when_provider_supplies_hyde():
         with patch("app.rag.pipeline.get_cached", return_value=None):
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
-                result = await answer_question(
+                result = answer_question(
                     "How many cards are in a starting deck?",
                     FakeEmbedder(), MagicMock(), _HydeProvider(), _fake_settings(),
                 )
@@ -241,7 +241,7 @@ async def test_pipeline_arm_a_embeds_raw_question_not_rewrite():
         with patch("app.rag.pipeline.get_cached", return_value=None):
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
-                await answer_question(
+                answer_question(
                     "What is a unit?",
                     FakeEmbedder(), MagicMock(), _HydeProvider(), _fake_settings(),
                 )
@@ -263,7 +263,7 @@ async def test_pipeline_degrades_to_raw_only_when_no_hyde():
         with patch("app.rag.pipeline.get_cached", return_value=None):
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
-                result = await answer_question(
+                result = answer_question(
                     "How does it work?",
                     FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                 )
@@ -295,7 +295,7 @@ async def test_pipeline_fusion_arms_fetch_deep_then_truncate_once():
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
-                    await answer_question(
+                    answer_question(
                         "How does conquer work?",
                         FakeEmbedder(), MagicMock(), _HydeProvider(), settings,
                     )
@@ -319,7 +319,7 @@ async def test_pipeline_raw_only_arm_fetches_at_top_k():
         with patch("app.rag.pipeline.get_cached", return_value=None):
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
-                await answer_question(
+                answer_question(
                     "How does it work?",
                     FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings,
                 )
@@ -477,7 +477,7 @@ async def test_pipeline_tagged_chunks_prepend_before_semantic():
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
                     from tests.conftest import FakeLLMProvider
-                    result = await answer_question(
+                    result = answer_question(
                         "@accelerate what does it do?",
                         FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                     )
@@ -565,7 +565,7 @@ async def test_pipeline_auto_detects_keyword_without_tag():
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
                     from tests.conftest import FakeLLMProvider
-                    result = await answer_question(
+                    result = answer_question(
                         "What does Accelerate do?",
                         FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                     )
@@ -583,7 +583,7 @@ async def test_pipeline_card_mentions_passed_to_tagged_lookup_as_tags():
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
-                    await answer_question(
+                    answer_question(
                         "How does this card work?",
                         FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                         card_mentions=["Yasuo"],
@@ -603,7 +603,7 @@ async def test_pipeline_card_mentions_lowercased():
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
-                    await answer_question(
+                    answer_question(
                         "question?",
                         FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                         card_mentions=["YASUO", "Shen"],
@@ -623,7 +623,7 @@ async def test_pipeline_card_mentions_dedup_with_explicit_at_tag():
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
-                    await answer_question(
+                    answer_question(
                         "@Yasuo can attack?",
                         FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                         card_mentions=["Yasuo"],
@@ -645,7 +645,7 @@ async def test_pipeline_auto_detected_card_becomes_directed_tag():
                 with patch("app.rag.pipeline.get_cached", return_value=None):
                     with patch("app.rag.pipeline.set_cached"):
                         from app.rag.pipeline import answer_question
-                        await answer_question(
+                        answer_question(
                             "If I play Marching Orders with Repeat, what happens?",
                             FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                         )
@@ -664,7 +664,7 @@ async def test_pipeline_card_detection_failure_does_not_break_query():
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
-                    result = await answer_question(
+                    result = answer_question(
                         "How does this work?",
                         FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                     )
@@ -681,7 +681,7 @@ async def test_pipeline_no_card_mentions_does_not_alter_existing_tag_flow():
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
-                    await answer_question(
+                    answer_question(
                         "@accelerate how does it work?",
                         FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                     )
@@ -712,7 +712,7 @@ async def test_pipeline_confidence_not_inflated_by_tagged_match():
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
-                    result = await answer_question(
+                    result = answer_question(
                         "@accelerate what does it do?",
                         FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                     )
@@ -737,7 +737,7 @@ async def test_pipeline_confidence_is_max_semantic_cosine_not_first():
         with patch("app.rag.pipeline.get_cached", return_value=None):
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
-                result = await answer_question(
+                result = answer_question(
                     "How does it work?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                 )
 
@@ -756,7 +756,7 @@ async def test_pipeline_confidence_zero_without_semantic_signal():
             with patch("app.rag.pipeline.get_cached", return_value=None):
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
-                    result = await answer_question(
+                    result = answer_question(
                         "@accelerate what does it do?",
                         FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                     )
@@ -780,7 +780,7 @@ async def test_pipeline_exact_card_match_yields_high_confidence():
                 with patch("app.rag.pipeline.get_cached", return_value=None):
                     with patch("app.rag.pipeline.set_cached"):
                         from app.rag.pipeline import answer_question
-                        result = await answer_question(
+                        result = answer_question(
                             "what does this card do?",
                             FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                             card_mentions=["Kha'Zix - Mutating Horror"],
@@ -803,7 +803,7 @@ async def test_pipeline_tagged_deduplicates_with_semantic():
                 with patch("app.rag.pipeline.set_cached"):
                     from app.rag.pipeline import answer_question
                     from tests.conftest import FakeLLMProvider
-                    result = await answer_question(
+                    result = answer_question(
                         "@accelerate",
                         FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
                     )

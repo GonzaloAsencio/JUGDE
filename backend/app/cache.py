@@ -41,8 +41,14 @@ def make_cache_key(question: str, corpus_version: str, card_mentions: list[str] 
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
-async def get_cached(key: str) -> str | None:
-    """Return the cached JSON string for *key*, or None on miss/error."""
+def get_cached(key: str) -> str | None:
+    """Return the cached JSON string for *key*, or None on miss/error.
+
+    Synchronous: the Upstash client is an HTTP client with no async API, so an
+    ``async def`` here never yielded to the event loop — it only masked a
+    blocking call. The pipeline runs in FastAPI's threadpool (sync handler), so
+    a plain blocking call is correct and honest about what happens.
+    """
     if _redis_client is None:
         return None
     try:
@@ -53,8 +59,11 @@ async def get_cached(key: str) -> str | None:
         return None
 
 
-async def set_cached(key: str, value: str, ttl: int) -> None:
-    """Store *value* under *key* with *ttl* seconds. No-op on error."""
+def set_cached(key: str, value: str, ttl: int) -> None:
+    """Store *value* under *key* with *ttl* seconds. No-op on error.
+
+    Synchronous — see get_cached for why the previous ``async`` was decorative.
+    """
     if _redis_client is None:
         return
     try:
