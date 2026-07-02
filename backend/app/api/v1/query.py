@@ -34,7 +34,7 @@ def get_llm_provider(request: Request) -> LLMProvider:
 
 @router.post("/query", response_model=QueryResponse)
 @limiter.limit(_query_limits)
-async def query(
+def query(
     body: QueryRequest,
     request: Request,
     embedder=Depends(get_embedder),
@@ -42,11 +42,17 @@ async def query(
     provider: LLMProvider = Depends(get_llm_provider),
     settings=Depends(get_settings),
 ) -> QueryResponse:
-    """POST /query — embed -> retrieve -> generate."""
+    """POST /query — embed -> retrieve -> generate.
+
+    Sync handler on purpose: the pipeline is fully blocking (embed, DB, LLM,
+    cache), so FastAPI runs this in its threadpool and serves requests
+    concurrently. An ``async`` handler would run the blocking work on the event
+    loop and serialize the whole app to one request at a time.
+    """
     if request.app.state.corpus_version is None:
         raise HTTPException(status_code=503, detail="Corpus not loaded. Run ingest pipeline first.")
     try:
-        return await answer_question(body.question, embedder, pool, provider, settings, body.card_mentions)
+        return answer_question(body.question, embedder, pool, provider, settings, body.card_mentions)
     except GenerationTimeout as e:
         logger.warning("LLM timeout", error=str(e))
         raise HTTPException(status_code=504, detail="Generation timeout") from e
