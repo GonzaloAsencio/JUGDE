@@ -1,8 +1,6 @@
 """Unit tests for backend/app/cache.py."""
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.cache import get_cached, make_cache_key, set_cached
 
 
@@ -70,29 +68,29 @@ def test_make_cache_key_is_hex_string():
 # get_cached — graceful degradation when Redis raises
 # ---------------------------------------------------------------------------
 
-async def test_get_cached_returns_none_when_redis_raises():
+def test_get_cached_returns_none_when_redis_raises():
     mock_redis = MagicMock()
     mock_redis.get.side_effect = RuntimeError("connection refused")
 
     with patch("app.cache._redis_client", mock_redis):
-        result = await get_cached("any-key")
+        result = get_cached("any-key")
 
     assert result is None
 
 
-async def test_get_cached_returns_none_when_no_client():
+def test_get_cached_returns_none_when_no_client():
     with patch("app.cache._redis_client", None):
-        result = await get_cached("any-key")
+        result = get_cached("any-key")
 
     assert result is None
 
 
-async def test_get_cached_returns_value_on_hit():
+def test_get_cached_returns_value_on_hit():
     mock_redis = MagicMock()
     mock_redis.get.return_value = '{"answer": "test"}'
 
     with patch("app.cache._redis_client", mock_redis):
-        result = await get_cached("existing-key")
+        result = get_cached("existing-key")
 
     assert result == '{"answer": "test"}'
 
@@ -101,16 +99,16 @@ async def test_get_cached_returns_value_on_hit():
 # set_cached — graceful degradation when Redis raises
 # ---------------------------------------------------------------------------
 
-async def test_set_cached_is_noop_when_redis_raises():
+def test_set_cached_is_noop_when_redis_raises():
     mock_redis = MagicMock()
     mock_redis.set.side_effect = RuntimeError("connection refused")
 
     with patch("app.cache._redis_client", mock_redis):
         # Must not raise
-        await set_cached("key", "value", ttl=60)
+        set_cached("key", "value", ttl=60)
 
 
-async def test_set_cached_is_noop_when_no_client():
+def test_set_cached_is_noop_when_no_client():
     with patch("app.cache._redis_client", None):
         # Must not raise
-        await set_cached("key", "value", ttl=60)
+        set_cached("key", "value", ttl=60)
