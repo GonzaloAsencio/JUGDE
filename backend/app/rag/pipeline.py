@@ -123,50 +123,46 @@ def _assemble_context(
     return result
 
 
-def answer_question(
+def _try_cached_response(cache_key: str, settings: Settings, query_id: str, t0: float) -> QueryResponse | None:
+    """Return a cached QueryResponse for *cache_key*, or None on miss/corruption.
+
+    Runs after Pydantic validation + rate limit (see ADR-1). A corrupt cache
+    entry returns None so the caller falls through to fresh generation.
+    """
+    cached_raw = get_cached(cache_key)
+    if cached_raw is None:
+        return None
+    try:
+        cached_data = json.loads(cached_raw)
+        latency_ms = round((time.time() - t0) * 1000)
+        response = QueryResponse(**{**cached_data, "cache_hit": True, "latency_ms": latency_ms})
+    except Exception:
+        return None  # Corrupt cache entry — fall through to generation
+    logger.info(
+        "query.complete",
+        query_id=query_id,
+        latency_ms=latency_ms,
+        cache_hit=True,
+        model=settings.llm_model or settings.gemini_model,
+        confidence=response.confidence,
+    )
+    return response
+
+
+def _retrieve(
     question: str,
     embedder: Embedder,
     db_pool,
     provider: LLMProvider,
     settings: Settings,
-    card_mentions: list[str] | None = None,
-    corpus_version: str | None = None,
-) -> QueryResponse:
-    """Orchestrate embed -> retrieve -> generate with cache, tracing, and post-gen validation.
+    card_mentions: list[str] | None,
+    corpus_version: str,
+    query_id: str,
+) -> tuple[list, str, float, bool]:
+    """Embed + retrieve + assemble the final context.
 
-    Synchronous by design: every collaborator (embedder, psycopg2, LLM clients,
-    Upstash cache) is blocking. The endpoint is a sync handler, so FastAPI runs
-    this in its threadpool — real concurrency without an ``async`` facade that
-    would only block the event loop.
+    Returns (chunks, clean_question, semantic_confidence, has_exact_card_match).
     """
-    t0 = time.time()
-    query_id = str(uuid.uuid4())
-
-    # Resolved corpus_version is passed in explicitly (from app.state) by the
-    # endpoint. Falling back to settings keeps existing callers/tests working
-    # without mutating the cached Settings singleton (see main.py).
-    corpus_version = corpus_version or settings.corpus_version or "latest"
-    cache_key = make_cache_key(question, corpus_version, card_mentions, settings.prompt_version)
-
-    # Cache check — runs after Pydantic validation + rate limit (see ADR-1)
-    cached_raw = get_cached(cache_key)
-    if cached_raw is not None:
-        try:
-            cached_data = json.loads(cached_raw)
-            latency_ms = round((time.time() - t0) * 1000)
-            cached_response = QueryResponse(**{**cached_data, "cache_hit": True, "latency_ms": latency_ms})
-            logger.info(
-                "query.complete",
-                query_id=query_id,
-                latency_ms=latency_ms,
-                cache_hit=True,
-                model=settings.llm_model or settings.gemini_model,
-                confidence=cached_response.confidence,
-            )
-            return cached_response
-        except Exception:
-            pass  # Corrupt cache entry — fall through to generation
-
     clean_question, explicit_tags = _extract_tags(question)
     base_question = clean_question or question
     auto_tags = _detect_keywords(base_question)
@@ -242,29 +238,12 @@ def answer_question(
     card_match_tags = set(auto_card_tags) | set(mention_tags)
     has_exact_card_match = _has_exact_card_match(chunks, card_match_tags)
 
-    retrieval_ms = round((time.time() - t0) * 1000)
+    return chunks, clean_question, semantic_confidence, has_exact_card_match
 
-    if not chunks:
-        latency_ms = retrieval_ms
-        logger.info(
-            "query.complete",
-            query_id=query_id,
-            latency_ms=latency_ms,
-            cache_hit=False,
-            model=settings.llm_model or settings.gemini_model,
-            confidence=0.0,
-        )
-        return QueryResponse(
-            answer=_NO_INFO_ANSWER,
-            citations=[],
-            latency_ms=latency_ms,
-            cache_hit=False,
-            confidence=0.0,
-        )
 
-    answer = provider.generate(clean_question or question, chunks)
-
-    citations = [
+def _build_citations(chunks: list) -> list[Citation]:
+    """Build the citation list from the final context chunks."""
+    return [
         Citation(
             section=chunk.section,
             source_type=chunk.source_type,
@@ -277,6 +256,9 @@ def answer_question(
         for chunk in chunks
     ]
 
+
+def _postprocess_answer(answer: str, citations: list, chunks: list, query_id: str) -> str:
+    """Validate + clean the generated answer. May mutate/clear *citations* in place."""
     valid_ids = {chunk.id for chunk in chunks}
     answer, _ = post_gen_validate(answer, citations, valid_chunk_ids=valid_ids)
 
@@ -303,11 +285,78 @@ def answer_question(
         )
         citations.clear()
 
-    latency_ms = round((time.time() - t0) * 1000)
+    return answer
 
-    confidence = round(semantic_confidence, 4) if citations else 0.0
-    if has_exact_card_match and citations:
-        confidence = 1.0
+
+def _compute_confidence(semantic_confidence: float, has_exact_card_match: bool, citations: list) -> float:
+    """Confidence for the response: 0.0 without citations, 1.0 on an exact card
+    match, else the rounded best semantic cosine."""
+    if not citations:
+        return 0.0
+    if has_exact_card_match:
+        return 1.0
+    return round(semantic_confidence, 4)
+
+
+def answer_question(
+    question: str,
+    embedder: Embedder,
+    db_pool,
+    provider: LLMProvider,
+    settings: Settings,
+    card_mentions: list[str] | None = None,
+    corpus_version: str | None = None,
+) -> QueryResponse:
+    """Orchestrate embed -> retrieve -> generate with cache, tracing, and post-gen validation.
+
+    Synchronous by design: every collaborator (embedder, psycopg2, LLM clients,
+    Upstash cache) is blocking. The endpoint is a sync handler, so FastAPI runs
+    this in its threadpool — real concurrency without an ``async`` facade that
+    would only block the event loop.
+    """
+    t0 = time.time()
+    query_id = str(uuid.uuid4())
+
+    # Resolved corpus_version is passed in explicitly (from app.state) by the
+    # endpoint. Falling back to settings keeps existing callers/tests working
+    # without mutating the cached Settings singleton (see main.py).
+    corpus_version = corpus_version or settings.corpus_version or "latest"
+    cache_key = make_cache_key(question, corpus_version, card_mentions, settings.prompt_version)
+
+    cached = _try_cached_response(cache_key, settings, query_id, t0)
+    if cached is not None:
+        return cached
+
+    chunks, clean_question, semantic_confidence, has_exact_card_match = _retrieve(
+        question, embedder, db_pool, provider, settings, card_mentions, corpus_version, query_id
+    )
+
+    model = settings.llm_model or settings.gemini_model
+
+    if not chunks:
+        latency_ms = round((time.time() - t0) * 1000)
+        logger.info(
+            "query.complete",
+            query_id=query_id,
+            latency_ms=latency_ms,
+            cache_hit=False,
+            model=model,
+            confidence=0.0,
+        )
+        return QueryResponse(
+            answer=_NO_INFO_ANSWER,
+            citations=[],
+            latency_ms=latency_ms,
+            cache_hit=False,
+            confidence=0.0,
+        )
+
+    answer = provider.generate(clean_question or question, chunks)
+    citations = _build_citations(chunks)
+    answer = _postprocess_answer(answer, citations, chunks, query_id)
+
+    latency_ms = round((time.time() - t0) * 1000)
+    confidence = _compute_confidence(semantic_confidence, has_exact_card_match, citations)
 
     response = QueryResponse(
         answer=answer,
@@ -329,7 +378,7 @@ def answer_question(
         query_id=query_id,
         latency_ms=latency_ms,
         cache_hit=False,
-        model=settings.llm_model or settings.gemini_model,
+        model=model,
         confidence=confidence,
     )
 
