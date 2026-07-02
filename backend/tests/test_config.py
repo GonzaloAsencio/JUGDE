@@ -33,3 +33,50 @@ def test_corpus_version_strips_whitespace(monkeypatch):
     from app.config import Settings
     s = Settings()
     assert s.corpus_version == "v2.0.0"
+
+
+# ---------------------------------------------------------------------------
+# Fail-closed auth in production
+# ---------------------------------------------------------------------------
+
+def test_production_without_secret_refuses_to_start(monkeypatch):
+    """app_env=production with no proxy_shared_secret must raise, not boot open."""
+    from pydantic import ValidationError
+
+    from app.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            database_url="postgresql://fake",
+            gemini_api_key="fake-key",
+            app_env="production",
+            proxy_shared_secret=None,
+        )
+
+
+def test_production_with_secret_starts(monkeypatch):
+    from app.config import Settings
+
+    s = Settings(
+        _env_file=None,
+        database_url="postgresql://fake",
+        gemini_api_key="fake-key",
+        app_env="production",
+        proxy_shared_secret="a-real-secret",
+    )
+    assert s.proxy_shared_secret == "a-real-secret"
+
+
+def test_development_without_secret_is_allowed(monkeypatch):
+    """Local dev must still boot without a secret (auth disabled)."""
+    from app.config import Settings
+
+    s = Settings(
+        _env_file=None,
+        database_url="postgresql://fake",
+        gemini_api_key="fake-key",
+        app_env="development",
+        proxy_shared_secret=None,
+    )
+    assert s.proxy_shared_secret is None
