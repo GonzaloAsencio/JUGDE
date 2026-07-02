@@ -29,6 +29,41 @@ def _make_chunk(
     )
 
 
+# ---------------------------------------------------------------------------
+# _has_exact_card_match — whole-word, not substring
+#
+# A substring test let tag "jhin" match section "Jhinx" and wrongly force
+# confidence to 1.0. The match must be whole-word.
+# ---------------------------------------------------------------------------
+
+def test_exact_card_match_hits_on_whole_word():
+    from app.rag.pipeline import _has_exact_card_match
+
+    chunks = [_make_chunk(section="Jhin - The Virtuoso")]
+    assert _has_exact_card_match(chunks, {"jhin"}) is True
+
+
+def test_exact_card_match_ignores_substring_of_a_longer_name():
+    from app.rag.pipeline import _has_exact_card_match
+
+    chunks = [_make_chunk(section="Jhinx")]
+    # "jhin" is a substring of "Jhinx" but not a whole word — must NOT match.
+    assert _has_exact_card_match(chunks, {"jhin"}) is False
+
+
+def test_exact_card_match_empty_tags_is_false():
+    from app.rag.pipeline import _has_exact_card_match
+
+    assert _has_exact_card_match([_make_chunk(section="Anything")], set()) is False
+
+
+def test_exact_card_match_multiword_tag():
+    from app.rag.pipeline import _has_exact_card_match
+
+    chunks = [_make_chunk(section="Irelia - Blade Dancer")]
+    assert _has_exact_card_match(chunks, {"blade dancer"}) is True
+
+
 def _fake_settings(corpus_version: str = "v1"):
     """Minimal settings stub for pipeline tests."""
     s = MagicMock()
