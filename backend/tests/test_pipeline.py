@@ -159,6 +159,32 @@ async def test_pipeline_empty_chunks_returns_fallback():
     assert "I don't have enough information" in result.answer
 
 
+async def test_pipeline_uses_explicit_corpus_version_without_mutating_settings():
+    """The explicit corpus_version wins and the Settings singleton is left intact."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    settings = _fake_settings()
+    settings.corpus_version = "settings-default"
+
+    captured = {}
+
+    def _capture(pool, embedding, query_text, corpus_version, **kwargs):
+        captured["corpus_version"] = corpus_version
+        return []
+
+    with patch("app.rag.pipeline.hybrid_search", side_effect=_capture):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                answer_question(
+                    "What is a rule?", FakeEmbedder(), MagicMock(), FakeLLMProvider(),
+                    settings, corpus_version="explicit-v9",
+                )
+
+    assert captured["corpus_version"] == "explicit-v9"
+    assert settings.corpus_version == "settings-default"  # not mutated
+
+
 async def test_pipeline_latency_ms_populated():
     """latency_ms must be a non-negative integer in the response."""
     from tests.conftest import FakeEmbedder, FakeLLMProvider
