@@ -130,6 +130,7 @@ def answer_question(
     provider: LLMProvider,
     settings: Settings,
     card_mentions: list[str] | None = None,
+    corpus_version: str | None = None,
 ) -> QueryResponse:
     """Orchestrate embed -> retrieve -> generate with cache, tracing, and post-gen validation.
 
@@ -141,7 +142,10 @@ def answer_question(
     t0 = time.time()
     query_id = str(uuid.uuid4())
 
-    corpus_version = settings.corpus_version or "latest"
+    # Resolved corpus_version is passed in explicitly (from app.state) by the
+    # endpoint. Falling back to settings keeps existing callers/tests working
+    # without mutating the cached Settings singleton (see main.py).
+    corpus_version = corpus_version or settings.corpus_version or "latest"
     cache_key = make_cache_key(question, corpus_version, card_mentions, settings.prompt_version)
 
     # Cache check — runs after Pydantic validation + rate limit (see ADR-1)

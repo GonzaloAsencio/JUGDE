@@ -53,7 +53,10 @@ def query(
     if request.app.state.corpus_version is None:
         raise HTTPException(status_code=503, detail="Corpus not loaded. Run ingest pipeline first.")
     try:
-        return answer_question(body.question, embedder, pool, provider, settings, body.card_mentions)
+        return answer_question(
+            body.question, embedder, pool, provider, settings, body.card_mentions,
+            corpus_version=request.app.state.corpus_version,
+        )
     except GenerationTimeout as e:
         logger.warning("LLM timeout", error=str(e))
         raise HTTPException(status_code=504, detail="Generation timeout") from e

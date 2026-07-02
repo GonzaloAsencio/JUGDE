@@ -105,8 +105,10 @@ async def lifespan(app: FastAPI):
     app.state.corpus_version = corpus_version
     app.state.settings = settings
 
-    # Patch settings so pipeline uses the resolved corpus_version
-    settings.corpus_version = corpus_version
+    # The resolved corpus_version reaches the pipeline through app.state (the
+    # endpoint passes it into answer_question). We deliberately do NOT mutate the
+    # lru_cache'd Settings singleton here — that shared, cached object would leak
+    # the mutation into every get_settings() consumer and across tests.
 
     logger.info("Startup complete.", corpus_version=corpus_version)
 
