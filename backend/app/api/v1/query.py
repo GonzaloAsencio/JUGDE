@@ -70,8 +70,10 @@ def query(
             headers={"Retry-After": "2"},
         ) from e
     except psycopg2.OperationalError as e:
-        logger.error("DB unavailable", error=str(e))
+        # Log the exception TYPE, not str(e): psycopg2 operational errors can
+        # embed the DSN (host/port/user) which would then leak into logs/Sentry.
+        logger.error("DB unavailable", error_type=type(e).__name__)
         raise HTTPException(status_code=503, detail="Database unavailable") from e
     except Exception as e:
-        logger.error("Unexpected error in query handler", error=str(e))
+        logger.error("Unexpected error in query handler", error_type=type(e).__name__)
         raise HTTPException(status_code=500, detail="Internal server error") from e
