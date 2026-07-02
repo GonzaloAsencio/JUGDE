@@ -22,6 +22,25 @@ def close_pool(pool: ThreadedConnectionPool) -> None:
     pool.closeall()
 
 
+def resolve_corpus_version(pool: ThreadedConnectionPool, settings) -> str | None:
+    """Resolve the corpus_version to serve.
+
+    Pinned env value wins (unless "latest"); otherwise the highest version
+    present in the DB. Returns None when the corpus is empty. Shared by startup
+    and the request path so an ingest that runs AFTER startup is picked up
+    without a restart.
+    """
+    if settings.corpus_version and settings.corpus_version != "latest":
+        return settings.corpus_version
+    with get_conn(pool) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT MAX(corpus_version) FROM corpus_chunks")
+            row = cur.fetchone()
+    if row is None or row[0] is None:
+        return None
+    return row[0]
+
+
 @contextmanager
 def get_conn(pool: ThreadedConnectionPool) -> Iterator[psycopg2.extensions.connection]:
     """Yield a connection from the pool with pgvector registered; auto-return on exit.

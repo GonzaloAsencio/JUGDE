@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.db import get_conn
+from app.db import get_conn, resolve_corpus_version
 
 
 def _pool_with_conn():
@@ -46,3 +46,39 @@ def test_register_vector_failure_also_discards_connection():
             with get_conn(pool):
                 pass
     pool.putconn.assert_called_once_with(conn, close=True)
+
+
+# ---------------------------------------------------------------------------
+# resolve_corpus_version
+# ---------------------------------------------------------------------------
+
+def _settings_stub(corpus_version):
+    s = MagicMock()
+    s.corpus_version = corpus_version
+    return s
+
+
+def test_resolve_corpus_version_prefers_pinned_env_value():
+    """A pinned corpus_version (not 'latest') wins and never hits the DB."""
+    pool = MagicMock()
+    result = resolve_corpus_version(pool, _settings_stub("v2.1.0"))
+    assert result == "v2.1.0"
+    pool.getconn.assert_not_called()  # short-circuit, no DB query
+
+
+def test_resolve_corpus_version_reads_db_when_latest():
+    pool, conn = _pool_with_conn()
+    cur = conn.cursor.return_value.__enter__.return_value
+    cur.fetchone.return_value = ("v3.0.0",)
+    with patch("app.db.register_vector"):
+        result = resolve_corpus_version(pool, _settings_stub("latest"))
+    assert result == "v3.0.0"
+
+
+def test_resolve_corpus_version_returns_none_when_corpus_empty():
+    pool, conn = _pool_with_conn()
+    cur = conn.cursor.return_value.__enter__.return_value
+    cur.fetchone.return_value = (None,)
+    with patch("app.db.register_vector"):
+        result = resolve_corpus_version(pool, _settings_stub(None))
+    assert result is None

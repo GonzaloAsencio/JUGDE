@@ -75,3 +75,34 @@ def test_pool_exhaustion_returns_503_with_retry_after(client: TestClient):
 
     assert resp.status_code == 503
     assert resp.headers.get("Retry-After") == "2"
+
+
+# ---------------------------------------------------------------------------
+# corpus_version re-resolution (ingest after startup, no restart)
+# ---------------------------------------------------------------------------
+
+def test_query_reresolves_corpus_version_when_none(client: TestClient):
+    """If startup found an empty corpus, a later request re-resolves and serves."""
+    from app.rag.schemas import QueryResponse
+
+    client.app.state.corpus_version = None  # simulate empty corpus at startup
+
+    with patch("app.api.v1.query.resolve_corpus_version", return_value="v9") as mock_resolve, \
+         patch("app.api.v1.query.answer_question") as mock_answer:
+        mock_answer.return_value = QueryResponse(answer="ok", citations=[], latency_ms=1)
+        resp = client.post("/api/v1/query", json={"question": "A valid question?"})
+
+    assert resp.status_code == 200
+    mock_resolve.assert_called_once()
+    assert client.app.state.corpus_version == "v9"  # cached back
+    assert mock_answer.call_args.kwargs["corpus_version"] == "v9"
+
+
+def test_query_still_503_when_corpus_empty_after_reresolve(client: TestClient):
+    """If the corpus is still empty after re-resolving, return 503 (not crash)."""
+    client.app.state.corpus_version = None
+
+    with patch("app.api.v1.query.resolve_corpus_version", return_value=None):
+        resp = client.post("/api/v1/query", json={"question": "A valid question?"})
+
+    assert resp.status_code == 503
