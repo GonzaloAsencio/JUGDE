@@ -45,6 +45,18 @@ class Settings(BaseSettings):
                 raise ValueError(f"openai_compat requires: {missing}")
         return self
 
+    @model_validator(mode="after")
+    def _require_secret_in_prod(self):
+        # Fail-closed: the auth middleware disables itself when
+        # proxy_shared_secret is None. In production that would silently expose
+        # the whole backend (and burn the LLM quota) on a misconfigured deploy.
+        # Refuse to start instead of booting "healthy" but wide open.
+        if self.app_env == "production" and not self.proxy_shared_secret:
+            raise ValueError(
+                "proxy_shared_secret is required when app_env=production (fail-closed auth)"
+            )
+        return self
+
     # Runtime environment
     app_env: str = "development"
 
@@ -74,6 +86,12 @@ class Settings(BaseSettings):
     # Cache
     cache_ttl_s: int = 86400
     prompt_version: str = "v5"
+
+    # DB connection pool sizing. maxconn must not exceed the database's
+    # max_connections; a worker that finds the pool exhausted gets a fast 503
+    # (see the query handler) instead of blocking.
+    db_pool_min: int = 1
+    db_pool_max: int = 10
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 

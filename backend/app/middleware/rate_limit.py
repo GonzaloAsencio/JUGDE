@@ -1,3 +1,4 @@
+import os
 import secrets
 
 from fastapi import Request
@@ -36,7 +37,23 @@ def _rate_limit_key(request: Request) -> str:
     return get_remote_address(request)
 
 
-limiter = Limiter(key_func=_rate_limit_key)
+def _resolve_storage_uri() -> str:
+    """Backing store for the rate-limit counters.
+
+    Defaults to in-memory (per-process). That is correct for a single worker but
+    USELESS across replicas: each process keeps its own counters, so the real
+    limit becomes N × the configured value and resets on restart. Set
+    RATE_LIMIT_STORAGE_URI to a shared ``redis://`` when running more than one
+    worker/replica. Note: this is a native Redis URI (Upstash exposes a
+    ``rediss://`` endpoint), NOT the Upstash REST URL used by the response cache.
+
+    Read from the environment rather than Settings because the limiter is built
+    at import time, before the app's Settings are resolved in the lifespan.
+    """
+    return os.getenv("RATE_LIMIT_STORAGE_URI", "").strip() or "memory://"
+
+
+limiter = Limiter(key_func=_rate_limit_key, storage_uri=_resolve_storage_uri())
 
 
 def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:

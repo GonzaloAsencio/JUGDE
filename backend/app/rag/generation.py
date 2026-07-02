@@ -165,6 +165,20 @@ def build_prompt(question: str, chunks: list[Chunk]) -> str:
     return "\n".join([_SYSTEM_INSTRUCTION, _build_context_block(question, chunks)])
 
 
+def _safe_response_text(response) -> str | None:
+    """Extract ``response.text`` defensively.
+
+    In google-genai the ``.text`` property returns None (or, on some versions,
+    raises) when the response carries no usable content — safety block,
+    recitation stop, or empty candidates. Normalize all of those to None so the
+    caller can substitute a controlled fallback.
+    """
+    try:
+        return response.text
+    except Exception:
+        return None
+
+
 def _call_gemini(
     client: "genai.Client",
     model: str,
@@ -188,7 +202,15 @@ def _call_gemini(
             contents=prompt,
             config=generation_config,
         )
-        return response.text
+        text = _safe_response_text(response)
+        if text is None:
+            # No usable text: a safety block, recitation stop, or empty
+            # candidates. Letting None propagate crashes post-processing
+            # (answer.lower() in post_gen_validate) and surfaces as a raw 500.
+            # Return a controlled, user-facing fallback instead.
+            logger.warning("gemini.no_text — safety block or empty candidates; using safe fallback.")
+            return _SAFE_FALLBACK
+        return text
     except Exception as e:
         error_str = str(e).lower()
         if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:

@@ -1,4 +1,5 @@
 import psycopg2
+from psycopg2.pool import PoolError
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.config import get_settings
@@ -52,16 +53,30 @@ def query(
     if request.app.state.corpus_version is None:
         raise HTTPException(status_code=503, detail="Corpus not loaded. Run ingest pipeline first.")
     try:
-        return answer_question(body.question, embedder, pool, provider, settings, body.card_mentions)
+        return answer_question(
+            body.question, embedder, pool, provider, settings, body.card_mentions,
+            corpus_version=request.app.state.corpus_version,
+        )
     except GenerationTimeout as e:
         logger.warning("LLM timeout", error=str(e))
         raise HTTPException(status_code=504, detail="Generation timeout") from e
     except GenerationError as e:
         logger.error("LLM error", error=str(e))
         raise HTTPException(status_code=502, detail="Generation service error") from e
+    except PoolError as e:
+        # Every pooled connection is in use — shed load fast instead of piling
+        # up. A short Retry-After nudges the client to back off and try again.
+        logger.warning("DB pool exhausted", error=str(e))
+        raise HTTPException(
+            status_code=503,
+            detail="Server busy, please retry shortly.",
+            headers={"Retry-After": "2"},
+        ) from e
     except psycopg2.OperationalError as e:
-        logger.error("DB unavailable", error=str(e))
+        # Log the exception TYPE, not str(e): psycopg2 operational errors can
+        # embed the DSN (host/port/user) which would then leak into logs/Sentry.
+        logger.error("DB unavailable", error_type=type(e).__name__)
         raise HTTPException(status_code=503, detail="Database unavailable") from e
     except Exception as e:
-        logger.error("Unexpected error in query handler", error=str(e))
+        logger.error("Unexpected error in query handler", error_type=type(e).__name__)
         raise HTTPException(status_code=500, detail="Internal server error") from e

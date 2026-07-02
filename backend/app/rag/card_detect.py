@@ -16,6 +16,7 @@ distinctive multi-word names.
 import re
 from collections import defaultdict
 from collections.abc import Iterable
+from functools import lru_cache
 
 from app.db import get_conn
 from app.rag.retrieval import _VARIANT_SUFFIX_RE
@@ -93,6 +94,40 @@ def _is_eligible(name: str, known_keywords: frozenset[str]) -> bool:
     return len(name) >= _MIN_SINGLE_WORD_LEN and name.lower() not in known_keywords
 
 
+@lru_cache(maxsize=16)
+def _prepare_vocab(
+    card_names: tuple[str, ...], known_keywords: frozenset[str]
+) -> tuple[tuple, tuple]:
+    """Precompute, once per (vocabulary, keywords), everything detect_card_mentions
+    needs per request: the eligible names ordered longest-first with their
+    compiled whole-word patterns, and the multi-token names with their token sets
+    for the secondary pass.
+
+    Compiling a regex for every card name on every request was O(N_cards) CPU on
+    the hot path; the vocabulary is fixed per corpus, so this is cached. Keyed on
+    the (hashable) names tuple + keywords frozenset.
+    """
+    # Longest first (by word count, then length) so a longer name claims its
+    # span before any shorter name nested inside it.
+    ordered = sorted(card_names, key=lambda n: (len(n.split()), len(n)), reverse=True)
+
+    exact: list[tuple[str, "re.Pattern[str]", bool]] = []
+    for name in ordered:
+        if not _is_eligible(name, known_keywords):
+            continue
+        single = len(name.split()) == 1
+        pattern = re.compile(r"\b" + re.escape(name) + r"\b", re.IGNORECASE)
+        exact.append((name, pattern, single))
+
+    subset: list[tuple[str, frozenset[str]]] = []
+    for name in ordered:
+        tokens = _name_tokens(name)
+        if len(tokens) >= 2:
+            subset.append((name, frozenset(tokens)))
+
+    return tuple(exact), tuple(subset)
+
+
 def detect_card_mentions(
     question: str,
     card_names: Iterable[str],
@@ -111,18 +146,12 @@ def detect_card_mentions(
     if not question or not card_names:
         return []
 
-    # Longest first (by word count, then length) so a longer name claims its
-    # span before any shorter name nested inside it.
-    ordered = sorted(card_names, key=lambda n: (len(n.split()), len(n)), reverse=True)
+    exact, subset = _prepare_vocab(tuple(card_names), known_keywords)
 
     accepted_spans: list[tuple[int, int]] = []
     hits: list[tuple[int, str]] = []
 
-    for name in ordered:
-        if not _is_eligible(name, known_keywords):
-            continue
-        single = len(name.split()) == 1
-        pattern = re.compile(r"\b" + re.escape(name) + r"\b", re.IGNORECASE)
+    for name, pattern, single in exact:
         for m in pattern.finditer(question):
             if single and not m.group()[0].isupper():
                 continue
@@ -138,11 +167,8 @@ def detect_card_mentions(
     # Blade Dancer"). Capitalization + a short window guard against false positives.
     matched = {name for _, name in hits}
     indexed = [(m.group(), m.start()) for m in _WORD_RE.finditer(question)]
-    for name in ordered:
+    for name, tokens in subset:
         if name in matched:
-            continue
-        tokens = _name_tokens(name)
-        if len(tokens) < 2:
             continue
         positions = _capitalized_positions(indexed, tokens)
         if len(positions) < len(tokens):
