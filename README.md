@@ -24,6 +24,35 @@ The project is built eval-first. Every architectural decision — embedding mode
 
 ---
 
+## Live Demo
+
+Just want to try it? Use the live app — no install required.
+
+- **App (live)**: <!-- TODO: pegar la URL pública de Vercel, p. ej. https://judge-xxx.vercel.app -->
+- **Backend API (Hugging Face Space)**: https://huggingface.co/spaces/GonzaViss/Judge
+- **Slides**: <!-- TODO: URL pública de la presentación (Google Slides / Canva / PPT) -->
+- **Video walkthrough**: <!-- TODO: URL pública del vídeo (YouTube / Drive) -->
+
+> **Login**: this app has **no user login** — it is a public Q&A tool, so there are no test
+> credentials to provide. (The only authentication is an internal proxy-shared-secret between
+> the Next.js proxy and the FastAPI backend, not a user account.)
+
+---
+
+## Features
+
+- **Natural-language rules Q&A** grounded in the official rulebook + errata, with inline citations.
+- **Refuses to speculate** — defers when the retrieved context lacks the answer, instead of fabricating a ruling.
+- **Hybrid retrieval** — dense pgvector cosine ANN + Postgres full-text search, fused with Reciprocal Rank Fusion (RRF), plus a HyDE (hypothetical-document embedding) arm.
+- **Card `@mention` autocomplete** with automatic card-name and keyword detection (`backend/app/rag/card_detect.py`, `rules.py`).
+- **Per-answer confidence score** and citation cards rendered in the UI.
+- **In-app rulebook browser** at `/rules`.
+- **Response caching** (Upstash Redis, optional) and **per-IP rate limiting** (slowapi: 10 req/min, 100 req/day).
+- **Observability** — Langfuse traces and Sentry error reporting (both optional / env-gated).
+- **Eval-first** — 20-question hand-curated eval set with an LLM-as-judge harness plus deterministic retrieval recall.
+
+---
+
 ## Architecture
 
 ```mermaid
@@ -140,7 +169,36 @@ Full ADR index: [docs/adrs/README.md](docs/adrs/README.md)
 
 ---
 
+## Project Structure
+
+```text
+Judge/
+├── backend/                 # FastAPI RAG service (Python 3.11)
+│   ├── app/
+│   │   ├── main.py          # app factory + lifespan (DB pool, embedder, LLM, Redis)
+│   │   ├── api/v1/query.py  # POST /api/v1/query
+│   │   ├── config.py        # Pydantic Settings (env vars)
+│   │   ├── middleware/      # auth.py (proxy secret), rate_limit.py
+│   │   └── rag/             # pipeline, retrieval, embedder, generation, card_detect, rules
+│   ├── migrations/          # SQL migrations (pgvector + FTS + trigram)
+│   ├── scripts/             # ingest, eval, corpus builders, retrieval probes
+│   ├── data/                # corpus, processed docs, eval_set.json, eval runs
+│   └── tests/               # pytest suite (API, RAG, prompt-injection, ...)
+├── frontend/                # Next.js 16 App Router (React 19, Tailwind 4)
+│   ├── app/                 # pages (chat, /rules), api proxy route
+│   ├── components/          # UI + rules components
+│   └── lib/, store/         # card detection, Zustand state
+├── docs/                    # architecture.md, adrs/ (ADR-001..006), blog/
+├── Specs/                   # 11 spec documents (overview → portfolio polish)
+├── Dockerfile               # HF Spaces image (bakes bge-m3, port 7860)
+└── .github/workflows/       # sync-hf-space.yml (CI to HF Space)
+```
+
+---
+
 ## Setup
+
+> **Just want to try it?** Skip setup — use the [live app](#live-demo). The steps below are for running it locally.
 
 ### Prerequisites
 
