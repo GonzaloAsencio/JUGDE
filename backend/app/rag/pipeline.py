@@ -110,7 +110,7 @@ def _assemble_context(
     return result
 
 
-async def answer_question(
+def answer_question(
     question: str,
     embedder: Embedder,
     db_pool,
@@ -118,7 +118,13 @@ async def answer_question(
     settings: Settings,
     card_mentions: list[str] | None = None,
 ) -> QueryResponse:
-    """Orchestrate embed -> retrieve -> generate with cache, tracing, and post-gen validation."""
+    """Orchestrate embed -> retrieve -> generate with cache, tracing, and post-gen validation.
+
+    Synchronous by design: every collaborator (embedder, psycopg2, LLM clients,
+    Upstash cache) is blocking. The endpoint is a sync handler, so FastAPI runs
+    this in its threadpool — real concurrency without an ``async`` facade that
+    would only block the event loop.
+    """
     t0 = time.time()
     query_id = str(uuid.uuid4())
 
@@ -126,7 +132,7 @@ async def answer_question(
     cache_key = make_cache_key(question, corpus_version, card_mentions, settings.prompt_version)
 
     # Cache check — runs after Pydantic validation + rate limit (see ADR-1)
-    cached_raw = await get_cached(cache_key)
+    cached_raw = get_cached(cache_key)
     if cached_raw is not None:
         try:
             cached_data = json.loads(cached_raw)
@@ -298,7 +304,7 @@ async def answer_question(
     )
 
     # Store in cache (non-blocking; errors are swallowed in set_cached)
-    await set_cached(
+    set_cached(
         cache_key,
         json.dumps({"answer": answer, "citations": [c.model_dump() for c in citations], "confidence": confidence}),
         ttl=settings.cache_ttl_s,

@@ -57,7 +57,7 @@ async def test_pipeline_propagates_set_from_metadata():
         with patch("app.rag.pipeline.get_cached", return_value=None):
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
-                result = await answer_question(
+                result = answer_question(
                     "Any question?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
                 )
 
@@ -75,7 +75,7 @@ async def test_pipeline_set_none_when_no_metadata():
         with patch("app.rag.pipeline.get_cached", return_value=None):
             with patch("app.rag.pipeline.set_cached"):
                 from app.rag.pipeline import answer_question
-                result = await answer_question(
+                result = answer_question(
                     "Any question?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
                 )
 
