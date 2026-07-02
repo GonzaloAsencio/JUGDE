@@ -7,7 +7,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.api.v1.query import router as query_router
 from app.cache import close_redis, init_redis
 from app.config import get_settings
-from app.db import close_pool, get_conn, init_pool
+from app.db import close_pool, init_pool, resolve_corpus_version
 from app.health import router as health_router
 from app.middleware.auth import ProxySecretMiddleware
 from app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
@@ -47,21 +47,14 @@ async def lifespan(app: FastAPI):
     pool = init_pool(settings.database_url, minconn=settings.db_pool_min, maxconn=settings.db_pool_max)
     logger.info("DB pool initialized.")
 
-    # 3. Resolve corpus_version
-    if settings.corpus_version and settings.corpus_version != "latest":
-        corpus_version = settings.corpus_version
-        logger.info("corpus_version from env", corpus_version=corpus_version)
+    # 3. Resolve corpus_version. If the corpus is empty at startup we don't fail:
+    #    the query endpoint re-resolves on demand, so an ingest run afterwards is
+    #    picked up without a restart.
+    corpus_version = resolve_corpus_version(pool, settings)
+    if corpus_version is None:
+        logger.warning("corpus_chunks is empty -- queries 503 until ingest runs, then re-resolve on demand.")
     else:
-        with get_conn(pool) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT MAX(corpus_version) FROM corpus_chunks")
-                row = cur.fetchone()
-                if row is None or row[0] is None:
-                    logger.warning("corpus_chunks is empty -- queries will return 503 until ingest runs.")
-                    corpus_version = None
-                else:
-                    corpus_version = row[0]
-        logger.info("corpus_version resolved from DB", corpus_version=corpus_version)
+        logger.info("corpus_version resolved", corpus_version=corpus_version)
 
     # 4. Load embedder (~5-10s intentional)
     logger.info("Loading embedder (this takes ~5-10s)...")

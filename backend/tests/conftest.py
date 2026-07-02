@@ -60,7 +60,7 @@ def _make_client(provider_override=None):
         patch("app.main.close_pool"),
         patch("app.main.Embedder.load", return_value=FakeEmbedder()),
         patch("app.main.genai.Client", return_value=MagicMock()),
-        patch("app.main.get_conn"),
+        patch("app.db.get_conn"),
         patch("app.main.get_settings", return_value=_fake_settings()),
     ]
 
