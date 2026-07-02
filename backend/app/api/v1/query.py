@@ -3,6 +3,7 @@ from psycopg2.pool import PoolError
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.config import get_settings
+from app.db import resolve_corpus_version
 from app.middleware.rate_limit import limiter
 from app.observability import get_logger
 from app.rag.generation import GenerationError, GenerationTimeout
@@ -50,12 +51,18 @@ def query(
     concurrently. An ``async`` handler would run the blocking work on the event
     loop and serialize the whole app to one request at a time.
     """
-    if request.app.state.corpus_version is None:
+    corpus_version = request.app.state.corpus_version
+    if corpus_version is None:
+        # Startup found an empty corpus. An ingest may have populated it since —
+        # re-resolve once (and cache it) instead of forcing a restart.
+        corpus_version = resolve_corpus_version(pool, settings)
+        request.app.state.corpus_version = corpus_version
+    if corpus_version is None:
         raise HTTPException(status_code=503, detail="Corpus not loaded. Run ingest pipeline first.")
     try:
         return answer_question(
             body.question, embedder, pool, provider, settings, body.card_mentions,
-            corpus_version=request.app.state.corpus_version,
+            corpus_version=corpus_version,
         )
     except GenerationTimeout as e:
         logger.warning("LLM timeout", error=str(e))
