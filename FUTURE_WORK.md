@@ -72,6 +72,52 @@ This is a **nice-to-have, not a blocker** — see ADR-006 for why LLM-as-judge w
 
 ---
 
+## Deferred hardening (deliberately descoped)
+
+These came out of the risk audit. The high-value fixes were shipped (concurrency
+model, pool resilience, empty-LLM-response handling, fail-closed auth, shared
+rate-limit storage, log sanitisation, trigram index, pattern caching, whole-word
+confidence). The items below were **consciously deferred** — the risk/reward
+didn't justify doing them now.
+
+### True async I/O stack
+
+The concurrency fix made the request path sync + threadpool, which matches the
+reality that every driver (psycopg2, upstash-redis HTTP, sentence-transformers,
+the Gemini/OpenAI clients) is blocking. If sustained traffic ever outgrows the
+threadpool, migrate to a genuinely async stack: `psycopg` (v3) async pool,
+`redis.asyncio`, and async LLM clients over httpx. This is a rewrite of the DB,
+cache, and generation layers — only worth it when measured throughput demands it.
+
+### Collapse `tagged_lookup`'s N+1 into one round-trip
+
+`tagged_lookup` still issues one query per tag. The trigram index (migration 006)
+made each query indexable, so the remaining cost is N round-trips with a small N.
+A `unnest(tags) WITH ORDINALITY` + `CROSS JOIN LATERAL` query would collapse it to
+one round-trip while preserving the per-tag `LIMIT 2` semantics. Deferred because
+it rewrites tuned retrieval SQL that needs validation against a real Postgres +
+the recall probes, not just unit tests.
+
+### Provider call-logic ownership
+
+`app/rag/provider.py` imports call helpers (`_call_gemini`,
+`_call_openai_compat_raw`, `_hyde_openai_compat`) from `app/rag/generation.py`.
+This reads like a leaky abstraction, but `_call_gemini` is also reused by
+`scripts/eval_judge.py`, so `generation.py` is legitimately a shared
+generation-utilities module, not provider internals that leaked. A full
+relocation into the provider classes would break that reuse for no behavioural
+gain, so it was left as-is.
+
+### Remove dormant FTS / query-rewrite code
+
+`fts_search` / `_FTS_SQL` (the FTS arm is dormant — vector-only won the probe) and
+`_rewrite_openai_compat` / `rewrite_query` (the rewrite path was dropped) are
+unused in the live path but heavily documented as intentionally-dormant for future
+re-evaluation. Physically moving them to an `experiments/` module risks breaking
+imports for no functional gain; left in place with their explanatory comments.
+
+---
+
 ## Long-term (3+ months)
 
 ### Cost optimization at scale
