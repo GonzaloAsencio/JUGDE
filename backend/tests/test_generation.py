@@ -1,12 +1,39 @@
 """Tests for the system instruction (build_prompt) and source_type-agnostic post_gen_validate."""
 from app.rag.generation import (
+    _SAFE_FALLBACK,
     _SYSTEM_INSTRUCTION,
+    _call_gemini,
     build_prompt,
     post_gen_validate,
     strip_citation_markers,
 )
 from app.rag.retrieval import Chunk
 from app.rag.schemas import Citation
+
+
+class _FakeResponse:
+    """Stand-in for a google-genai response whose .text may be None or raise."""
+
+    def __init__(self, text=None, raises=False):
+        self._text = text
+        self._raises = raises
+
+    @property
+    def text(self):
+        if self._raises:
+            raise ValueError("no candidates / safety blocked")
+        return self._text
+
+
+class _FakeGeminiClient:
+    def __init__(self, response):
+        self._response = response
+
+        class _Models:
+            def generate_content(_self, **_kwargs):
+                return response
+
+        self.models = _Models()
 
 
 def _chunk(source_type: str, section: str = "Yasuo", chunk_id: str = "c1") -> Chunk:
@@ -187,3 +214,29 @@ def test_strip_citation_markers_midsentence_keeps_one_space():
 def test_strip_citation_markers_leaves_plain_text_untouched():
     text = "Yasuo enters exhausted and cannot attack that turn."
     assert strip_citation_markers(text) == text
+
+
+# ---------------------------------------------------------------------------
+# _call_gemini — a response with no usable text must not crash the pipeline
+#
+# A safety block / empty candidates yields response.text == None (or raises on
+# access). Letting that propagate crashes post_gen_validate (answer.lower()) and
+# surfaces as a raw 500. We return a controlled fallback instead.
+# ---------------------------------------------------------------------------
+
+def test_call_gemini_returns_fallback_when_text_is_none():
+    client = _FakeGeminiClient(_FakeResponse(text=None))
+    result = _call_gemini(client, "gemini-2.0-flash", "prompt", timeout_s=1.0)
+    assert result == _SAFE_FALLBACK
+
+
+def test_call_gemini_returns_fallback_when_text_accessor_raises():
+    client = _FakeGeminiClient(_FakeResponse(raises=True))
+    result = _call_gemini(client, "gemini-2.0-flash", "prompt", timeout_s=1.0)
+    assert result == _SAFE_FALLBACK
+
+
+def test_call_gemini_returns_text_on_normal_response():
+    client = _FakeGeminiClient(_FakeResponse(text="Yasuo cannot attack."))
+    result = _call_gemini(client, "gemini-2.0-flash", "prompt", timeout_s=1.0)
+    assert result == "Yasuo cannot attack."
