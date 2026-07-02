@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     cache_ttl_s: int = 86400
     prompt_version: str = "v5"
 
+    # DB connection pool sizing. maxconn must not exceed the database's
+    # max_connections; a worker that finds the pool exhausted gets a fast 503
+    # (see the query handler) instead of blocking.
+    db_pool_min: int = 1
+    db_pool_max: int = 10
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
 
