@@ -68,6 +68,19 @@ def _detect_keywords(question: str) -> list[str]:
     return found
 
 
+def _has_exact_card_match(chunks: list, card_match_tags: set[str]) -> bool:
+    """True if any card tag appears as a WHOLE WORD in a surviving chunk's section.
+
+    Whole-word (not substring): a substring test let tag "jhin" match section
+    "Jhinx" and wrongly force confidence to 1.0. Consistent with the whole-word
+    matching used everywhere else in this module (see _word_boundary).
+    """
+    if not card_match_tags:
+        return False
+    patterns = [_word_boundary(tag) for tag in card_match_tags]
+    return any(p.search(chunk.section) for chunk in chunks for p in patterns)
+
+
 def _extract_tags(question: str) -> tuple[str, list[str]]:
     """Extract @tags from question. Returns (clean_question, [tags_lowercase])."""
     tags = _TAG_RE.findall(question)
@@ -223,10 +236,7 @@ def answer_question(
     # card survived into the final context, treat confidence as maximal. This is
     # scoped to cards only — generic @tags/keywords still must not inflate.
     card_match_tags = set(auto_card_tags) | set(mention_tags)
-    has_exact_card_match = any(
-        any(tag in chunk.section.lower() for tag in card_match_tags)
-        for chunk in chunks
-    )
+    has_exact_card_match = _has_exact_card_match(chunks, card_match_tags)
 
     retrieval_ms = round((time.time() - t0) * 1000)
 
