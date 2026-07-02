@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
     logger.info("Settings loaded.")
 
     # 2. Init DB pool
-    pool = init_pool(settings.database_url, minconn=1, maxconn=5)
+    pool = init_pool(settings.database_url, minconn=settings.db_pool_min, maxconn=settings.db_pool_max)
     logger.info("DB pool initialized.")
 
     # 3. Resolve corpus_version

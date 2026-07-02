@@ -1,4 +1,5 @@
 import psycopg2
+from psycopg2.pool import PoolError
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.config import get_settings
@@ -59,6 +60,15 @@ def query(
     except GenerationError as e:
         logger.error("LLM error", error=str(e))
         raise HTTPException(status_code=502, detail="Generation service error") from e
+    except PoolError as e:
+        # Every pooled connection is in use — shed load fast instead of piling
+        # up. A short Retry-After nudges the client to back off and try again.
+        logger.warning("DB pool exhausted", error=str(e))
+        raise HTTPException(
+            status_code=503,
+            detail="Server busy, please retry shortly.",
+            headers={"Retry-After": "2"},
+        ) from e
     except psycopg2.OperationalError as e:
         logger.error("DB unavailable", error=str(e))
         raise HTTPException(status_code=503, detail="Database unavailable") from e
