@@ -25,14 +25,23 @@ _RATE_LIMIT_JITTER = 0.5
 
 
 def _is_rate_limit(exc: Exception) -> bool:
-    """True if *exc* is an HTTP 429 / rate-limit error from the LLM endpoint."""
+    """True if *exc* is an HTTP 429 / rate-limit error from the LLM endpoint.
+
+    Covers both provider shapes: openai (``RateLimitError`` / ``status_code``)
+    and google-genai (``ClientError.code``). A last-resort ``"429"`` substring
+    check catches genai versions that surface the code only in the message.
+    """
     try:
         import openai
         if isinstance(exc, openai.RateLimitError):
             return True
     except Exception:
         pass
-    return getattr(exc, "status_code", None) == 429
+    if getattr(exc, "status_code", None) == 429:
+        return True
+    if getattr(exc, "code", None) == 429:  # google-genai ClientError
+        return True
+    return "429" in str(exc)
 
 
 def _completion_with_retry(
@@ -226,11 +235,13 @@ def _call_gemini(
     )
 
     try:
-        response = client.models.generate_content(
+        # Only the network call is retried on 429 — the finish_reason / .text
+        # post-processing below is not a network fault and must not be repeated.
+        response = _completion_with_retry(lambda: client.models.generate_content(
             model=model,
             contents=prompt,
             config=generation_config,
-        )
+        ))
         # Surface a MAX_TOKENS cut so an empty/short Answer can be told apart from
         # the model simply not committing — the former means raise the budget.
         try:

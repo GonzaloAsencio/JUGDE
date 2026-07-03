@@ -24,6 +24,15 @@ class _FakeServerError(Exception):
     status_code = 500
 
 
+class _FakeGenaiRateLimit(Exception):
+    """Stands in for google.genai.errors.ClientError: exposes .code, not status_code."""
+    code = 429
+
+
+class _FakeGenaiServerError(Exception):
+    code = 500
+
+
 def _no_sleep(_seconds):
     pass
 
@@ -117,3 +126,47 @@ def test_is_rate_limit_detects_429_status():
     assert _is_rate_limit(_FakeRateLimit("x")) is True
     assert _is_rate_limit(_FakeServerError("x")) is False
     assert _is_rate_limit(ValueError("nope")) is False
+
+
+def test_is_rate_limit_detects_genai_code_429():
+    """google-genai ClientError uses .code, not .status_code."""
+    assert _is_rate_limit(_FakeGenaiRateLimit("429 RESOURCE_EXHAUSTED")) is True
+    assert _is_rate_limit(_FakeGenaiServerError("500 INTERNAL")) is False
+
+
+def test_is_rate_limit_detects_429_in_message():
+    """Fallback: some genai versions surface the code only in the message."""
+    assert _is_rate_limit(Exception("got 429 from upstream")) is True
+    assert _is_rate_limit(Exception("500 server error")) is False
+
+
+class _FakeGeminiResponse:
+    text = "recovered"
+
+
+class _RetryingGeminiClient:
+    """generate_content raises a genai 429 the first two calls, then succeeds."""
+
+    def __init__(self):
+        self.calls = 0
+
+        class _Models:
+            def generate_content(_self, **_kwargs):
+                self.calls += 1
+                if self.calls < 3:
+                    raise _FakeGenaiRateLimit("429 RESOURCE_EXHAUSTED")
+                return _FakeGeminiResponse()
+
+        self.models = _Models()
+
+
+def test_call_gemini_retries_on_genai_429_then_succeeds(monkeypatch):
+    from app.rag import generation
+
+    monkeypatch.setattr(generation.time, "sleep", _no_sleep)
+    client = _RetryingGeminiClient()
+
+    result = generation._call_gemini(client, "gemini-2.0-flash", "prompt", timeout_s=1.0)
+
+    assert result == "recovered"
+    assert client.calls == 3, "must retry the 429 twice before the successful call"
