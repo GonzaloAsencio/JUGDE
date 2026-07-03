@@ -240,3 +240,51 @@ def test_call_gemini_returns_text_on_normal_response():
     client = _FakeGeminiClient(_FakeResponse(text="Yasuo cannot attack."))
     result = _call_gemini(client, "gemini-2.0-flash", "prompt", timeout_s=1.0)
     assert result == "Yasuo cannot attack."
+
+
+# ---------------------------------------------------------------------------
+# has_empty_answer_section — the empty "Answer:" guard
+#
+# On ambiguous questions Gemini sometimes writes a full Reasoning block and then
+# stops right after "Answer:", leaving no conclusion. response.text is non-empty
+# (it carries the reasoning) so it slips past the None guard and reaches the UI
+# as a blank bubble. This detector lets the pipeline retry / fall back.
+# ---------------------------------------------------------------------------
+
+from app.rag.generation import has_empty_answer_section
+
+
+def test_empty_answer_section_detected_when_nothing_follows_heading():
+    text = "Reasoning:\n- Rule 461.3.d: no result if both have units.\n\nAnswer:"
+    assert has_empty_answer_section(text) is True
+
+
+def test_empty_answer_section_detected_with_trailing_whitespace_and_markers():
+    text = "Reasoning:\n- Some rule applies.\nAnswer:  \n\n  [#1]  "
+    assert has_empty_answer_section(text) is True
+
+
+def test_empty_answer_section_detected_with_markdown_bold_heading():
+    text = "Reasoning:\n- Some rule.\n\n**Answer:**\n"
+    assert has_empty_answer_section(text) is True
+
+
+def test_answer_section_with_content_is_not_empty():
+    text = "Reasoning:\n- Rule 301.\n\nAnswer: Yes, you can block with it."
+    assert has_empty_answer_section(text) is False
+
+
+def test_plain_response_without_heading_is_not_empty():
+    # The no-info fallback has no "Answer:" heading — it is a real answer, not blank.
+    assert has_empty_answer_section(_NO_INFO_ANSWER_TEXT) is False
+
+
+def test_answer_word_inside_reasoning_prose_does_not_count():
+    # "answer:" mid-sentence in reasoning must not be mistaken for the heading.
+    text = "Reasoning:\n- The obvious answer: it depends on priority.\n\nAnswer: It depends."
+    assert has_empty_answer_section(text) is False
+
+
+_NO_INFO_ANSWER_TEXT = (
+    "I don't have enough information to answer that question with the available rules."
+)

@@ -138,6 +138,35 @@ _CITATION_MARKER_RE = re.compile(r"\s*\[\s*#?\d+(?:\s*,\s*#?\d+)*\s*\]")
 _SPACE_BEFORE_PUNCT_RE = re.compile(r"\s+([.,;:!?])")
 
 
+# Matches the "Answer:" heading the model is told to emit (point 7 of the system
+# instruction), tolerating markdown decoration: "Answer:", "**Answer:**",
+# "### Answer:", "Answer :". Anchored to a line start so an "answer:" buried in a
+# reasoning sentence doesn't count as the section heading.
+_ANSWER_HEADING_RE = re.compile(r"(?im)^[\s*_#>-]*answer[\s*_]*:")
+
+
+def has_empty_answer_section(text: str) -> bool:
+    """True when *text* uses the Reasoning/Answer format but the Answer is blank.
+
+    On genuinely ambiguous questions Gemini sometimes writes a full Reasoning
+    block and then stops right after the "Answer:" heading, producing no
+    conclusion. ``response.text`` is still non-empty (it carries the reasoning),
+    so it slips past the None guard and reaches the UI as an answer bubble with
+    an empty body. This detects that case so the caller can retry or fall back.
+
+    A plain response with NO "Answer:" heading (e.g. ``_NO_INFO_ANSWER`` or
+    ``_SAFE_FALLBACK``) is NOT empty — it just isn't in the structured format.
+    """
+    matches = list(_ANSWER_HEADING_RE.finditer(text))
+    if not matches:
+        return False
+    # Everything after the LAST heading is the conclusion; the answer section is
+    # always last, and this is robust to "answer:" appearing earlier in prose.
+    tail = strip_citation_markers(text[matches[-1].end():])
+    # Nothing but whitespace and markdown/punctuation scaffolding => no content.
+    return re.sub(r"[\s*_.,;:>#-]+", "", tail) == ""
+
+
 def strip_citation_markers(text: str) -> str:
     """Remove [#N] citation markers from an answer for display.
 
@@ -202,6 +231,15 @@ def _call_gemini(
             contents=prompt,
             config=generation_config,
         )
+        # Surface a MAX_TOKENS cut so an empty/short Answer can be told apart from
+        # the model simply not committing — the former means raise the budget.
+        try:
+            finish = getattr(response.candidates[0], "finish_reason", None)
+            if finish is not None and "MAX_TOKENS" in str(finish):
+                logger.warning("gemini.max_tokens — output truncated; consider raising max_output_tokens.")
+        except Exception:
+            pass
+
         text = _safe_response_text(response)
         if text is None:
             # No usable text: a safety block, recitation stop, or empty

@@ -871,3 +871,87 @@ async def test_pipeline_tagged_deduplicates_with_semantic():
 
     chunk_ids = [c.chunk_id for c in result.citations]
     assert chunk_ids.count("shared_id") == 1
+
+
+# ---------------------------------------------------------------------------
+# Empty Answer-section guard + single retry (_generate_guarded)
+#
+# Gemini sometimes writes a full Reasoning block on an ambiguous question and
+# then stops with an empty "Answer:". The pipeline retries once; if the retry
+# is also empty it substitutes a controlled inconclusive message so the UI
+# never renders a blank answer bubble.
+# ---------------------------------------------------------------------------
+
+from app.rag.provider import LLMProvider as _LLMProvider
+
+
+class _ScriptedProvider(_LLMProvider):
+    """Returns a scripted list of answers, one per generate() call."""
+
+    def __init__(self, answers: list[str]) -> None:
+        self._answers = answers
+        self.calls = 0
+
+    def generate(self, question: str, chunks) -> str:
+        answer = self._answers[self.calls]
+        self.calls += 1
+        return answer
+
+
+_EMPTY_ANSWER = "Reasoning:\n- Rule 461.3.d applies.\n\nAnswer:"
+_GOOD_ANSWER = "Reasoning:\n- Rule 301.\n\nAnswer: Yes, it's a draw."
+
+
+async def test_pipeline_retries_once_when_answer_section_empty():
+    from tests.conftest import FakeEmbedder
+    from app.rag.pipeline import _INCONCLUSIVE_ANSWER  # noqa: F401  (import sanity)
+
+    provider = _ScriptedProvider([_EMPTY_ANSWER, _GOOD_ANSWER])
+    settings = _fake_settings()
+    chunk = _make_chunk()
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                result = answer_question(
+                    "Both reach 0 health?", FakeEmbedder(), MagicMock(), provider, settings
+                )
+
+    assert provider.calls == 2
+    assert "draw" in result.answer.lower()
+
+
+async def test_pipeline_falls_back_when_retry_also_empty():
+    from tests.conftest import FakeEmbedder
+    from app.rag.pipeline import _INCONCLUSIVE_ANSWER
+
+    provider = _ScriptedProvider([_EMPTY_ANSWER, _EMPTY_ANSWER])
+    settings = _fake_settings()
+    chunk = _make_chunk()
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                result = answer_question(
+                    "Both reach 0 health?", FakeEmbedder(), MagicMock(), provider, settings
+                )
+
+    assert provider.calls == 2
+    assert result.answer == _INCONCLUSIVE_ANSWER
+
+
+async def test_pipeline_does_not_retry_when_answer_present():
+    from tests.conftest import FakeEmbedder
+
+    provider = _ScriptedProvider([_GOOD_ANSWER])
+    settings = _fake_settings()
+    chunk = _make_chunk()
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                answer_question(
+                    "Can I block?", FakeEmbedder(), MagicMock(), provider, settings
+                )
+
+    assert provider.calls == 1
