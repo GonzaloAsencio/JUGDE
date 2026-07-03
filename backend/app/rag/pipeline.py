@@ -7,7 +7,7 @@ from app.cache import get_cached, make_cache_key, set_cached
 from app.config import Settings
 from app.observability import get_logger
 from app.rag.embedder import Embedder
-from app.rag.generation import post_gen_validate, strip_citation_markers
+from app.rag.generation import has_empty_answer_section, post_gen_validate, strip_citation_markers
 from app.rag.provider import LLMProvider
 from app.rag.card_detect import detect_card_mentions, load_card_names
 from app.rag.retrieval import fuse_results, hybrid_search, tagged_lookup
@@ -17,6 +17,10 @@ from app.rag.schemas import Citation, QueryResponse
 logger = get_logger(__name__)
 
 _NO_INFO_ANSWER = "I don't have enough information to answer that question with the available rules."
+_INCONCLUSIVE_ANSWER = (
+    "I couldn't reach a definitive answer for this question from the available rules — "
+    "the situation appears ambiguous or not fully resolved by the current rulebook."
+)
 _TAG_RE = re.compile(r"@(\w+)", re.UNICODE)
 
 _KNOWN_KEYWORDS: frozenset[str] = frozenset({
@@ -298,6 +302,29 @@ def _compute_confidence(semantic_confidence: float, has_exact_card_match: bool, 
     return round(semantic_confidence, 4)
 
 
+def _generate_guarded(provider: LLMProvider, question: str, chunks: list, query_id: str) -> str:
+    """Generate an answer, retrying ONCE if the Answer section comes back empty.
+
+    Gemini occasionally writes a full Reasoning block on an ambiguous question
+    and then stops without a conclusion (see has_empty_answer_section). The
+    failure is non-deterministic, so a single fresh call — with no carried-over
+    reasoning to trail off from — recovers the vast majority. If the retry is
+    also empty we return a controlled inconclusive message so the user never
+    sees a blank answer bubble.
+    """
+    answer = provider.generate(question, chunks)
+    if not has_empty_answer_section(answer):
+        return answer
+
+    logger.warning("query.empty_answer_section", query_id=query_id, attempt=1)
+    answer = provider.generate(question, chunks)
+    if not has_empty_answer_section(answer):
+        return answer
+
+    logger.warning("query.empty_answer_after_retry", query_id=query_id)
+    return _INCONCLUSIVE_ANSWER
+
+
 def answer_question(
     question: str,
     embedder: Embedder,
@@ -351,7 +378,7 @@ def answer_question(
             confidence=0.0,
         )
 
-    answer = provider.generate(clean_question or question, chunks)
+    answer = _generate_guarded(provider, clean_question or question, chunks, query_id)
     citations = _build_citations(chunks)
     answer = _postprocess_answer(answer, citations, chunks, query_id)
 
