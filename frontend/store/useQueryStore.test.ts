@@ -114,6 +114,27 @@ describe('useQueryStore', () => {
     expect(currentQuestion).toBe('');
   });
 
+  it('retry re-runs a failed message and clears its error on success', async () => {
+    mockPostQuery.mockRejectedValueOnce(
+      new (ApiErrorInstance as unknown as new (t: string, m: string) => InstanceType<typeof ApiErrorInstance>)('timeout', 'timed out')
+    );
+    useQueryStore.getState().setCurrentQuestion('Does @yasuo-unforgiven attack?');
+    await useQueryStore.getState().submit();
+    const id = useQueryStore.getState().messages[0].id;
+    expect(useQueryStore.getState().messages[0].error?.type).toBe('timeout');
+
+    mockPostQuery.mockResolvedValueOnce({ answer: 'Yes.', citations: [], latency_ms: 20 });
+    await useQueryStore.getState().retry(id);
+
+    const msg = useQueryStore.getState().messages[0];
+    expect(msg.error).toBeNull();
+    expect(msg.answer).toBe('Yes.');
+    // reuses the stored question (with @ stripped for the API)
+    expect(mockPostQuery).toHaveBeenLastCalledWith('Does yasuo-unforgiven attack?', ['yasuo unforgiven']);
+    // still a single message — retry mutates in place, never appends
+    expect(useQueryStore.getState().messages).toHaveLength(1);
+  });
+
   it('submit does not fire while another message is loading', async () => {
     // simulate stuck loading state
     useQueryStore.setState({

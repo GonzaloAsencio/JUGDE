@@ -53,6 +53,14 @@ describe('ChatMessage', () => {
     expect(screen.getByText('Judge')).toBeInTheDocument();
   });
 
+  it('renders a system notice instead of the judge bubble on error', () => {
+    const msg: Message = { ...baseMessage, error: { type: 'timeout', message: '' } };
+    render(<ChatMessage message={msg} />);
+    expect(screen.getByText('System Notice')).toBeInTheDocument();
+    // the fault must NOT be attributed to the judge
+    expect(screen.queryByText('Judge')).toBeNull();
+  });
+
   it('shows citations section when answer and citations exist', () => {
     const msg: Message = {
       ...baseMessage,

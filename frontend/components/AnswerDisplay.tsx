@@ -3,7 +3,6 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { AnswerSkeleton } from '@/components/AnswerSkeleton';
-import { ErrorDisplay } from '@/components/ErrorDisplay';
 import { KeywordBadge } from '@/components/KeywordBadge';
 import { CardChip } from '@/components/CardChip';
 import { CardPreview } from '@/components/CardPreview';
@@ -12,15 +11,11 @@ import { detectKeywords } from '@/lib/keywordDetection';
 import { detectCards } from '@/lib/cardDetection';
 import { detectRuneTokens } from '@/lib/runeTokens';
 import ruleAnchors from '@/content/rule-anchors.json';
-import type { ApiError, Citation } from '@/lib/types';
 import type { Components } from 'react-markdown';
 
 interface AnswerDisplayProps {
   answer: string | null;
   loading: boolean;
-  error: ApiError | null;
-  citations?: Citation[];
-  onRetry?: () => void;
 }
 
 const CITATION_RE = /\[:?#[\d,\s]+\]/g;
@@ -157,12 +152,8 @@ function makeComponents(): Components {
   };
 }
 
-export function AnswerDisplay({ answer, loading, error, citations = [], onRetry }: AnswerDisplayProps) {
+export function AnswerDisplay({ answer, loading }: AnswerDisplayProps) {
   if (loading) return <AnswerSkeleton />;
-
-  if (error) {
-    return <ErrorDisplay error={error} onRetry={onRetry ?? (() => {})} />;
-  }
 
   if (answer) {
     const cleaned = answer
