@@ -7,7 +7,7 @@ import rehypeSlug from 'rehype-slug';
 import { groupToc, type TocEntry } from './toc';
 import { TocSidebar } from './TocSidebar';
 import { mdComponents } from './markdownComponents';
-import { SIDEBAR_BG, INK_SOFT, INK_FAINT, HAIRLINE } from './theme';
+import { INK_SOFT, INK_FAINT, HAIRLINE } from './theme';
 
 interface RulesContentProps {
   markdown: string;
@@ -61,7 +61,7 @@ export function RulesContent({ markdown, toc }: RulesContentProps) {
           overflowY: 'auto',
           overflowX: 'hidden',
           scrollbarWidth: 'none',
-          backgroundColor: SIDEBAR_BG,
+          borderRight: `1px solid ${HAIRLINE}`,
           padding: '32px 12px 32px 24px',
         } as React.CSSProperties}
       >
@@ -75,15 +75,35 @@ export function RulesContent({ markdown, toc }: RulesContentProps) {
       <main id="main-content" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
         {/* Mobile TOC */}
-        <div className="lg:hidden" style={{ borderBottom: `1px solid ${HAIRLINE}`, backgroundColor: SIDEBAR_BG, padding: '12px 20px' }}>
+        <div className="lg:hidden" style={{ position: 'relative', borderBottom: `1px solid ${HAIRLINE}`, padding: '12px 20px' }}>
           <button
             onClick={() => setMobileOpen((o) => !o)}
+            aria-expanded={mobileOpen}
             style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, fontWeight: 600, color: INK_SOFT, letterSpacing: '0.06em', textTransform: 'uppercase' }}
           >
             Contents
             <span style={{ transform: mobileOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
           </button>
-          {mobileOpen && <div style={{ marginTop: 12, paddingBottom: 4 }}>{sidebarContent}</div>}
+          {/* Float the open TOC above the article instead of pushing it down. */}
+          {mobileOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: '100%',
+                zIndex: 30,
+                maxHeight: '70vh',
+                overflowY: 'auto',
+                backgroundColor: 'var(--brand-surface)',
+                borderBottom: `1px solid ${HAIRLINE}`,
+                boxShadow: '0 14px 28px -14px rgba(0,0,0,0.3)',
+                padding: '8px 20px 16px',
+              }}
+            >
+              {sidebarContent}
+            </div>
+          )}
         </div>
 
         {/* Article */}

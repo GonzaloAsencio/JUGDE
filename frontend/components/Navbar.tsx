@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 
 interface NavbarProps {
@@ -27,8 +27,23 @@ export function Navbar({
   const onRules = pathname === '/rules';
   const [open, setOpen] = useState(false);
 
-  const position = sticky ? 'sticky top-0 z-50' : 'relative z-20 flex-shrink-0';
+  // z-50 (even in-flow) so the logo + toggle always float above the full-screen
+  // mobile overlay (z-40), which otherwise sits in its own stacking context.
+  const position = sticky ? 'sticky top-0 z-50' : 'relative z-50 flex-shrink-0';
   const bg = transparent ? '' : 'bg-brand-surface';
+
+  // While the full-screen menu is open: lock body scroll and close on Escape.
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
 
   // Shared links so the desktop bar and the mobile panel never diverge.
   // `onNavigate` lets the mobile panel close itself on selection.
@@ -88,17 +103,62 @@ export function Navbar({
         {open ? <X className="size-6" /> : <Menu className="size-6" />}
       </button>
 
-      {/* Mobile: dropdown panel */}
+      {/* Mobile: full-screen overlay menu */}
       {open && (
         <nav
           id="mobile-menu"
           data-testid="mobile-menu"
           aria-label="Mobile"
-          className="md:hidden absolute top-full left-0 right-0 z-50 flex flex-col items-start gap-1 px-8 py-4 bg-brand-surface border-t border-brand-ink/10 shadow-lg text-sm tracking-[0.18em] text-brand-muted-ink font-semibold"
+          className="md:hidden fixed inset-0 z-40 flex flex-col overflow-y-auto bg-brand-surface px-8 pt-28 pb-10 animate-in fade-in duration-200 ease-out"
         >
-          {homeControl(() => setOpen(false))}
-          {rulesLink(() => setOpen(false))}
-          <div className="pt-1">
+          <div className="flex flex-col">
+            {onHomeClick ? (
+              <button
+                onClick={() => { onHomeClick(); setOpen(false); }}
+                style={{ animationDelay: '60ms' }}
+                className="group flex items-center justify-between border-b border-brand-ink/10 py-6 text-left font-display text-3xl font-bold tracking-tight text-brand-ink transition-colors hover:text-brand-accent animate-in fade-in slide-in-from-right-6 fill-mode-both"
+              >
+                <span>Home</span>
+                <ArrowUpRight className="size-6 -translate-x-2 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100" />
+              </button>
+            ) : showHomeLink ? (
+              <Link
+                href="/"
+                onClick={() => setOpen(false)}
+                style={{ animationDelay: '60ms' }}
+                className="group flex items-center justify-between border-b border-brand-ink/10 py-6 font-display text-3xl font-bold tracking-tight text-brand-ink transition-colors hover:text-brand-accent animate-in fade-in slide-in-from-right-6 fill-mode-both"
+              >
+                <span>Chat</span>
+                <ArrowUpRight className="size-6 -translate-x-2 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100" />
+              </Link>
+            ) : null}
+
+            <Link
+              href="/rules"
+              onClick={() => setOpen(false)}
+              aria-current={onRules ? 'page' : undefined}
+              style={{ animationDelay: '120ms' }}
+              className={`group flex items-center justify-between border-b border-brand-ink/10 py-6 font-display text-3xl font-bold tracking-tight transition-colors animate-in fade-in slide-in-from-right-6 fill-mode-both ${
+                onRules ? 'text-brand-accent' : 'text-brand-ink hover:text-brand-accent'
+              }`}
+            >
+              <span>Rules</span>
+              {onRules ? (
+                <span className="size-2.5 rounded-full bg-brand-accent" aria-hidden />
+              ) : (
+                <ArrowUpRight className="size-6 -translate-x-2 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100" />
+              )}
+            </Link>
+          </div>
+
+          {/* Appearance — theme toggle anchored to the bottom of the sheet */}
+          <div
+            style={{ animationDelay: '180ms' }}
+            className="mt-auto flex items-center justify-between pt-10 animate-in fade-in fill-mode-both"
+          >
+            <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-brand-muted-ink">
+              Appearance
+            </span>
             <ThemeToggle />
           </div>
         </nav>

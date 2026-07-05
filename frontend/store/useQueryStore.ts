@@ -38,7 +38,47 @@ interface QueryState {
   currentQuestion: string;
   setCurrentQuestion: (q: string) => void;
   submit: () => Promise<void>;
+  retry: (id: string) => Promise<void>;
   reset: () => void;
+}
+
+type SetState = (fn: (state: QueryState) => Partial<QueryState>) => void;
+
+// Runs a query for an existing message and folds the result (or error) back into
+// it. Shared by submit (first attempt) and retry (re-run after a system error),
+// so both paths produce identical success/error handling.
+async function runQuery(set: SetState, id: string, question: string): Promise<void> {
+  // Keep any existing error set while loading, so a retry stays on the System
+  // Notice ("Retrying…") instead of flashing the judge's thinking bubble. The
+  // error clears only on success.
+  set(state => ({
+    messages: state.messages.map(m =>
+      m.id === id ? { ...m, loading: true } : m
+    ),
+  }));
+
+  const cardMentions = await extractCardMentions(question);
+  const apiQuestion = question.replace(/@/g, '');
+
+  try {
+    const data = await postQuery(apiQuestion, cardMentions);
+    set(state => ({
+      messages: state.messages.map(m =>
+        m.id === id
+          ? { ...m, answer: data.answer, citations: data.citations, confidence: data.confidence ?? null, latencyMs: data.latency_ms, loading: false, error: null }
+          : m
+      ),
+    }));
+  } catch (err: unknown) {
+    const error: ApiError = err instanceof ApiErrorInstance
+      ? { type: err.type, message: err.message, retryAfter: err.retryAfter }
+      : { type: 'unknown', message: 'Something went wrong.' };
+    set(state => ({
+      messages: state.messages.map(m =>
+        m.id === id ? { ...m, error, loading: false } : m
+      ),
+    }));
+  }
 }
 
 export const useQueryStore = create<QueryState>((set, get) => ({
@@ -54,8 +94,6 @@ export const useQueryStore = create<QueryState>((set, get) => ({
 
     const id = `msg-${Date.now()}-${Math.random()}`;
     const displayQuestion = currentQuestion.trim();
-    const cardMentions = await extractCardMentions(displayQuestion);
-    const apiQuestion = displayQuestion.replace(/@/g, '');
 
     const newMessage: Message = {
       id,
@@ -69,26 +107,15 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     };
 
     set(state => ({ messages: [...state.messages, newMessage], currentQuestion: '' }));
+    await runQuery(set, id, displayQuestion);
+  },
 
-    try {
-      const data = await postQuery(apiQuestion, cardMentions);
-      set(state => ({
-        messages: state.messages.map(m =>
-          m.id === id
-            ? { ...m, answer: data.answer, citations: data.citations, confidence: data.confidence ?? null, latencyMs: data.latency_ms, loading: false }
-            : m
-        ),
-      }));
-    } catch (err: unknown) {
-      const error: ApiError = err instanceof ApiErrorInstance
-        ? { type: err.type, message: err.message, retryAfter: err.retryAfter }
-        : { type: 'unknown', message: 'Something went wrong.' };
-      set(state => ({
-        messages: state.messages.map(m =>
-          m.id === id ? { ...m, error, loading: false } : m
-        ),
-      }));
-    }
+  // Re-run a message that failed with a system error. Uses the stored question
+  // so the user doesn't have to retype it.
+  retry: async (id: string) => {
+    const msg = get().messages.find(m => m.id === id);
+    if (!msg || msg.loading) return;
+    await runQuery(set, id, msg.question);
   },
 
   reset: () => set({ messages: [], currentQuestion: '' }),

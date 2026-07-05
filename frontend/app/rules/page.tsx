@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { RulesContent } from '@/components/rules/RulesContent';
+import { structureClauses } from '@/components/rules/structureClauses';
 
 interface TocEntry {
   id: string;
@@ -77,7 +78,10 @@ function buildToc(markdown: string): TocEntry[] {
 export default async function RulesPage() {
   const raw = await readFile(join(process.cwd(), 'content', 'rulebook.md'), 'utf8');
   const normalized = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const markdown = mergeNumberHeadings(normalized);
-  const toc = buildToc(markdown);
+  const merged = mergeNumberHeadings(normalized);
+  // TOC is built from headings, which the clause splitter never touches — so we
+  // build it from `merged` and split run-on clauses only for the rendered body.
+  const toc = buildToc(merged);
+  const markdown = structureClauses(merged);
   return <RulesContent markdown={markdown} toc={toc} />;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { useQueryStore } from '@/store/useQueryStore';
 import { Navbar } from './Navbar';
 import { QueryInput } from './QueryInput';
@@ -46,23 +47,32 @@ export function ChatView({ onReset }: ChatViewProps) {
                 placeholder="Describe the game situation..."
               />
             </div>
-            {currentQuestion === '' && (
-              <div className="flex flex-wrap gap-2 justify-center">
-                {[
-                  { label: 'Type @ to mention a card', value: '@' },
-                  { label: 'Type # to tag a keyword', value: '#' },
-                  { label: 'What does the Hidden keyword do?', value: 'What does the Hidden keyword do?' },
-                ].map(tip => (
-                  <button
-                    key={tip.label}
-                    onClick={() => setCurrentQuestion(tip.value)}
-                    className="text-[11px] text-brand-ink-faint px-3 py-1.5 rounded-full border border-brand-ink/10 bg-brand-card hover:text-brand-ink hover:border-brand-ink/20 transition-all"
-                  >
-                    {tip.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* Suggestion chips: kept mounted (space reserved so the centered
+                layout never jumps) and cross-faded as the input fills/empties. */}
+            <div
+              aria-hidden={currentQuestion !== ''}
+              className={cn(
+                'flex flex-wrap justify-center gap-2 transition-all duration-300 ease-out',
+                currentQuestion === ''
+                  ? 'translate-y-0 opacity-100'
+                  : 'pointer-events-none -translate-y-1 opacity-0'
+              )}
+            >
+              {[
+                { label: 'Type @ to mention a card', value: '@' },
+                { label: 'Type # to tag a keyword', value: '#' },
+                { label: 'What does the Hidden keyword do?', value: 'What does the Hidden keyword do?' },
+              ].map(tip => (
+                <button
+                  key={tip.label}
+                  onClick={() => setCurrentQuestion(tip.value)}
+                  tabIndex={currentQuestion === '' ? undefined : -1}
+                  className="text-[11px] text-brand-ink-faint px-3 py-1.5 rounded-full border border-brand-ink/10 bg-brand-card hover:text-brand-ink hover:border-brand-ink/20 transition-colors"
+                >
+                  {tip.label}
+                </button>
+              ))}
+            </div>
           </div>
         </main>
       </div>

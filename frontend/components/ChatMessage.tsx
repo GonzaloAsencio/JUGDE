@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import type { Message } from '@/store/useQueryStore';
+import { useQueryStore, type Message } from '@/store/useQueryStore';
 import { AnswerDisplay } from './AnswerDisplay';
+import { SystemNotice } from './SystemNotice';
 import { SourcesPopover } from './SourcesPopover';
 import { ConfidenceBadge } from './ConfidenceBadge';
 import { KeywordBadge } from './KeywordBadge';
@@ -39,6 +40,8 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
+  const retry = useQueryStore((s) => s.retry);
+
   return (
     <div className="space-y-3">
       {/* User bubble */}
@@ -48,27 +51,30 @@ export function ChatMessage({ message }: ChatMessageProps) {
         </div>
       </div>
 
-      {/* Judge bubble */}
-      <div className="flex justify-start">
-        <div className="max-w-[85%] rounded-[28px] border border-brand-muted-ink/15 bg-brand-muted-ink/5 backdrop-blur-xl px-6 py-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-2 h-2 rounded-full bg-brand-muted-ink" />
-            <span className="text-[10px] uppercase tracking-[0.28em] text-brand-muted-ink font-bold">Judge</span>
-            {message.answer && <ConfidenceBadge confidence={message.confidence} />}
-          </div>
-          <AnswerDisplay
-            answer={message.answer}
-            loading={message.loading}
-            error={message.error}
-            citations={message.citations}
-          />
-          {message.answer && message.citations.length > 0 && (
-            <div className="flex justify-end mt-3">
-              <SourcesPopover citations={message.citations} />
+      {/* A system fault is not a ruling — surface it as a notice, never as the
+          judge answering. Otherwise render the judge bubble as usual. */}
+      {message.error ? (
+        <SystemNotice error={message.error} onRetry={() => retry(message.id)} retrying={message.loading} />
+      ) : (
+        <div className="flex justify-start">
+          <div className="max-w-[85%] rounded-[28px] border border-brand-muted-ink/15 bg-brand-muted-ink/5 backdrop-blur-xl px-6 py-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-2 h-2 rounded-full bg-brand-muted-ink" />
+              <span className="text-[10px] uppercase tracking-[0.28em] text-brand-muted-ink font-bold">Judge</span>
+              {message.answer && <ConfidenceBadge confidence={message.confidence} />}
             </div>
-          )}
+            <AnswerDisplay
+              answer={message.answer}
+              loading={message.loading}
+            />
+            {message.answer && message.citations.length > 0 && (
+              <div className="flex justify-end mt-3">
+                <SourcesPopover citations={message.citations} />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
