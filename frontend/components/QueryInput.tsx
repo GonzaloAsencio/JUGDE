@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { Loader2, ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KeywordBadge } from '@/components/KeywordBadge';
+import { CardThumb } from '@/components/CardThumb';
 import { useMentions } from '@/components/useMentions';
 
 interface QueryInputProps {
@@ -97,7 +98,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
           role="listbox"
           aria-label={`${label} — suggestions`}
           data-testid="mention-dropdown"
-          className="absolute left-0 right-0 bottom-full mb-2 z-50 max-h-64 overflow-y-auto rounded-2xl border border-brand-ink/10 bg-card shadow-lg"
+          className="mention-scroll absolute left-0 right-0 bottom-full mb-2 z-50 max-h-80 overflow-y-auto rounded-2xl border border-brand-ink/10 bg-card shadow-lg"
         >
           {items.map((item, i) => (
             <li
@@ -107,7 +108,7 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
               aria-selected={i === index}
               ref={i === index ? activeItemRef : null}
               className={cn(
-                'cursor-pointer px-4 py-2 text-sm first:rounded-t-2xl last:rounded-b-2xl',
+                'cursor-pointer px-4 py-2.5 text-sm first:rounded-t-2xl last:rounded-b-2xl',
                 i === index ? 'bg-brand-ink/5' : 'hover:bg-brand-ink/[0.03]'
               )}
               onMouseDown={e => { e.preventDefault(); select(item); }}
@@ -117,17 +118,9 @@ export function QueryInput({ value, onChange, onSubmit, loading, placeholder }: 
                   ? <KeywordBadge def={item.keyword} />
                   : <><span className="text-brand-ink-faint">#</span>{item.keyword.name}</>
               ) : (
-                <span className="flex items-center gap-2.5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.card.image_url}
-                    alt={item.card.clean_name}
-                    loading="lazy"
-                    width={26}
-                    height={36}
-                    className="h-9 w-auto rounded shrink-0 bg-brand-ink/5"
-                  />
-                  <span className="truncate capitalize">{item.card.clean_name}</span>
+                <span className="flex items-center gap-3.5">
+                  <CardThumb src={item.card.image_url} alt={item.card.clean_name} />
+                  <span className="truncate capitalize text-[0.95rem]">{item.card.clean_name}</span>
                 </span>
               )}
             </li>
