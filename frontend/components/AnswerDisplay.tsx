@@ -111,9 +111,48 @@ function processText(children: React.ReactNode): React.ReactNode {
   return mapped ?? children;
 }
 
+// Matches a leading "Reasoning:" / "Answer:" section heading, tolerating the
+// markdown decoration the model sometimes adds ("**Answer:**", "### Answer :").
+// Mirrors the backend's _ANSWER_HEADING_RE so we style exactly what it emits.
+const SECTION_LABEL_RE = /^[\s*_#>-]*(reasoning|answer)[\s*_]*:\s*/i;
+
+function SectionLabel({ label }: { label: 'reasoning' | 'answer' }) {
+  const isAnswer = label === 'answer';
+  return (
+    <span
+      className={`block text-[10px] uppercase tracking-[0.28em] font-bold mb-1.5 ${
+        isAnswer ? 'text-brand-accent' : 'text-brand-muted-ink'
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
 function makeComponents(): Components {
   return {
-    p: ({ children, ...props }) => <p {...props}>{processText(children)}</p>,
+    p: ({ children, ...props }) => {
+      // Promote a leading "Reasoning:"/"Answer:" into a section eyebrow so the
+      // reader can scan reasoning vs. conclusion. Only the first text child can
+      // carry the heading; anything else renders as a normal paragraph.
+      const arr = React.Children.toArray(children);
+      const first = arr[0];
+      if (typeof first === 'string') {
+        const match = first.match(SECTION_LABEL_RE);
+        if (match) {
+          const label = match[1].toLowerCase() as 'reasoning' | 'answer';
+          const rest = first.slice(match[0].length);
+          const restChildren = rest ? [rest, ...arr.slice(1)] : arr.slice(1);
+          return (
+            <p {...props}>
+              <SectionLabel label={label} />
+              {processText(restChildren)}
+            </p>
+          );
+        }
+      }
+      return <p {...props}>{processText(children)}</p>;
+    },
     li: ({ children, ...props }) => <li {...props}>{processText(children)}</li>,
   };
 }

@@ -112,6 +112,35 @@ describe('AnswerDisplay', () => {
     expect(screen.getByText(/:rb_kwargs:/)).toBeInTheDocument();
   });
 
+  it('promotes a leading "Reasoning:" into a section eyebrow, not body text', () => {
+    render(
+      <AnswerDisplay answer={'Reasoning:\n\nThe rule applies here'} loading={false} error={null} />
+    );
+    const label = screen.getByText('reasoning');
+    expect(label.tagName).toBe('SPAN');
+    expect(label.className).toContain('uppercase');
+    // the ":" should be consumed by the label, not leak into the body
+    expect(screen.queryByText(/Reasoning:/)).toBeNull();
+  });
+
+  it('renders an "Answer:" eyebrow in the accent color and keeps the conclusion text', () => {
+    render(
+      <AnswerDisplay answer={'Answer: The card wins'} loading={false} error={null} />
+    );
+    const label = screen.getByText('answer');
+    expect(label.className).toContain('text-brand-accent');
+    expect(screen.getByText(/The card wins/)).toBeInTheDocument();
+  });
+
+  it('leaves an ordinary paragraph untouched when there is no section heading', () => {
+    render(
+      <AnswerDisplay answer="Just a plain sentence about the rules" loading={false} error={null} />
+    );
+    expect(screen.queryByText('answer')).toBeNull();
+    expect(screen.queryByText('reasoning')).toBeNull();
+    expect(screen.getByText(/Just a plain sentence/)).toBeInTheDocument();
+  });
+
   it('renders three bouncing dots when loading', () => {
     const { container } = render(
       <AnswerDisplay answer={null} loading={true} error={null} />
