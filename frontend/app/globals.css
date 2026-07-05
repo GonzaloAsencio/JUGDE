@@ -59,7 +59,7 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
+  --background: #f6f3ee; /* cream — match the brand surface so no pure white peeks through in light mode */
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -162,6 +162,9 @@
   }
   html {
     @apply font-sans;
+    /* Offset in-page anchor jumps so headings land below the sticky header
+       (~111px) instead of hidden behind it. */
+    scroll-padding-top: 120px;
   }
 }
 
@@ -173,6 +176,23 @@
 }
 .rules-sidebar::-webkit-scrollbar {
   display: none;
+}
+
+/* Numbered rule clauses: hang the number and indent by nesting depth. The step
+   shrinks on narrow screens so deep clauses (133.4.a.1) don't starve the text. */
+.rules-clause {
+  margin-left: calc(var(--rc-depth, 0) * 15px);
+}
+.rules-clause__num {
+  min-width: 2.6rem;
+}
+@media (max-width: 640px) {
+  .rules-clause {
+    margin-left: calc(var(--rc-depth, 0) * 7px);
+  }
+  .rules-clause__num {
+    min-width: 2rem;
+  }
 }
 
 /* ─── Judge UI: Landing & Animation Keyframes ─── */
