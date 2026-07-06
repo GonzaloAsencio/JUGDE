@@ -30,7 +30,7 @@ Just want to try it? Use the live app — no install required.
 - **App (live)**: <!-- TODO: pegar la URL pública de Vercel, p. ej. https://judge-xxx.vercel.app -->
 - **Backend API (Hugging Face Space)**: https://huggingface.co/spaces/GonzaViss/Judge
 - **Slides**: <!-- TODO: URL pública de la presentación (Google Slides / Canva / PPT) -->
-- **Video walkthrough**: <!-- TODO: URL pública del vídeo (YouTube / Drive) -->
+- **Video walkthrough**:[ [<!-- TODO: URL pública del vídeo (YouTube / Drive) -->](https://www.youtube.com/watch?v=ymPhWzeFUkY)](https://www.youtube.com/watch?v=ymPhWzeFUkY)
 
 > **Login**: this app has **no user login** — it is a public Q&A tool, so there are no test
 > credentials to provide. (The only authentication is an internal proxy-shared-secret between
