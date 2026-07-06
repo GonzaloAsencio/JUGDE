@@ -255,6 +255,8 @@ cd backend
 python -m scripts.eval
 ```
 
+> For a step-by-step guide with expected outputs, env var reference, and troubleshooting for each of these three steps, see [docs/testing-guide.md](docs/testing-guide.md).
+
 ---
 
 ## Evaluation Methodology

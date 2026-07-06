@@ -135,7 +135,7 @@ def _resolve_corpus_version(pool, settings: Settings) -> str:
 async def _pipeline_run(question: str, embedder, pool, provider, settings):
     t0 = time.time()
     try:
-        response = await answer_question(question, embedder, pool, provider, settings)
+        response = answer_question(question, embedder, pool, provider, settings)
         return {
             "ok": True,
             "answer": response.answer,
