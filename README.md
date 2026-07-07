@@ -1,6 +1,5 @@
 ---
-title: Riftbound Judge AI
-emoji: 🤖
+title: RiftWard Judge AI
 colorFrom: blue
 colorTo: purple
 sdk: docker
