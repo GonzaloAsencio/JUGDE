@@ -27,10 +27,10 @@ The project is built eval-first. Every architectural decision — embedding mode
 
 Just want to try it? Use the live app — no install required.
 
-- **App (live)**:(https://jugde.vercel.app/)
+- **App (live)**:https://jugde.vercel.app/
 - **Backend API (Hugging Face Space)**: https://huggingface.co/spaces/GonzaViss/Judge
-- **Slides**:(https://docs.google.com/presentation/d/1Rtku0zRdZegC_bOfUIdUQiDxPHdG-Uhg/edit?usp=sharing&ouid=104141483241821378443&rtpof=true&sd=true)
-- **Video walkthrough**:(https://www.youtube.com/watch?v=ymPhWzeFUkY)](https://www.youtube.com/watch?v=ymPhWzeFUkY)
+- **Slides**:https://docs.google.com/presentation/d/1Rtku0zRdZegC_bOfUIdUQiDxPHdG-Uhg/edit?usp=sharing&ouid=104141483241821378443&rtpof=true&sd=true
+- **Video walkthrough**:https://www.youtube.com/watch?v=ymPhWzeFUkY)](https://www.youtube.com/watch?v=ymPhWzeFUkY
 
 > **Login**: this app has **no user login** — it is a public Q&A tool, so there are no test
 > credentials to provide. (The only authentication is an internal proxy-shared-secret between
