@@ -11,7 +11,7 @@ except Exception:
     _VERSION = "0.1.0"
 
 
-@router.get("/health")
+@router.api_route("/health", methods=["GET", "HEAD"])
 def health_shallow(request: Request) -> dict:
     """Shallow health check — no I/O, responds in <50ms."""
     corpus_version = getattr(request.app.state, "corpus_version", None)

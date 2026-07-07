@@ -16,7 +16,7 @@ export interface QueryResponse {
   confidence?: number;
 }
 
-export type ErrorType = 'rate_limit' | 'timeout' | 'server' | 'network' | 'validation' | 'unknown';
+export type ErrorType = 'rate_limit' | 'timeout' | 'server' | 'network' | 'validation' | 'unknown' | 'cold_start';
 
 export interface ApiError {
   type: ErrorType;

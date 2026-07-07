@@ -26,6 +26,8 @@ function copyFor(error: ApiError): Copy {
       return { headline: 'The service is unavailable.', detail: 'Something went wrong on our side. Please try again in a moment.', retryable: true };
     case 'network':
       return { headline: 'Connection lost.', detail: 'We could not reach the service. Check your connection and try again.', retryable: true };
+    case 'cold_start':
+      return { headline: 'Waking up the judge…', detail: 'The service was asleep and is starting back up. This can take up to a minute — hang tight.', retryable: true };
     case 'rate_limit':
       return {
         headline: 'Too many requests.',

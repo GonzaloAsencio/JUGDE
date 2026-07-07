@@ -17,6 +17,7 @@ describe('SystemNotice', () => {
       ['timeout', /did not respond in time/i],
       ['server', /service is unavailable/i],
       ['network', /connection lost/i],
+      ['cold_start', /waking up/i],
     ];
     for (const [type, re] of cases) {
       const { unmount } = render(<SystemNotice error={{ type, message: '' }} onRetry={noop} />);

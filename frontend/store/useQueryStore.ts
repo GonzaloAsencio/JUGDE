@@ -1,6 +1,9 @@
 import { create } from 'zustand';
-import { ApiErrorInstance, postQuery } from '@/lib/api';
+import { ApiErrorInstance, pingHealth, postQuery } from '@/lib/api';
 import type { ApiError, Citation } from '@/lib/types';
+
+const COLD_START_POLL_MS = 5_000;
+const COLD_START_MAX_MS = 90_000;
 
 // Pull every `@token` mention out of the raw question and resolve it to a card's
 // clean_name (space-separated, e.g. "yasuo unforgiven"). The backend's tagged_lookup
@@ -78,6 +81,37 @@ async function runQuery(set: SetState, id: string, question: string): Promise<vo
         m.id === id ? { ...m, error, loading: false } : m
       ),
     }));
+
+    // timeout/network/server are exactly what a sleeping HF Space produces —
+    // probe /health to tell a real cold start apart from a one-off blip.
+    if (error.type === 'timeout' || error.type === 'network' || error.type === 'server') {
+      void handlePossibleColdStart(set, id, question);
+    }
+  }
+}
+
+// Confirms a cold start via /health, switches the message to the cold-start
+// notice, then polls until the Space is back and auto-retries the question —
+// no manual "Try again" needed. Leaves the original error untouched if the
+// health probe succeeds immediately (it wasn't a cold start).
+async function handlePossibleColdStart(set: SetState, id: string, question: string): Promise<void> {
+  if (await pingHealth()) return;
+
+  set(state => ({
+    messages: state.messages.map(m =>
+      m.id === id
+        ? { ...m, error: { type: 'cold_start', message: 'The service was asleep and is starting back up.' } }
+        : m
+    ),
+  }));
+
+  const deadline = Date.now() + COLD_START_MAX_MS;
+  while (Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, COLD_START_POLL_MS));
+    if (await pingHealth()) {
+      await runQuery(set, id, question);
+      return;
+    }
   }
 }
 

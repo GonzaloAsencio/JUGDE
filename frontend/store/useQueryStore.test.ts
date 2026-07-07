@@ -11,16 +11,19 @@ jest.mock('@/lib/api', () => {
   return {
     ApiErrorInstance: MockApiErrorInstance,
     postQuery: jest.fn(),
+    pingHealth: jest.fn().mockResolvedValue(true),
   };
 });
 
 import { useQueryStore } from './useQueryStore';
-import { postQuery, ApiErrorInstance } from '@/lib/api';
+import { postQuery, pingHealth, ApiErrorInstance } from '@/lib/api';
 
 const mockPostQuery = postQuery as jest.MockedFunction<typeof postQuery>;
+const mockPingHealth = pingHealth as jest.MockedFunction<typeof pingHealth>;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockPingHealth.mockResolvedValue(true);
   useQueryStore.setState({ messages: [], currentQuestion: '' });
 });
 
@@ -133,6 +136,47 @@ describe('useQueryStore', () => {
     expect(mockPostQuery).toHaveBeenLastCalledWith('Does yasuo-unforgiven attack?', ['yasuo unforgiven']);
     // still a single message — retry mutates in place, never appends
     expect(useQueryStore.getState().messages).toHaveLength(1);
+  });
+
+  it('turns a system error into a cold-start notice, then auto-retries once /health confirms the Space is back', async () => {
+    jest.useFakeTimers();
+    try {
+      mockPostQuery.mockRejectedValueOnce(
+        new (ApiErrorInstance as unknown as new (t: string, m: string) => InstanceType<typeof ApiErrorInstance>)('server', 'down')
+      );
+      mockPingHealth.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+      mockPostQuery.mockResolvedValueOnce({ answer: 'Awake.', citations: [], latency_ms: 5 });
+
+      useQueryStore.getState().setCurrentQuestion('Still there?');
+      await useQueryStore.getState().submit();
+
+      // flush the initial (non-timer) health probe fired after the failed request
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(useQueryStore.getState().messages[0].error?.type).toBe('cold_start');
+
+      await jest.advanceTimersByTimeAsync(5_000);
+
+      const msg = useQueryStore.getState().messages[0];
+      expect(msg.error).toBeNull();
+      expect(msg.answer).toBe('Awake.');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('leaves a transient error as-is when /health responds immediately (not a real cold start)', async () => {
+    mockPostQuery.mockRejectedValueOnce(
+      new (ApiErrorInstance as unknown as new (t: string, m: string) => InstanceType<typeof ApiErrorInstance>)('timeout', 'timed out')
+    );
+    mockPingHealth.mockResolvedValueOnce(true);
+
+    useQueryStore.getState().setCurrentQuestion('One more thing?');
+    await useQueryStore.getState().submit();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(useQueryStore.getState().messages[0].error?.type).toBe('timeout');
   });
 
   it('submit does not fire while another message is loading', async () => {

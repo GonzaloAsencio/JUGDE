@@ -31,6 +31,12 @@ def test_shallow_health_returns_200(health_client: TestClient):
     assert resp.status_code == 200
 
 
+def test_shallow_health_supports_head(health_client: TestClient):
+    """Uptime monitors (e.g. UptimeRobot) send HEAD by default — must not 405."""
+    resp = health_client.head("/health")
+    assert resp.status_code == 200
+
+
 def test_shallow_health_has_required_fields(health_client: TestClient):
     resp = health_client.get("/health")
     body = resp.json()
