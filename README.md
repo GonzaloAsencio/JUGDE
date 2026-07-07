@@ -20,7 +20,7 @@ An AI-powered rules judge for Riftbound TCG. Ask rules questions in plain langua
 
 Riftbound Judge AI answers rules questions about the Riftbound trading card game by retrieving relevant passages from the official rulebook and using Gemini 2.0 Flash to generate a grounded, cited answer. The system refuses to speculate — if the retrieved context does not contain the answer, it defers rather than fabricates.
 
-The project is built eval-first. Every architectural decision — embedding model, vector database, retrieval strategy — is tied to a measurable outcome. The evaluation set is 20 hand-curated question-answer pairs, each labelled by `difficulty`, `source`, and `tags`. Quality is measured by an LLM-as-judge harness (`correct`/`partial`/`wrong` verdict) plus a deterministic retrieval-recall check. A baseline run has been recorded — see [Results](#results).
+The project is built eval-first. Every architectural decision — embedding model, vector database, retrieval strategy — is tied to a measurable outcome. The evaluation set is 40 hand-curated question-answer pairs, each labelled by `difficulty`, `source`, and `tags`. Quality is measured by an LLM-as-judge harness (`correct`/`partial`/`wrong` verdict) plus a deterministic retrieval-recall check. A baseline run has been recorded — see [Results](#results).
 
 ---
 
@@ -49,7 +49,7 @@ Just want to try it? Use the live app — no install required.
 - **In-app rulebook browser** at `/rules`.
 - **Response caching** (Upstash Redis, optional) and **per-IP rate limiting** (slowapi: 10 req/min, 100 req/day).
 - **Observability** — Langfuse traces and Sentry error reporting (both optional / env-gated).
-- **Eval-first** — 20-question hand-curated eval set with an LLM-as-judge harness plus deterministic retrieval recall.
+- **Eval-first** — 40-question hand-curated eval set with an LLM-as-judge harness plus deterministic retrieval recall.
 
 ---
 
@@ -140,16 +140,19 @@ See [docs/architecture.md](docs/architecture.md) for a standalone version with n
 
 ## Results
 
-> **Eval status**: a baseline run has been recorded against the production (hybrid) pipeline using the LLM-as-judge harness. Verdicts are non-deterministic (the judge is an LLM); retrieval recall is deterministic. The vector-only baseline (Config A) is not yet wired — the harness runs the production hybrid config only.
+> **Eval status**: a baseline run has been recorded against the production (hybrid) pipeline using the LLM-as-judge harness. Verdicts are non-deterministic (the judge is an LLM); retrieval recall is deterministic. The vector-only baseline (Config A) is not yet wired — the harness runs the production hybrid config only. The eval set has grown to 40 questions; the latest run below uses a stratified 20-question subset (fixed seed) to stay under daily LLM quota rather than the full set.
 
 | Config | Correct | Correct + Partial | Retrieval recall | Avg latency | Avg confidence |
 |---|---|---|---|---|---|
-| Hybrid (dense + FTS + RRF, production) | 30% | 30% | 36% (5/14 evaluable) | 7177 ms | 0.639 |
+| Hybrid, stratified 20-subset (seed=42) | 45% | 50% | 62% (5/8 evaluable) | 7536 ms | 0.910 |
+| Hybrid (dense + FTS + RRF, production, full 20-question run) | 30% | 30% | 36% (5/14 evaluable) | 7177 ms | 0.639 |
 | Vector-only (baseline A) | pending | pending | pending | pending | pending |
 
-**Methodology**: Eval set of 20 hand-curated questions. Evaluation: an LLM-as-judge returns a `correct`/`partial`/`wrong` verdict per answer; retrieval recall is computed deterministically by matching the expected `rule_reference` against the returned citations (by rule-code lineage over each chunk's full content). Latency and confidence are measured server-side, excluding network. Run it yourself: `cd backend && python -m scripts.eval`.
+By difficulty (stratified 20-subset): easy 100% (2/2), medium 57% (4/7), hard 27% (3/11).
 
-> **Reading the numbers**: retrieval recall is the bottleneck. The right rule is retrieved for only ~1/3 of evaluable questions, and answer correctness tracks it closely — when the rule isn't retrieved, the answer is wrong. The next lever is retrieval quality (finer chunking, `top_k`, reranker), not the prompt. (An earlier run reported 14% recall; that was a measurement artifact in the matcher — see the eval-recall-metric fix — not a real retrieval result.)
+**Methodology**: Eval set of 40 hand-curated questions. Evaluation: an LLM-as-judge returns a `correct`/`partial`/`wrong` verdict per answer; retrieval recall is computed deterministically by matching the expected `rule_reference` against the returned citations (by rule-code lineage over each chunk's full content). Latency and confidence are measured server-side, excluding network. Run it yourself: `cd backend && python -m scripts.eval --limit 20 --seed 42` (or omit `--limit` for the full set).
+
+> **Reading the numbers**: the `hard` bucket remains the ceiling (27%) — this is a known, accepted limitation (multi-step rulings require structured reasoning the system doesn't build), not a regression. Retrieval recall is still the main lever for the rest: when the right rule isn't retrieved, the answer is wrong. (An earlier run reported 14% recall; that was a measurement artifact in the matcher — see the eval-recall-metric fix — not a real retrieval result.)
 
 ---
 
@@ -282,7 +285,7 @@ Latency and confidence are measured server-side from request receipt to response
 
 See [FUTURE_WORK.md](FUTURE_WORK.md) for the full deferred backlog, organized by horizon.
 
-The immediate priority is wiring the vector-only baseline (Config A) so it can be compared against the production hybrid config, expanding the eval set beyond 20 questions, and improving the baseline answer quality. After that: streaming responses and the entity resolution data-collection pass.
+The immediate priority is wiring the vector-only baseline (Config A) so it can be compared against the production hybrid config, and improving answer quality on the `hard` difficulty bucket. After that: streaming responses and the entity resolution data-collection pass.
 
 ---
 

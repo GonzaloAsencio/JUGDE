@@ -11,9 +11,8 @@ Items in this file are deferred from v1. They are not aspirational — each entr
 A baseline run already exists against the production hybrid config using the LLM-as-judge harness (`backend/scripts/eval.py`) — see the README Results table. What's still missing:
 
 1. Wire a vector-only path (Config A) into the harness so it can be compared against the hybrid config — today the harness only runs the production pipeline
-2. Expand the eval set beyond the current 20 questions (`backend/data/eval_set.json`)
-3. Improve baseline answer quality — the recorded baseline (25% correct) is low and worth diagnosing per `difficulty`/`source`
-4. Use the per-source/per-difficulty breakdown to validate or refute the entity resolution threshold (ADR-004)
+2. Improve baseline answer quality — the latest stratified run (45% correct, 50% correct+partial) is worth diagnosing further per `difficulty`/`source`; the `hard` bucket (27%) is the known ceiling
+3. Use the per-source/per-difficulty breakdown to validate or refute the entity resolution threshold (ADR-004)
 
 ### Streaming responses (SSE)
 
