@@ -36,6 +36,13 @@ class GeminiProvider(LLMProvider):
             timeout_s=self._timeout_s,
         )
 
+    def hyde(self, question: str) -> str:
+        from app.rag.generation import _hyde_gemini
+        try:
+            return _hyde_gemini(self._client, self._model, question)
+        except Exception:
+            return ""
+
     def health_check(self) -> str | None:
         from google.genai import types
         try:

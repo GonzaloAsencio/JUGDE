@@ -333,6 +333,47 @@ def _hyde_openai_compat(question: str, *, base_url: str, api_key: str, model: st
     return ""
 
 
+def _hyde_gemini(
+    client: "genai.Client",
+    model: str,
+    question: str,
+    *,
+    timeout_s: float = 5.0,
+) -> str:
+    """Generate a hypothetical answer (HyDE) for the retrieval HyDE arm, via Gemini.
+
+    SINGLE-SHOT on purpose: calls ``client.models.generate_content`` directly,
+    NOT through ``_completion_with_retry``. HyDE is best-effort — retrying it
+    under 429 throttling would burn quota that must be reserved for the answer
+    generation call (which keeps its own retry schedule). On any failure this
+    returns "" so the pipeline cleanly degrades to raw-only retrieval, mirroring
+    ``_hyde_openai_compat``'s never-raise contract.
+
+    Uses its own short ``max_output_tokens``/``temperature``/``timeout_s`` — NOT
+    the generation call's config — because a full-length answer here would be
+    wasted tokens/latency on a passage only used for embedding.
+    """
+    from google.genai import types
+
+    try:
+        config = types.GenerateContentConfig(
+            max_output_tokens=160,
+            temperature=0.0,
+            http_options=types.HttpOptions(timeout=int(timeout_s * 1000)),
+        )
+        response = client.models.generate_content(
+            model=model,
+            contents=_HYDE_PROMPT.format(question=question),
+            config=config,
+        )
+        text = _safe_response_text(response)
+        if text:
+            return text.strip()
+    except Exception:
+        pass
+    return ""
+
+
 def _call_openai_compat_raw(
     question: str,
     chunks: list[Chunk],

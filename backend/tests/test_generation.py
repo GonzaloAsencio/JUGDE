@@ -251,6 +251,103 @@ def test_call_gemini_returns_text_on_normal_response():
 # as a blank bubble. This detector lets the pipeline retry / fall back.
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# _hyde_gemini — single-shot HyDE arm for GeminiProvider (PR1, hard-bucket-v2)
+#
+# Best-effort passage for the retrieval HyDE arm. Never raises (degrades to
+# raw-only retrieval on any failure) and never retries (protects the answer
+# generation's quota budget — see design D1).
+# ---------------------------------------------------------------------------
+
+
+class _RecordingGeminiClient:
+    """Fake genai client that records every generate_content call's kwargs."""
+
+    def __init__(self, response=None, exc: Exception | None = None):
+        self.calls: list[dict] = []
+        outer = self
+
+        class _Models:
+            def generate_content(_self, **kwargs):
+                outer.calls.append(kwargs)
+                if exc is not None:
+                    raise exc
+                return response
+
+        self.models = _Models()
+
+
+def test_hyde_gemini_happy_path_returns_text():
+    from app.rag.generation import _hyde_gemini
+
+    client = _RecordingGeminiClient(
+        response=_FakeResponse(text="Accelerate lets you play a card early by paying its cost.")
+    )
+    result = _hyde_gemini(client, "gemini-2.0-flash", "How does Accelerate work?", timeout_s=5.0)
+    assert result == "Accelerate lets you play a card early by paying its cost."
+
+
+def test_hyde_gemini_returns_empty_on_exception():
+    from app.rag.generation import _hyde_gemini
+
+    client = _RecordingGeminiClient(exc=RuntimeError("network error"))
+    result = _hyde_gemini(client, "gemini-2.0-flash", "How does Accelerate work?", timeout_s=5.0)
+    assert result == ""
+
+
+def test_hyde_gemini_returns_empty_when_text_is_none():
+    from app.rag.generation import _hyde_gemini
+
+    client = _RecordingGeminiClient(response=_FakeResponse(text=None))
+    result = _hyde_gemini(client, "gemini-2.0-flash", "q?", timeout_s=5.0)
+    assert result == ""
+
+
+def test_hyde_gemini_is_single_shot_no_retry_on_429(monkeypatch):
+    """A simulated 429 must NOT be retried — HyDE is best-effort and must not
+    burn the shared quota budget that _completion_with_retry protects for the
+    answer generation call."""
+    from app.rag import generation
+    from app.rag.generation import _hyde_gemini
+
+    class _RateLimitError(Exception):
+        status_code = 429
+
+    client = _RecordingGeminiClient(exc=_RateLimitError("429 rate limited"))
+    slept: list[float] = []
+    monkeypatch.setattr(generation.time, "sleep", lambda s: slept.append(s))
+
+    result = _hyde_gemini(client, "gemini-2.0-flash", "q?", timeout_s=5.0)
+
+    assert result == ""
+    assert len(client.calls) == 1, "must call generate_content exactly once — no retry"
+    assert slept == [], "no backoff sleep must occur — single-shot, not via _completion_with_retry"
+
+
+def test_hyde_gemini_uses_hyde_prompt_verbatim():
+    from app.rag.generation import _HYDE_PROMPT, _hyde_gemini
+
+    client = _RecordingGeminiClient(response=_FakeResponse(text="answer"))
+    _hyde_gemini(client, "gemini-2.0-flash", "How does Accelerate work?", timeout_s=5.0)
+
+    assert client.calls[0]["contents"] == _HYDE_PROMPT.format(question="How does Accelerate work?")
+
+
+def test_hyde_gemini_config_parity():
+    """max_output_tokens~160 and temperature=0.0 mirror the openai-compat HyDE
+    arm; timeout defaults to 5.0s (HyDE's own short timeout), not the 30s
+    generation timeout."""
+    from app.rag.generation import _hyde_gemini
+
+    client = _RecordingGeminiClient(response=_FakeResponse(text="answer"))
+    _hyde_gemini(client, "gemini-2.0-flash", "q?")
+
+    config = client.calls[0]["config"]
+    assert config.max_output_tokens == 160
+    assert config.temperature == 0.0
+    assert config.http_options.timeout == 5000, "timeout_s default 5.0 -> 5000ms, not the 30s generation timeout"
+
+
 from app.rag.generation import has_empty_answer_section
 
 

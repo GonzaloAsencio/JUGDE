@@ -287,6 +287,50 @@ async def test_pipeline_fuses_raw_and_hyde_when_provider_supplies_hyde():
     assert sections == {"RAW", "HYDE"}, "both arms must contribute to the fused result"
 
 
+async def test_pipeline_fuses_arms_when_gemini_provider_hyde_returns_real_text():
+    """PR1 regression guard: pipeline.py:211-226's dual-arm path must still
+    trigger correctly now that GeminiProvider.hyde() returns real text instead
+    of the base-class '' default."""
+    from tests.conftest import FakeEmbedder
+    from app.rag.provider import GeminiProvider
+
+    raw_chunk = _make_chunk(section="RAW")
+    hyde_chunk = _make_chunk(section="HYDE")
+    object.__setattr__(raw_chunk, "id", "raw_id2")
+    object.__setattr__(hyde_chunk, "id", "hyde_id2")
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [raw_chunk] if len(calls) == 1 else [hyde_chunk]
+
+    class _FakeGenResponse:
+        text = "Fake answer for testing."
+
+    class _FakeGenClient:
+        class models:
+            @staticmethod
+            def generate_content(**kwargs):
+                return _FakeGenResponse()
+
+    provider = GeminiProvider(client=_FakeGenClient(), model="gemini-2.0-flash", temperature=0.1, timeout_s=10.0)
+
+    with patch("app.rag.generation._hyde_gemini", return_value="A hypothetical confident answer."):
+        with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    result = answer_question(
+                        "How many cards are in a starting deck?",
+                        FakeEmbedder(), MagicMock(), provider, _fake_settings(),
+                    )
+
+    assert len(calls) == 2, "expected one retrieval per arm (raw + HyDE)"
+    sections = {c.section for c in result.citations}
+    assert sections == {"RAW", "HYDE"}, "both arms must contribute to the fused result"
+
+
 async def test_pipeline_arm_a_embeds_raw_question_not_rewrite():
     """Arm A must retrieve on the RAW question text — Option A drops rewrite_query
     from the embedding path."""
