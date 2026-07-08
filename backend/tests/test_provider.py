@@ -1,7 +1,7 @@
 """Tests for provider.py — the thin LLMProvider port and its concrete adapters."""
 from unittest.mock import patch
 
-from app.rag.provider import GeminiProvider
+from app.rag.provider import GeminiProvider, OpenAICompatProvider
 
 
 class _FakeClient:
@@ -40,3 +40,60 @@ def test_gemini_provider_hyde_exception_degrades_to_empty():
         result = provider.hyde("q?")
 
     assert result == ""
+
+
+# ---------------------------------------------------------------------------
+# LLMProvider.generate(extra_system=...) — multi-card scaffold threading (PR3)
+# ---------------------------------------------------------------------------
+
+
+def test_gemini_provider_generate_default_extra_system_is_empty():
+    """Calling generate() without extra_system (existing callers) keeps working."""
+    provider = _provider()
+    with patch("app.rag.generation.build_prompt", return_value="prompt") as mock_build_prompt:
+        with patch("app.rag.generation._call_gemini", return_value="answer"):
+            provider.generate("q?", [])
+
+    mock_build_prompt.assert_called_once_with("q?", [], extra_system="")
+
+
+def test_gemini_provider_generate_forwards_extra_system_to_build_prompt():
+    provider = _provider()
+    with patch("app.rag.generation.build_prompt", return_value="prompt") as mock_build_prompt:
+        with patch("app.rag.generation._call_gemini", return_value="answer"):
+            provider.generate("q?", [], extra_system="SCAFFOLD")
+
+    mock_build_prompt.assert_called_once_with("q?", [], extra_system="SCAFFOLD")
+
+
+def _openai_provider() -> OpenAICompatProvider:
+    return OpenAICompatProvider(
+        base_url="http://x", api_key="k", model="m", temperature=0.1, timeout_s=10.0,
+    )
+
+
+def test_openai_compat_provider_generate_default_extra_system_is_empty():
+    provider = _openai_provider()
+    with patch("app.rag.generation._call_openai_compat_raw", return_value="answer") as mock_call:
+        provider.generate("q?", [])
+
+    assert mock_call.call_args.kwargs["extra_system"] == ""
+
+
+def test_openai_compat_provider_generate_forwards_extra_system():
+    provider = _openai_provider()
+    with patch("app.rag.generation._call_openai_compat_raw", return_value="answer") as mock_call:
+        provider.generate("q?", [], extra_system="SCAFFOLD")
+
+    assert mock_call.call_args.kwargs["extra_system"] == "SCAFFOLD"
+
+
+def test_fake_llm_provider_accepts_extra_system_kwarg_without_breaking():
+    """Fakes in conftest.py must satisfy the extended ABC signature (keyword-only
+    extra_system with a default) so the pipeline can always call generate(...,
+    extra_system=extra) without breaking test doubles."""
+    from tests.conftest import FakeLLMProvider
+
+    provider = FakeLLMProvider()
+    assert provider.generate("q?", []) == "Fake answer for testing."
+    assert provider.generate("q?", [], extra_system="SCAFFOLD") == "Fake answer for testing."

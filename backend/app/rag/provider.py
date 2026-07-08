@@ -5,7 +5,7 @@ from app.rag.retrieval import Chunk
 
 class LLMProvider(ABC):
     @abstractmethod
-    def generate(self, question: str, chunks: list[Chunk]) -> str: ...
+    def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str: ...
 
     def rewrite_query(self, question: str) -> str:
         return question
@@ -26,12 +26,12 @@ class GeminiProvider(LLMProvider):
         self._temperature = temperature
         self._timeout_s = timeout_s
 
-    def generate(self, question: str, chunks: list[Chunk]) -> str:
+    def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_gemini, build_prompt
         return _call_gemini(
             self._client,
             self._model,
-            build_prompt(question, chunks),
+            build_prompt(question, chunks, extra_system=extra_system),
             temperature=self._temperature,
             timeout_s=self._timeout_s,
         )
@@ -76,7 +76,7 @@ class OpenAICompatProvider(LLMProvider):
         self._temperature = temperature
         self._timeout_s = timeout_s
 
-    def generate(self, question: str, chunks: list[Chunk]) -> str:
+    def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_openai_compat_raw
         return _call_openai_compat_raw(
             question, chunks,
@@ -85,6 +85,7 @@ class OpenAICompatProvider(LLMProvider):
             model=self._model,
             temperature=self._temperature,
             timeout_s=self._timeout_s,
+            extra_system=extra_system,
         )
 
     def rewrite_query(self, question: str) -> str:

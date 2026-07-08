@@ -7,7 +7,13 @@ from app.cache import get_cached, make_cache_key, set_cached
 from app.config import Settings
 from app.observability import get_logger
 from app.rag.embedder import Embedder
-from app.rag.generation import has_empty_answer_section, post_gen_validate, strip_citation_markers
+from app.rag.generation import (
+    _MULTI_CARD_SCAFFOLD,
+    has_empty_answer_section,
+    needs_scaffold,
+    post_gen_validate,
+    strip_citation_markers,
+)
 from app.rag.provider import LLMProvider
 from app.rag.card_detect import detect_card_mentions, load_card_names
 from app.rag.reranker import rerank
@@ -163,10 +169,10 @@ def _retrieve(
     card_mentions: list[str] | None,
     corpus_version: str,
     query_id: str,
-) -> tuple[list, str, float, bool]:
+) -> tuple[list, str, float, bool, int]:
     """Embed + retrieve + assemble the final context.
 
-    Returns (chunks, clean_question, semantic_confidence, has_exact_card_match).
+    Returns (chunks, clean_question, semantic_confidence, has_exact_card_match, card_count).
     """
     clean_question, explicit_tags = _extract_tags(question)
     base_question = clean_question or question
@@ -264,7 +270,13 @@ def _retrieve(
     card_match_tags = set(auto_card_tags) | set(mention_tags)
     has_exact_card_match = _has_exact_card_match(chunks, card_match_tags)
 
-    return chunks, clean_question, semantic_confidence, has_exact_card_match
+    # card_count feeds needs_scaffold (PR3, hard-bucket-v2): the multi-card
+    # reasoning scaffold triggers on 2+ distinct cards regardless of whether
+    # they survived into the final context (an under-retrieved card is still
+    # a multi-card question that needs the enumerate/resolve/conclude guidance).
+    card_count = len(card_match_tags)
+
+    return chunks, clean_question, semantic_confidence, has_exact_card_match, card_count
 
 
 def _build_citations(chunks: list) -> list[Citation]:
@@ -324,7 +336,9 @@ def _compute_confidence(semantic_confidence: float, has_exact_card_match: bool, 
     return round(semantic_confidence, 4)
 
 
-def _generate_guarded(provider: LLMProvider, question: str, chunks: list, query_id: str) -> str:
+def _generate_guarded(
+    provider: LLMProvider, question: str, chunks: list, query_id: str, *, extra_system: str = ""
+) -> str:
     """Generate an answer, retrying ONCE if the Answer section comes back empty.
 
     Gemini occasionally writes a full Reasoning block on an ambiguous question
@@ -333,13 +347,16 @@ def _generate_guarded(provider: LLMProvider, question: str, chunks: list, query_
     reasoning to trail off from — recovers the vast majority. If the retry is
     also empty we return a controlled inconclusive message so the user never
     sees a blank answer bubble.
+
+    *extra_system* (PR3, hard-bucket-v2) carries the multi-card reasoning
+    scaffold decided by the caller and is forwarded unchanged on every attempt.
     """
-    answer = provider.generate(question, chunks)
+    answer = provider.generate(question, chunks, extra_system=extra_system)
     if not has_empty_answer_section(answer):
         return answer
 
     logger.warning("query.empty_answer_section", query_id=query_id, attempt=1)
-    answer = provider.generate(question, chunks)
+    answer = provider.generate(question, chunks, extra_system=extra_system)
     if not has_empty_answer_section(answer):
         return answer
 
@@ -376,7 +393,7 @@ def answer_question(
     if cached is not None:
         return cached
 
-    chunks, clean_question, semantic_confidence, has_exact_card_match = _retrieve(
+    chunks, clean_question, semantic_confidence, has_exact_card_match, card_count = _retrieve(
         question, embedder, db_pool, provider, settings, card_mentions, corpus_version, query_id
     )
 
@@ -400,7 +417,9 @@ def answer_question(
             confidence=0.0,
         )
 
-    answer = _generate_guarded(provider, clean_question or question, chunks, query_id)
+    resolved_question = clean_question or question
+    extra_system = _MULTI_CARD_SCAFFOLD if needs_scaffold(resolved_question, card_count) else ""
+    answer = _generate_guarded(provider, resolved_question, chunks, query_id, extra_system=extra_system)
     citations = _build_citations(chunks)
     answer = _postprocess_answer(answer, citations, chunks, query_id)
 

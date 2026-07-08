@@ -1,4 +1,6 @@
 """Tests for the system instruction (build_prompt) and source_type-agnostic post_gen_validate."""
+import pytest
+
 from app.rag.generation import (
     _SAFE_FALLBACK,
     _SYSTEM_INSTRUCTION,
@@ -387,3 +389,101 @@ def test_answer_word_inside_reasoning_prose_does_not_count():
 _NO_INFO_ANSWER_TEXT = (
     "I don't have enough information to answer that question with the available rules."
 )
+
+
+# ---------------------------------------------------------------------------
+# needs_scaffold — multi-card interaction detection (PR3, hard-bucket-v2)
+#
+# Pure function: True when 2+ distinct cards are involved, OR the question
+# uses conditional/simultaneous language (case-insensitive). Otherwise False.
+# ---------------------------------------------------------------------------
+
+def test_needs_scaffold_true_when_two_or_more_cards():
+    from app.rag.generation import needs_scaffold
+    assert needs_scaffold("What happens when they interact?", 2) is True
+
+
+def test_needs_scaffold_true_with_many_cards():
+    from app.rag.generation import needs_scaffold
+    assert needs_scaffold("Resolve this board state.", 5) is True
+
+
+def test_needs_scaffold_false_with_zero_cards_and_no_conditional_language():
+    from app.rag.generation import needs_scaffold
+    assert needs_scaffold("What does Accelerate do?", 0) is False
+
+
+def test_needs_scaffold_false_with_one_card_and_no_conditional_language():
+    from app.rag.generation import needs_scaffold
+    assert needs_scaffold("What does Yasuo's ability do?", 1) is False
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    [
+        "if it is exhausted, then it cannot attack",
+        "does this trigger simultaneously with the other one",
+        "at the same time as the attack",
+        "whenever both units are ready",
+        "whenever it enters the board",
+    ],
+)
+def test_needs_scaffold_true_on_conditional_language_zero_cards(phrase):
+    from app.rag.generation import needs_scaffold
+    assert needs_scaffold(phrase, 0) is True
+
+
+def test_needs_scaffold_true_on_conditional_language_one_card():
+    from app.rag.generation import needs_scaffold
+    assert needs_scaffold("If Yasuo attacks, then what happens?", 1) is True
+
+
+def test_needs_scaffold_conditional_language_is_case_insensitive():
+    from app.rag.generation import needs_scaffold
+    assert needs_scaffold("IF it is exhausted, THEN it cannot attack", 0) is True
+    assert needs_scaffold("SIMULTANEOUSLY resolving both triggers", 0) is True
+
+
+# ---------------------------------------------------------------------------
+# build_prompt(extra_system=...) — scaffold-augmented prompt (PR3, hard-bucket-v2)
+# ---------------------------------------------------------------------------
+
+def test_build_prompt_default_extra_system_is_backward_compatible():
+    from app.rag.generation import build_prompt
+    chunks = [_make_generation_chunk()]
+    old_style = build_prompt("How does Accelerate work?", chunks)
+    new_style = build_prompt("How does Accelerate work?", chunks, extra_system="")
+    assert old_style == new_style
+
+
+def test_build_prompt_with_scaffold_contains_scaffold_instructions():
+    from app.rag.generation import _MULTI_CARD_SCAFFOLD, build_prompt
+    chunks = [_make_generation_chunk()]
+    prompt = build_prompt("If Yasuo attacks, what happens?", chunks, extra_system=_MULTI_CARD_SCAFFOLD)
+    assert _MULTI_CARD_SCAFFOLD in prompt
+
+
+def test_build_prompt_with_scaffold_preserves_security_rules_and_citation_format():
+    from app.rag.generation import _MULTI_CARD_SCAFFOLD, build_prompt
+    chunks = [_make_generation_chunk()]
+    prompt = build_prompt("If Yasuo attacks, what happens?", chunks, extra_system=_MULTI_CARD_SCAFFOLD)
+    assert "Security rules (non-negotiable):" in prompt
+    assert "[#1]" in prompt
+
+
+def test_build_prompt_with_scaffold_has_no_bare_answer_heading_of_its_own():
+    """The scaffold text itself must not contain a line-anchored 'Answer:'
+    heading — it would confuse _ANSWER_HEADING_RE's 'last heading' logic."""
+    from app.rag.generation import _ANSWER_HEADING_RE, _MULTI_CARD_SCAFFOLD
+    assert _ANSWER_HEADING_RE.search(_MULTI_CARD_SCAFFOLD) is None
+
+
+def _make_generation_chunk():
+    return Chunk(
+        id="gen-chunk-1",
+        content="Some content about the rules.",
+        section="Test Section",
+        parent_section=None,
+        source_type="rulebook",
+        similarity=0.9,
+    )

@@ -443,7 +443,7 @@ def test_base_provider_hyde_returns_empty():
     from app.rag.provider import LLMProvider
 
     class _Bare(LLMProvider):
-        def generate(self, question, chunks):
+        def generate(self, question, chunks, *, extra_system: str = ""):
             return ""
 
     assert _Bare().hyde("anything") == ""
@@ -942,7 +942,7 @@ class _ScriptedProvider(_LLMProvider):
         self._answers = answers
         self.calls = 0
 
-    def generate(self, question: str, chunks) -> str:
+    def generate(self, question: str, chunks, *, extra_system: str = "") -> str:
         answer = self._answers[self.calls]
         self.calls += 1
         return answer
@@ -1152,3 +1152,152 @@ def test_pipeline_reranker_never_receives_tagged_chunks():
     called_chunks = mock_rerank.call_args.args[1]
     assert tagged_chunk not in called_chunks, "tagged/explicit chunks must never be passed to rerank()"
     assert result.confidence == 1.0, "exact card match must still force confidence 1.0 with reranker on"
+
+
+# ---------------------------------------------------------------------------
+# Multi-card reasoning scaffold (PR3): _retrieve returns card_count as a 5th
+# tuple element; answer_question computes extra_system via needs_scaffold and
+# forwards it to provider.generate(..., extra_system=extra).
+# ---------------------------------------------------------------------------
+
+def test_retrieve_returns_card_count_as_fifth_element():
+    """card_count is the size of the union of auto-detected + mentioned cards."""
+    from app.rag.pipeline import _retrieve
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    settings = _fake_settings()
+    with patch("app.rag.pipeline.load_card_names", return_value=()):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+                result = _retrieve(
+                    "what happens?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings,
+                    ["Yasuo", "Shen"], "v1", "qid-1",
+                )
+
+    assert len(result) == 5
+    card_count = result[4]
+    assert card_count == 2
+
+
+def test_retrieve_card_count_zero_without_mentions():
+    from app.rag.pipeline import _retrieve
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    settings = _fake_settings()
+    with patch("app.rag.pipeline.load_card_names", return_value=()):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+                result = _retrieve(
+                    "What does Accelerate do?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings,
+                    None, "v1", "qid-2",
+                )
+
+    assert result[4] == 0
+
+
+def test_answer_question_forwards_scaffold_extra_system_when_two_cards_mentioned():
+    """Two distinct card_mentions -> needs_scaffold=True -> provider.generate
+    receives extra_system=_MULTI_CARD_SCAFFOLD."""
+    from app.rag.generation import _MULTI_CARD_SCAFFOLD
+    from tests.conftest import FakeEmbedder
+
+    generate_calls: list[dict] = []
+
+    class _SpyProvider(_LLMProvider):
+        def generate(self, question, chunks, *, extra_system: str = "") -> str:
+            generate_calls.append({"question": question, "extra_system": extra_system})
+            return _GOOD_ANSWER
+
+    settings = _fake_settings()
+    with patch("app.rag.pipeline.load_card_names", return_value=()):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        answer_question(
+                            "what happens in this interaction?",
+                            FakeEmbedder(), MagicMock(), _SpyProvider(), settings,
+                            card_mentions=["Yasuo", "Shen"],
+                        )
+
+    assert len(generate_calls) == 1
+    assert generate_calls[0]["extra_system"] == _MULTI_CARD_SCAFFOLD
+
+
+def test_answer_question_no_scaffold_for_simple_single_card_question():
+    """A plain single-card, non-conditional question must NOT receive the
+    scaffold — provider.generate gets extra_system=''."""
+    from tests.conftest import FakeEmbedder
+
+    generate_calls: list[dict] = []
+
+    class _SpyProvider(_LLMProvider):
+        def generate(self, question, chunks, *, extra_system: str = "") -> str:
+            generate_calls.append({"extra_system": extra_system})
+            return _GOOD_ANSWER
+
+    settings = _fake_settings()
+    with patch("app.rag.pipeline.load_card_names", return_value=()):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        answer_question(
+                            "What does Accelerate do?",
+                            FakeEmbedder(), MagicMock(), _SpyProvider(), settings,
+                        )
+
+    assert generate_calls == [{"extra_system": ""}]
+
+
+def test_answer_question_forwards_scaffold_extra_system_on_conditional_language():
+    """0-1 cards but conditional language ('if ... then') must still trigger
+    the scaffold."""
+    from app.rag.generation import _MULTI_CARD_SCAFFOLD
+    from tests.conftest import FakeEmbedder
+
+    generate_calls: list[dict] = []
+
+    class _SpyProvider(_LLMProvider):
+        def generate(self, question, chunks, *, extra_system: str = "") -> str:
+            generate_calls.append({"extra_system": extra_system})
+            return _GOOD_ANSWER
+
+    settings = _fake_settings()
+    with patch("app.rag.pipeline.load_card_names", return_value=()):
+        with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    answer_question(
+                        "If it is exhausted, then can it attack?",
+                        FakeEmbedder(), MagicMock(), _SpyProvider(), settings,
+                    )
+
+    assert generate_calls == [{"extra_system": _MULTI_CARD_SCAFFOLD}]
+
+
+def test_scaffolded_response_still_parses_reasoning_answer_format():
+    """Format-preservation guard: a scaffolded Reasoning/Answer response must
+    still be correctly parsed by has_empty_answer_section (the scaffold only
+    adds guidance, never redefines the output format)."""
+    from app.rag.generation import has_empty_answer_section
+
+    scaffolded_response = (
+        "Reasoning:\n"
+        "- Yasuo's ability: triggers on attack.\n"
+        "- Shen's ability: triggers simultaneously when allies attack.\n"
+        "Resolution order: Yasuo resolves first, then Shen.\n\n"
+        "Answer: Both abilities resolve, Yasuo first."
+    )
+    assert has_empty_answer_section(scaffolded_response) is False
+
+    empty_scaffolded_response = (
+        "Reasoning:\n"
+        "- Yasuo's ability: triggers on attack.\n"
+        "- Shen's ability: triggers simultaneously when allies attack.\n\n"
+        "Answer:"
+    )
+    assert has_empty_answer_section(empty_scaffolded_response) is True
