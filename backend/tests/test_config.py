@@ -17,13 +17,29 @@ def test_settings_rrf_defaults(monkeypatch):
     assert s.enable_reranker is False
 
 
-def test_enable_reranker_false_is_noop(monkeypatch):
+def test_enable_reranker_false_by_default(monkeypatch):
+    # No longer a no-op as of PR2 — the pipeline now gates reranking on this
+    # flag (pipeline.py _retrieve). Default stays False until eval confirms
+    # the lift; this test only pins the default value.
     monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
     monkeypatch.setenv("ENABLE_RERANKER", "false")
     from app.config import Settings
     s = Settings()
     assert s.enable_reranker is False
+
+
+def test_reranker_settings_defaults(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    for var in ("ENABLE_RERANKER", "RERANKER_MODEL", "RERANK_POOL_SIZE"):
+        monkeypatch.delenv(var, raising=False)
+    from app.config import Settings
+    # _env_file=None: el .env local del dev no debe pisar los defaults bajo test
+    s = Settings(_env_file=None)
+    assert s.enable_reranker is False
+    assert s.reranker_model == "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    assert s.rerank_pool_size == 15
 
 
 def test_corpus_version_strips_whitespace(monkeypatch):
