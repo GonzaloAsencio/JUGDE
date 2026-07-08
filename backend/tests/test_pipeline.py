@@ -1073,7 +1073,10 @@ def test_pipeline_reranker_on_scores_pool_and_returns_top_k():
         arm_top_ks.append(kw.get("top_k"))
         return pool_chunks
 
-    reranked_top5 = pool_chunks[:5]  # arbitrary "cross-encoder-ranked" subset
+    # NOT the natural pool prefix: if the pipeline truncated the fused pool
+    # itself instead of using rerank()'s return value, citations would equal
+    # pool_chunks[:5] and a prefix here would pass anyway.
+    reranked_top5 = list(reversed(pool_chunks))[:5]
 
     settings = _fake_settings()
     settings.enable_reranker = True

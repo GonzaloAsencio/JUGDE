@@ -7,6 +7,7 @@ disabled feature. First query with the flag on pays the cold-load cost once.
 """
 from __future__ import annotations
 
+import threading
 from typing import TYPE_CHECKING
 
 from app.observability import get_logger
@@ -18,14 +19,20 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 _model: "CrossEncoder | None" = None
+_model_lock = threading.Lock()
 
 
 def _get_model(model_name: str) -> "CrossEncoder":
+    # The /query handler is sync, so FastAPI serves it from the AnyIO
+    # threadpool: without the lock a cold-start burst would construct one
+    # ~80MB CrossEncoder per concurrent request before an assignment wins.
     global _model
     if _model is None:
-        from sentence_transformers import CrossEncoder  # noqa: PLC0415
+        with _model_lock:
+            if _model is None:
+                from sentence_transformers import CrossEncoder  # noqa: PLC0415
 
-        _model = CrossEncoder(model_name)
+                _model = CrossEncoder(model_name)
     return _model
 
 
