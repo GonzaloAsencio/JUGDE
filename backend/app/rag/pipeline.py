@@ -10,6 +10,7 @@ from app.rag.embedder import Embedder
 from app.rag.generation import has_empty_answer_section, post_gen_validate, strip_citation_markers
 from app.rag.provider import LLMProvider
 from app.rag.card_detect import detect_card_mentions, load_card_names
+from app.rag.reranker import rerank
 from app.rag.retrieval import fuse_results, hybrid_search, tagged_lookup
 from app.rag.rules import extract_rule_codes
 from app.rag.schemas import Citation, QueryResponse
@@ -205,11 +206,17 @@ def _retrieve(
     # here on purpose: the experiment never measured it (pending: test as a 4th arm).
     #
     # When fusing, each arm fetches at top_k_fetch depth and fuse_results truncates
-    # ONCE to top_k. Truncating each arm to top_k first (double truncation) dropped
+    # ONCE to pool_k. Truncating each arm to top_k first (double truncation) dropped
     # a chunk strong in only one arm — e.g. a card at raw rank 3 lost to the HyDE
     # arm before fusion even ran. HyDE is resolved first so we know the arm depth.
+    #
+    # pool_k (D2): the reranker only helps if it sees MORE candidates than it
+    # returns. When enable_reranker is off, pool_k == top_k — byte-identical to
+    # pre-reranker behaviour (the regression guarantee). When on, the pool is
+    # widened to rerank_pool_size and reranked back down to top_k below.
+    pool_k = settings.rerank_pool_size if settings.enable_reranker else settings.top_k
     hyde_text = provider.hyde(base_question)
-    arm_top_k = settings.top_k_fetch if hyde_text else settings.top_k
+    arm_top_k = settings.top_k_fetch if hyde_text else pool_k
     chunks = hybrid_search(
         db_pool, embedder.encode(base_question), base_question, corpus_version,
         top_k=arm_top_k,
@@ -223,7 +230,22 @@ def _retrieve(
             top_k_fetch=settings.top_k_fetch,
             rrf_k=settings.rrf_k,
         )
-        chunks = fuse_results(chunks, hyde_chunks, rrf_k=settings.rrf_k, top_k=settings.top_k)
+        chunks = fuse_results(chunks, hyde_chunks, rrf_k=settings.rrf_k, top_k=pool_k)
+
+    # Rerank the semantic pool ONLY — never the tagged/explicit chunks below.
+    # tagged_lookup is a deterministic entity match that drives
+    # has_exact_card_match -> confidence 1.0 with reserved slots in
+    # _assemble_context; letting the cross-encoder reorder or evict that chunk
+    # would silently degrade the strongest signal we have. Never-raise: rerank()
+    # already wraps model load/predict failures internally, but a defense-in-depth
+    # try/except here means a query never breaks even if rerank() itself is
+    # mocked/misbehaves in an unexpected way.
+    if settings.enable_reranker:
+        try:
+            chunks = rerank(base_question, chunks, top_k=settings.top_k, model_name=settings.reranker_model)
+        except Exception as e:  # pragma: no cover - defensive, rerank() itself never raises
+            logger.warning("reranker.pipeline_fallback", query_id=query_id, error=str(e))
+            chunks = chunks[: settings.top_k]
 
     # Confidence reflects the strength of REAL semantic retrieval: the best cosine
     # similarity among the vector-search results. Captured BEFORE tagged chunks are

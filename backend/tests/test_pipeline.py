@@ -75,6 +75,12 @@ def _fake_settings(corpus_version: str = "v1"):
     s.gemini_timeout_s = 10.0
     s.prompt_version = "v5"
     s.cache_ttl_s = 86400
+    # MagicMock() attrs are truthy by default — pin these explicitly so
+    # `if settings.enable_reranker:` in the pipeline behaves like the real
+    # Settings default (off) unless a test opts in.
+    s.enable_reranker = False
+    s.reranker_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    s.rerank_pool_size = 15
     return s
 
 
@@ -999,3 +1005,150 @@ async def test_pipeline_does_not_retry_when_answer_present():
                 )
 
     assert provider.calls == 1
+
+
+# ---------------------------------------------------------------------------
+# Reranker integration (PR2): rerank() is applied to the semantic pool only,
+# strictly gated by settings.enable_reranker. Flag-off must be byte-identical
+# to pre-PR2 behaviour (see design D2's regression guarantee).
+# ---------------------------------------------------------------------------
+
+def test_pipeline_reranker_off_is_byte_identical_to_current_behavior():
+    """enable_reranker=False → chunks equal current fuse_results/top_k output,
+    reranker never invoked."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    chunk = _make_chunk(section="Only Chunk")
+    settings = _fake_settings()  # enable_reranker=False by default
+
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
+        with patch("app.rag.pipeline.rerank") as mock_rerank:
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    result = answer_question(
+                        "What is a rule?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
+                    )
+
+    mock_rerank.assert_not_called()
+    assert [c.section for c in result.citations] == ["Only Chunk"]
+
+
+def test_pipeline_reranker_off_arm_fetches_at_top_k_not_pool_size():
+    """Flag off → pool_k == top_k, so the raw-only arm still fetches at top_k
+    (not rerank_pool_size) — the regression guard from design D2."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    arm_top_ks: list[int] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        arm_top_ks.append(kw.get("top_k"))
+        return [_make_chunk()]
+
+    settings = _fake_settings()  # top_k=5, enable_reranker=False, rerank_pool_size=15
+    with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached"):
+                from app.rag.pipeline import answer_question
+                answer_question(
+                    "How does it work?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
+                )
+
+    assert arm_top_ks == [5], "flag off: pool_k must equal top_k, unchanged from pre-PR2 behavior"
+
+
+def test_pipeline_reranker_on_scores_pool_and_returns_top_k():
+    """enable_reranker=True, rerank_pool_size=15, top_k=5, pool has >=15
+    candidates → reranker scores the 15-chunk pool, pipeline returns the top 5
+    by cross-encoder score."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    pool_chunks = [_make_chunk(section=f"S{i}") for i in range(15)]
+    for i, c in enumerate(pool_chunks):
+        object.__setattr__(c, "id", f"id{i}")
+
+    arm_top_ks: list[int] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        arm_top_ks.append(kw.get("top_k"))
+        return pool_chunks
+
+    # NOT the natural pool prefix: if the pipeline truncated the fused pool
+    # itself instead of using rerank()'s return value, citations would equal
+    # pool_chunks[:5] and a prefix here would pass anyway.
+    reranked_top5 = list(reversed(pool_chunks))[:5]
+
+    settings = _fake_settings()
+    settings.enable_reranker = True
+
+    with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+        with patch("app.rag.pipeline.rerank", return_value=reranked_top5) as mock_rerank:
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    result = answer_question(
+                        "How does it work?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
+                    )
+
+    assert arm_top_ks == [15], "flag on: raw-only arm must fetch at rerank_pool_size"
+    mock_rerank.assert_called_once()
+    _, kwargs = mock_rerank.call_args
+    called_args = mock_rerank.call_args.args
+    assert called_args[0] == "How does it work?"
+    assert len(called_args[1]) == 15
+    assert mock_rerank.call_args.kwargs.get("top_k") == 5 or called_args[2] == 5
+    assert [c.section for c in result.citations] == [c.section for c in reranked_top5]
+
+
+def test_pipeline_reranker_error_falls_back_to_fused_order():
+    """reranker raises during scoring while enable_reranker=True → pipeline
+    does not raise, returns top_k of the original fused order unchanged."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    chunk = _make_chunk(section="Fallback Chunk")
+
+    settings = _fake_settings()
+    settings.enable_reranker = True
+
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
+        with patch("app.rag.pipeline.rerank", side_effect=RuntimeError("boom")):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    result = answer_question(
+                        "How does it work?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings
+                    )
+
+    assert result.citations, "reranker error must not break the query"
+    assert result.citations[0].section == "Fallback Chunk"
+
+
+def test_pipeline_reranker_never_receives_tagged_chunks():
+    """Tagged/explicit card chunks are NEVER passed into rerank() — only the
+    semantic pool. Exact-card match still yields confidence 1.0 with the
+    reranker on."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    tagged_chunk = _make_chunk(section="Jhin - The Virtuoso", similarity=0.0)
+    semantic_chunk = _make_chunk(section="Some Rule", similarity=0.7)
+    object.__setattr__(tagged_chunk, "id", "tagged_id")
+    object.__setattr__(semantic_chunk, "id", "semantic_id")
+
+    settings = _fake_settings()
+    settings.enable_reranker = True
+
+    with patch("app.rag.pipeline.tagged_lookup", return_value=[tagged_chunk]):
+        with patch("app.rag.pipeline.hybrid_search", return_value=[semantic_chunk]):
+            with patch("app.rag.pipeline.rerank", return_value=[semantic_chunk]) as mock_rerank:
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        result = answer_question(
+                            "@jhin what does it do?", FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings,
+                            card_mentions=["jhin"],
+                        )
+
+    mock_rerank.assert_called_once()
+    called_chunks = mock_rerank.call_args.args[1]
+    assert tagged_chunk not in called_chunks, "tagged/explicit chunks must never be passed to rerank()"
+    assert result.confidence == 1.0, "exact card match must still force confidence 1.0 with reranker on"

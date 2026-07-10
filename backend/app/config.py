@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     top_k_fetch: int = 15
     rrf_k: int = 60
     enable_reranker: bool = False
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    rerank_pool_size: int = 15
 
     # LLM provider: "gemini" (default) | "openai_compat" (Groq, LM Studio, Ollama, etc.)
     llm_provider: str = "gemini"
