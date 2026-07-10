@@ -562,6 +562,46 @@ def test_assemble_context_never_exceeds_top_k():
     assert len(out) == 3
 
 
+def _rule_chunk(cid: str, section: str):
+    """Auto keyword chunk whose section is a numbered rule ('820. Repeat') —
+    the fine labels the 2026-07 re-chunking produces for keyword rule families."""
+    from app.rag.retrieval import Chunk
+    return Chunk(cid, f"content-{cid}", section, None, "rulebook", 0.0)
+
+
+def test_assemble_context_reserves_slot_for_keyword_rule_chunk():
+    """A detected keyword's RULE chunk ('820. Repeat') gets one reserved slot even
+    when semantic fills the budget. Diagnosed on eval-037: 'repeat' was detected and
+    tagged_lookup found the rule, but leftover-only budgeting never let it in."""
+    from app.rag.pipeline import _assemble_context
+    semantic = [_ctx_chunk("s1", "card"), _ctx_chunk("s2", "card"), _ctx_chunk("s3", "card")]
+    auto = [_rule_chunk("kw1", "820. Repeat")]
+    out = _assemble_context([], semantic, auto, top_k=3)
+    ids = [c.id for c in out]
+    assert "kw1" in ids, "keyword rule chunk must get its reserved slot"
+    assert len(out) == 3
+
+
+def test_assemble_context_non_rule_auto_never_displaces_semantic():
+    """Only rule-sectioned keyword chunks earn the slot — a card that merely
+    ILIKE-matched the tag ('Hunters Machete' for 'hunt') still never evicts."""
+    from app.rag.pipeline import _assemble_context
+    semantic = [_ctx_chunk("s1", "card"), _ctx_chunk("s2", "card"), _ctx_chunk("s3", "card")]
+    auto = [_ctx_chunk("junk1")]  # section 'sec-junk1' — not a numbered rule
+    out = _assemble_context([], semantic, auto, top_k=3)
+    assert [c.id for c in out] == ["s1", "s2", "s3"]
+
+
+def test_assemble_context_keyword_slot_backfills_when_rule_chunk_is_dup():
+    """If the keyword rule chunk already arrived semantically, the reserved slot
+    must be returned to semantic — never waste budget on a duplicate."""
+    from app.rag.pipeline import _assemble_context
+    semantic = [_ctx_chunk("s1"), _rule_chunk("kw1", "820. Repeat"), _ctx_chunk("s3")]
+    auto = [_rule_chunk("kw1", "820. Repeat")]
+    out = _assemble_context([], semantic, auto, top_k=3)
+    assert [c.id for c in out] == ["s1", "kw1", "s3"]
+
+
 def test_assemble_context_dedups_across_sources():
     from app.rag.pipeline import _assemble_context
     explicit = [_ctx_chunk("shared")]

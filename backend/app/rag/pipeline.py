@@ -52,6 +52,10 @@ _KEYWORD_ALIASES: dict[str, str] = {
     "action phase": "main phase",
 }
 
+# Sección de regla numerada ('820. Repeat') — distingue el chunk de la REGLA de
+# un keyword de las cartas que matchean el tag por ILIKE ('Hunters Machete').
+_RULE_SECTION = re.compile(r"^\d{3,}\. ")
+
 
 def _word_boundary(term: str) -> "re.Pattern[str]":
     """Compile a case-insensitive whole-word matcher for *term*."""
@@ -108,9 +112,13 @@ def _assemble_context(
       1. Explicit chunks (from @tags / card_mentions) prepend — a user-directed
          lookup — but cannot consume the whole budget: at least one slot is
          reserved for semantic retrieval when any is available.
-      2. Semantic chunks (real cosine) fill next.
-      3. Auto-detected keyword chunks fill ONLY leftover budget. They are a
-         lexical heuristic (similarity=0.0) and must never displace a real
+      2. Semantic chunks (real cosine) fill next — minus one slot when a
+         keyword RULE chunk (numbered section like '820. Repeat') is waiting:
+         a detected keyword's own rule is exactly what the question needs, and
+         leftover-only budgeting never let it in (diagnosed on eval-037). The
+         slot is backfilled by semantic if the rule chunk arrives as a dup.
+      3. Other auto-detected keyword chunks fill ONLY leftover budget. They are
+         a lexical heuristic (similarity=0.0) and must never displace a real
          semantic hit — the bug that evicted card chunks from rulings.
 
     Never returns more than top_k chunks.
@@ -129,7 +137,12 @@ def _assemble_context(
     semantic_available = any(c.id not in seen for c in semantic_chunks)
     explicit_limit = top_k - 1 if semantic_available and top_k > 1 else top_k
     take(explicit_chunks, explicit_limit)
-    take(semantic_chunks, top_k)
+
+    rule_autos = [c for c in auto_chunks if _RULE_SECTION.match(c.section or "")]
+    semantic_limit = top_k - 1 if rule_autos and top_k > 1 else top_k
+    take(semantic_chunks, semantic_limit)
+    take(rule_autos, top_k)
+    take(semantic_chunks, top_k)  # backfill the reserved slot if the rule chunk was a dup
     take(auto_chunks, top_k)
     return result
 
