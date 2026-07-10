@@ -14,7 +14,7 @@ def test_settings_rrf_defaults(monkeypatch):
     s = Settings(_env_file=None)
     assert s.top_k_fetch == 15
     assert s.rrf_k == 60
-    assert s.enable_reranker is False
+    assert s.enable_reranker is True
 
 
 def test_gemini_model_default_is_not_retired(monkeypatch):
@@ -31,10 +31,21 @@ def test_gemini_model_default_is_not_retired(monkeypatch):
     assert s.gemini_model == "gemini-flash-lite-latest"
 
 
-def test_enable_reranker_false_by_default(monkeypatch):
-    # No longer a no-op as of PR2 — the pipeline now gates reranking on this
-    # flag (pipeline.py _retrieve). Default stays False until eval confirms
-    # the lift; this test only pins the default value.
+def test_enable_reranker_true_by_default(monkeypatch):
+    # The 2026-07-10 eval gate confirmed the lift the flag was waiting for:
+    # deterministic recall went 9/15 -> 12/15 (60% -> 80%) with zero losses
+    # (eval_results_20260710T155034Z.json vs 153424Z). Default is now True.
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    monkeypatch.delenv("ENABLE_RERANKER", raising=False)
+    from app.config import Settings
+    s = Settings(_env_file=None)
+    assert s.enable_reranker is True
+
+
+def test_enable_reranker_env_override_false(monkeypatch):
+    # Memory-constrained deploys (HF Space free tier) must still be able to
+    # opt out of the ~80MB cross-encoder via env.
     monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
     monkeypatch.setenv("ENABLE_RERANKER", "false")
@@ -51,7 +62,7 @@ def test_reranker_settings_defaults(monkeypatch):
     from app.config import Settings
     # _env_file=None: el .env local del dev no debe pisar los defaults bajo test
     s = Settings(_env_file=None)
-    assert s.enable_reranker is False
+    assert s.enable_reranker is True
     assert s.reranker_model == "cross-encoder/ms-marco-MiniLM-L-6-v2"
     assert s.rerank_pool_size == 15
 

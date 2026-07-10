@@ -19,7 +19,10 @@ class Settings(BaseSettings):
     gemini_timeout_s: float = 30.0
     top_k_fetch: int = 15
     rrf_k: int = 60
-    enable_reranker: bool = False
+    # Flipped to True after the 2026-07-10 eval gate: deterministic recall
+    # 9/15 -> 12/15 (60% -> 80%) with zero losses, at zero LLM tokens (local
+    # CPU cross-encoder, ~80MB RAM). Opt out per-deploy via ENABLE_RERANKER.
+    enable_reranker: bool = True
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     rerank_pool_size: int = 15
 
