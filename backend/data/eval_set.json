@@ -168,11 +168,11 @@
     },
     {
       "id": "eval-019",
-      "question": "When a unit is sacrificed as an additional cost to play a card, does the unit die before or after the card is placed on the chain? Can the opponent react to the sacrifice?",
-      "canonical_answer": "The unit must be killed before the card is placed on the chain. When the reaction window opens, the unit is already dead. Paying the additional cost is not a reflexive trigger, so opponents cannot react to the sacrifice itself.",
-      "source": "rulebook",
-      "rule_reference": null,
-      "tags": ["cost", "chain", "death", "sacrifice", "reaction"],
+      "question": "Does Jhin Murderous Artist grant players priority before resolving? What about Hunt and other XP gain triggers, like Herald of Spring's Play effect?",
+      "canonical_answer": "Jhin Murderous Artist's ability cannot be reacted to: spells and abilities that Add resources finalize immediately, and priority does not pass from them. Although XP is considered a resource, that rule only covers Add as adding Energy or Power to the Rune Pool, so Hunt and other XP gain triggers (like Herald of Spring's Play effect) resolve normally and can be reacted to.",
+      "source": "ruling",
+      "rule_reference": "429.2, 429.2.a",
+      "tags": ["jhin", "priority", "add-resources", "xp", "hunt", "triggered-ability", "specific-card"],
       "difficulty": "hard"
     },
     {
@@ -267,11 +267,11 @@
     },
     {
       "id": "eval-030",
-      "question": "My opponent defends a battlefield with a crab equipped with a Battlefield Sword and a hidden card. I attack with 2 sprites. He kills one sprite, I kill his crab. He reacts to the Deathknell trigger by revealing the hidden card and playing Guards!, which lets him play a Sand Soldier that uses the Battlefield Sword to kill my other sprite. Is this legal?",
-      "canonical_answer": "Yes, it is legal. You do not lose control of a battlefield while there is still a chain on the stack. When the Deathknell triggers, the opponent is still the controller of the battlefield, so hidden cards on that battlefield are not sent to the trash. He can legally react to the Deathknell trigger and play Guards! before the chain fully resolves.",
+      "question": "I play Disposal Order and choose 3 Deflect units in my enemy's trash. Do I have to pay 3[A] in order to finalize Disposal Order?",
+      "canonical_answer": "No. Deflect is a keyword only present on Permanents, and a game object is only a Permanent if it is a Main Deck game object that remains on the Board after being played. The trash is a non-board zone, so units in the trash do not have Deflect and Disposal Order finalizes without any additional cost.",
       "source": "ruling",
-      "rule_reference": null,
-      "tags": ["deathknell", "hidden", "chain", "battlefield-control", "guards", "sand-soldier", "reaction"],
+      "rule_reference": "365.1, 809.1, 809.1.a",
+      "tags": ["disposal-order", "deflect", "trash", "zones", "passive-ability", "specific-card"],
       "difficulty": "hard"
     },
     {
