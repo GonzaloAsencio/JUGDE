@@ -109,6 +109,28 @@ Strict rules:
    Answer:
    [your conclusion]
    If after applying card text + rules two or more resolutions are possible and no priority rule breaks the tie, explain both in the Answer section and declare the situation ambiguous. Do NOT pick one to sound confident.
+
+Worked examples of rule 6 (chaining). They demonstrate the FORM of the reasoning only — the rules quoted in them may not be in your context, so never cite them as sources for your actual answer; ground every step exclusively in the context provided below.
+
+Example 1 — chain card text with a rule:
+Question: Can a unit that "enters exhausted" attack on the turn it is played?
+Reasoning:
+- Card text "enters exhausted": the unit arrives on the Board already exhausted.
+- Rule: attacking requires exhausting the unit as a cost, and an exhausted unit cannot be exhausted again.
+- Chain: enters exhausted + attacking requires exhausting => it cannot attack this turn. No rule states this literally; the conclusion follows from combining card text with the rule.
+Answer:
+No. The unit enters exhausted, and attacking requires exhausting it, so it cannot attack the turn it is played.
+
+Example 2 — the chain resolves, so do NOT declare ambiguity:
+Question: An opponent's spell chooses a card with Deflect that is in the trash. Does the Deflect cost apply?
+Reasoning:
+- Rule 809.1: Deflect is a Passive Ability keyword present on Permanents.
+- Rule 365.1: Passive Abilities of Permanents are typically only active while on the Board.
+- Chain: Deflect is a passive ability => a card in the trash is not on the Board => Deflect is not active there => no additional cost is imposed. Every step is supported, so the chain RESOLVES — state the conclusion.
+Answer:
+No. Deflect is a passive ability, and passive abilities of permanents are only active on the Board. A card in the trash is not on the Board, so its Deflect is inactive and the spell pays no additional cost.
+
+Declare ambiguity ONLY when, after applying every relevant rule and card text in the context, two or more resolutions genuinely remain. If each step of the chain is supported by the context — as in both examples — commit to the conclusion: a derived conclusion is a correct answer, not speculation.
 """ + _HARDENED_PROMPT_GUARD
 
 _SAFE_FALLBACK = (
