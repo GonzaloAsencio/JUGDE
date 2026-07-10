@@ -180,7 +180,7 @@
       "question": "If both Angel Guardian and the unit it is attached to are given the Temporary keyword, what happens when Temporary triggers?",
       "canonical_answer": "Both units have separate Temporary triggers that fire during the beginning phase. You can choose the order of those triggers, allowing the unit's Temporary to resolve first, which kills the Angel Guardian. However, the unit still has Temporary and will attempt to kill itself again at the beginning of the following turn.",
       "source": "rulebook",
-      "rule_reference": null,
+      "rule_reference": "816, 383.3.d",
       "tags": ["temporary", "angel-guardian", "triggered-ability", "beginning-phase", "ordering", "specific-card"],
       "difficulty": "hard"
     },
@@ -234,7 +234,7 @@
       "question": "If I play Marching Orders with Repeat, do both damage instances happen simultaneously or sequentially? Can I kill two enemy units of equal power to my unit?",
       "canonical_answer": "The damage instances happen sequentially, but units only die from damage during the next cleanup after the spell fully resolves. This means both instances of damage are applied before any unit dies, so you can effectively remove two enemy units of equal power to your unit with a single Repeated Marching Orders.",
       "source": "ruling",
-      "rule_reference": null,
+      "rule_reference": "820, 323.5",
       "tags": ["marching-orders", "repeat", "damage", "cleanup", "sequencing"],
       "difficulty": "hard"
     },
@@ -243,7 +243,7 @@
       "question": "I have a Reflection Token of the Soaring Scout with Temporary. My opponent argues the 2 runes channeled by its Deathknell are ready because of the Awaken step. Is that correct?",
       "canonical_answer": "No. The turn phases resolve in order: (A) Awaken — all runes and units ready; (B) Beginning — Temporary triggers fire and Deathknell goes on the chain; (C) Channel — new ready rune is channeled; (D) Draw. Since the Awaken step is fully completed before the Beginning step, the 2 runes channeled by the Reflection Token's Deathknell enter exhausted. The Awaken step has already passed by the time those runes are created.",
       "source": "ruling",
-      "rule_reference": null,
+      "rule_reference": "315.1, 315.2, 808",
       "tags": ["reflection-token", "soaring-scout", "temporary", "deathknell", "awaken", "beginning-phase", "runes", "specific-card"],
       "difficulty": "hard"
     },
@@ -252,7 +252,7 @@
       "question": "If I have Consult the Past hidden and pay 1 Power to play it from facedown, does Jhin Legend's ability trigger?",
       "canonical_answer": "No. Jhin's ability requires that you spend 4 or more Energy to play the spell. When playing Consult the Past from facedown, you spend 1 Power, not 4 Energy, so Jhin's condition is not met and his ability does not trigger.",
       "source": "ruling",
-      "rule_reference": null,
+      "rule_reference": "811, 131.3",
       "tags": ["jhin", "consult-the-past", "hidden", "power", "energy", "triggered-ability", "specific-card"],
       "difficulty": "hard"
     },
@@ -324,7 +324,7 @@
       "question": "Akshan is at 5 might holding Fortress. Frozen Fortress dealt 1 damage to him at the start of my turn. I then use Eclipse to give him -4 might. My opponent says he survives. Who is correct?",
       "canonical_answer": "Akshan dies. He has 5 might, takes 1 damage from Frozen Fortress, then Eclipse gives him -4 might, reducing him to 1 might with 1 damage marked on him. A unit with damage equal to or greater than its might dies, so Akshan is dead.",
       "source": "ruling",
-      "rule_reference": null,
+      "rule_reference": "143.2, 323.5",
       "tags": ["akshan", "fortress", "eclipse", "damage", "might", "death", "specific-card"],
       "difficulty": "medium"
     },
@@ -333,7 +333,7 @@
       "question": "I play Bellows Breath with Repeat, costing 2 Energy and 2 Blue Power. My opponent wants to use Defy. Can they Defy the whole spell, one instance, or neither because of the Power cost?",
       "canonical_answer": "Repeated spells add the repeated text to the card but are still treated as a single spell. Defy only looks at the printed cost of the card, not the additional Power paid for Repeat. Your opponent can Defy the spell normally — it counters the entire spell as a single object.",
       "source": "ruling",
-      "rule_reference": null,
+      "rule_reference": "131.4, 425, 820",
       "tags": ["bellows-breath", "repeat", "defy", "cost", "counter", "specific-card"],
       "difficulty": "hard"
     },
@@ -351,7 +351,7 @@
       "question": "If I attack, pass priority, and my opponent also passes priority, can I still cast spells afterward?",
       "canonical_answer": "No. When both players pass priority in sequence, the showdown ends and neither player retains focus. No further actions can be played.",
       "source": "ruling",
-      "rule_reference": null,
+      "rule_reference": "347.3, 348",
       "tags": ["priority", "focus", "showdown", "passing", "combat"],
       "difficulty": "medium"
     },
