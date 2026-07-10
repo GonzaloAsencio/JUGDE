@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     model_name: str = "BAAI/bge-m3"
     embedding_dim: int = 1024
     corpus_version: str | None = None
-    gemini_model: str = "gemini-2.0-flash"
+    # -latest alias on purpose: Google retired the gemini-2.0-flash free tier
+    # (limit: 0) and closed gemini-2.5-* to new users; a pinned retired model
+    # here means every request 429s until someone notices.
+    gemini_model: str = "gemini-flash-lite-latest"
     gemini_temperature: float = 0.1
     gemini_timeout_s: float = 30.0
     top_k_fetch: int = 15
