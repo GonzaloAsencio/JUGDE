@@ -9,6 +9,7 @@ from app.observability import get_logger
 from app.rag.embedder import Embedder
 from app.rag.generation import (
     _MULTI_CARD_SCAFFOLD,
+    _SAFE_FALLBACK,
     has_empty_answer_section,
     needs_scaffold,
     post_gen_validate,
@@ -29,6 +30,16 @@ _INCONCLUSIVE_ANSWER = (
     "the situation appears ambiguous or not fully resolved by the current rulebook."
 )
 _TAG_RE = re.compile(r"@(\w+)", re.UNICODE)
+
+# Answers produced by failure paths, not by the model answering the question:
+# safety block / prompt-leak sanitization (_SAFE_FALLBACK), empty-Answer retry
+# exhausted (_INCONCLUSIVE_ANSWER), or no-info. These are usually transient, so
+# they must never be frozen in the cache (see answer_question).
+_DEGRADED_ANSWERS: frozenset[str] = frozenset({
+    _NO_INFO_ANSWER,
+    _INCONCLUSIVE_ANSWER,
+    _SAFE_FALLBACK,
+})
 
 _KNOWN_KEYWORDS: frozenset[str] = frozenset({
     # Card keywords (rules text on cards)
@@ -447,12 +458,20 @@ def answer_question(
         confidence=confidence,
     )
 
-    # Store in cache (non-blocking; errors are swallowed in set_cached)
-    set_cached(
-        cache_key,
-        json.dumps({"answer": answer, "citations": [c.model_dump() for c in citations], "confidence": confidence}),
-        ttl=settings.cache_ttl_s,
-    )
+    # Store in cache (non-blocking; errors are swallowed in set_cached) — but
+    # NEVER cache a degraded response. A transient failure (safety block,
+    # empty-Answer retry exhausted, no-info despite context — the latter always
+    # ends with confidence 0.0 because citations are cleared) would otherwise be
+    # frozen for cache_ttl_s and served to every user asking the same question.
+    # The next request simply regenerates; rate limiting bounds the retry cost.
+    if confidence == 0.0 or answer in _DEGRADED_ANSWERS:
+        logger.info("cache.skip_degraded", query_id=query_id, confidence=confidence)
+    else:
+        set_cached(
+            cache_key,
+            json.dumps({"answer": answer, "citations": [c.model_dump() for c in citations], "confidence": confidence}),
+            ttl=settings.cache_ttl_s,
+        )
 
     logger.info(
         "query.complete",

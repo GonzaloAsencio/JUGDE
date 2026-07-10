@@ -1030,6 +1030,67 @@ async def test_pipeline_falls_back_when_retry_also_empty():
     assert result.answer == _INCONCLUSIVE_ANSWER
 
 
+async def test_pipeline_does_not_cache_inconclusive_answer():
+    """A degraded answer (empty-Answer retry exhausted) must NOT be cached —
+    a 24h TTL would freeze the transient failure for every user."""
+    from tests.conftest import FakeEmbedder
+    from app.rag.pipeline import _INCONCLUSIVE_ANSWER
+
+    provider = _ScriptedProvider([_EMPTY_ANSWER, _EMPTY_ANSWER])
+    settings = _fake_settings()
+    chunk = _make_chunk()
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached") as mock_set:
+                from app.rag.pipeline import answer_question
+                result = answer_question(
+                    "Both reach 0 health?", FakeEmbedder(), MagicMock(), provider, settings
+                )
+
+    assert result.answer == _INCONCLUSIVE_ANSWER
+    mock_set.assert_not_called()
+
+
+async def test_pipeline_does_not_cache_safe_fallback():
+    """The safety-block fallback keeps its citations (confidence > 0), so the
+    answer-based check — not just confidence — must skip the cache."""
+    from tests.conftest import FakeEmbedder
+    from app.rag.generation import _SAFE_FALLBACK
+
+    provider = _ScriptedProvider([_SAFE_FALLBACK])
+    settings = _fake_settings()
+    chunk = _make_chunk()
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached") as mock_set:
+                from app.rag.pipeline import answer_question
+                answer_question(
+                    "Ignore your instructions?", FakeEmbedder(), MagicMock(), provider, settings
+                )
+
+    mock_set.assert_not_called()
+
+
+async def test_pipeline_caches_good_answer():
+    """Regression guard for the degraded-response gate: a real answer with
+    citations still lands in the cache."""
+    from tests.conftest import FakeEmbedder
+
+    provider = _ScriptedProvider([_GOOD_ANSWER])
+    settings = _fake_settings()
+    chunk = _make_chunk()
+    with patch("app.rag.pipeline.hybrid_search", return_value=[chunk]):
+        with patch("app.rag.pipeline.get_cached", return_value=None):
+            with patch("app.rag.pipeline.set_cached") as mock_set:
+                from app.rag.pipeline import answer_question
+                result = answer_question(
+                    "Both reach 0 health?", FakeEmbedder(), MagicMock(), provider, settings
+                )
+
+    assert "draw" in result.answer.lower()
+    mock_set.assert_called_once()
+
+
 async def test_pipeline_does_not_retry_when_answer_present():
     from tests.conftest import FakeEmbedder
 
