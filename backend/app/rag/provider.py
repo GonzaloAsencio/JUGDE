@@ -20,11 +20,15 @@ class LLMProvider(ABC):
 
 
 class GeminiProvider(LLMProvider):
-    def __init__(self, client, model: str, temperature: float, timeout_s: float) -> None:
+    def __init__(
+        self, client, model: str, temperature: float, timeout_s: float,
+        max_output_tokens: int = 1024,
+    ) -> None:
         self._client = client
         self._model = model
         self._temperature = temperature
         self._timeout_s = timeout_s
+        self._max_output_tokens = max_output_tokens
 
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_gemini, build_prompt
@@ -34,6 +38,7 @@ class GeminiProvider(LLMProvider):
             build_prompt(question, chunks, extra_system=extra_system),
             temperature=self._temperature,
             timeout_s=self._timeout_s,
+            max_output_tokens=self._max_output_tokens,
         )
 
     def hyde(self, question: str) -> str:
@@ -69,12 +74,14 @@ class OpenAICompatProvider(LLMProvider):
         model: str,
         temperature: float,
         timeout_s: float,
+        max_output_tokens: int = 1024,
     ) -> None:
         self._base_url = base_url
         self._api_key = api_key
         self._model = model
         self._temperature = temperature
         self._timeout_s = timeout_s
+        self._max_output_tokens = max_output_tokens
 
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_openai_compat_raw
@@ -86,6 +93,7 @@ class OpenAICompatProvider(LLMProvider):
             temperature=self._temperature,
             timeout_s=self._timeout_s,
             extra_system=extra_system,
+            max_output_tokens=self._max_output_tokens,
         )
 
     def rewrite_query(self, question: str) -> str:
@@ -115,10 +123,12 @@ def create_provider(settings, llm_client=None) -> LLMProvider:
             model=settings.llm_model,
             temperature=settings.gemini_temperature,
             timeout_s=settings.gemini_timeout_s,
+            max_output_tokens=settings.max_output_tokens,
         )
     return GeminiProvider(
         client=llm_client,
         model=settings.gemini_model,
         temperature=settings.gemini_temperature,
         timeout_s=settings.gemini_timeout_s,
+        max_output_tokens=settings.max_output_tokens,
     )

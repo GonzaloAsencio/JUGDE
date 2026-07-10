@@ -352,6 +352,48 @@ def test_hyde_gemini_config_parity():
     assert config.http_options.timeout == 10000, "timeout_s default 10.0 -> 10000ms, the API's minimum manual deadline"
 
 
+# ---------------------------------------------------------------------------
+# Output token budget (improvement plan 1.2) — the generation call is the only
+# LLM call WITHOUT a ceiling on output tokens (HyDE caps at 160, rewrite at
+# 120). Output is the expensive side; it must be bounded and configurable.
+# ---------------------------------------------------------------------------
+
+def test_call_gemini_forwards_max_output_tokens_to_config():
+    client = _RecordingGeminiClient(response=_FakeResponse(text="answer"))
+    _call_gemini(client, "gemini-2.0-flash", "prompt", timeout_s=10.0, max_output_tokens=777)
+
+    assert client.calls[0]["config"].max_output_tokens == 777
+
+
+def test_call_gemini_default_output_budget_is_bounded():
+    """Calling without an explicit budget must still set a positive ceiling —
+    an unbounded default would reintroduce the uncapped-cost bug."""
+    client = _RecordingGeminiClient(response=_FakeResponse(text="answer"))
+    _call_gemini(client, "gemini-2.0-flash", "prompt", timeout_s=10.0)
+
+    config = client.calls[0]["config"]
+    assert isinstance(config.max_output_tokens, int)
+    assert config.max_output_tokens > 0
+
+
+def test_call_openai_compat_raw_passes_max_tokens():
+    from unittest.mock import MagicMock, patch as _patch
+    from app.rag.generation import _call_openai_compat_raw
+
+    fake_client = MagicMock()
+    fake_client.chat.completions.create.return_value.choices = [
+        MagicMock(message=MagicMock(content="answer"))
+    ]
+    with _patch("openai.OpenAI", return_value=fake_client):
+        _call_openai_compat_raw(
+            "q?", [],
+            base_url="http://x", api_key="k", model="m",
+            temperature=0.1, timeout_s=10.0, max_output_tokens=777,
+        )
+
+    assert fake_client.chat.completions.create.call_args.kwargs["max_tokens"] == 777
+
+
 from app.rag.generation import has_empty_answer_section
 
 

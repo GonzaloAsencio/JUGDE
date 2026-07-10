@@ -262,11 +262,15 @@ def _call_gemini(
     *,
     temperature: float = 0.1,
     timeout_s: float = 10.0,
+    max_output_tokens: int = 1024,
 ) -> str:
     from google.genai import types
 
     generation_config = types.GenerateContentConfig(
         temperature=temperature,
+        # Output tokens are the expensive side and this was the only LLM call
+        # without a ceiling. A MAX_TOKENS cut is surfaced by the warning below.
+        max_output_tokens=max_output_tokens,
         # HttpOptions.timeout va en MILISEGUNDOS y vive dentro del config (no como
         # kwarg de generate_content) en google-genai >=1.0.
         http_options=types.HttpOptions(timeout=int(timeout_s * 1000)),
@@ -422,6 +426,7 @@ def _call_openai_compat_raw(
     temperature: float,
     timeout_s: float,
     extra_system: str = "",
+    max_output_tokens: int = 1024,
 ) -> str:
     import openai
 
@@ -434,6 +439,7 @@ def _call_openai_compat_raw(
                 {"role": "user", "content": _build_context_block(question, chunks)},
             ],
             temperature=temperature,
+            max_tokens=max_output_tokens,
             timeout=timeout_s,
         ))
         choices = response.choices

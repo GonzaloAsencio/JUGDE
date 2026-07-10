@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-flash-lite-latest"
     gemini_temperature: float = 0.1
     gemini_timeout_s: float = 30.0
+    # Ceiling for the answer-generation call, the only LLM call that had no
+    # output cap (HyDE: 160, rewrite: 120). Output tokens are the expensive
+    # side. If answers start truncating, the existing gemini.max_tokens warning
+    # fires — raise this instead of removing it. Applies to both providers.
+    max_output_tokens: int = 1024
     top_k_fetch: int = 15
     rrf_k: int = 60
     # Flipped to True after the 2026-07-10 eval gate: deterministic recall
