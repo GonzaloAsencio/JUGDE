@@ -128,6 +128,47 @@ def test_rule_7_forbids_picking_to_sound_confident():
 
 
 # ---------------------------------------------------------------------------
+# Worked examples (improvement plan 4.1) — rule 6 DESCRIBED chaining but never
+# SHOWED it. The prod Deflect-in-trash query retrieved the right rules
+# (809 + 365.1) and still declared ambiguity instead of chaining them.
+# ---------------------------------------------------------------------------
+
+def test_prompt_contains_worked_examples():
+    """At least two complete Reasoning/Answer examples must be present."""
+    assert "Example 1" in _SYSTEM_INSTRUCTION
+    assert "Example 2" in _SYSTEM_INSTRUCTION
+    # Each example is a COMPLETE worked answer, not a one-liner: the format
+    # headings must appear beyond rule 7's format template (2 examples + template).
+    assert _SYSTEM_INSTRUCTION.count("Reasoning:") >= 3
+    assert _SYSTEM_INSTRUCTION.count("Answer:") >= 3
+
+
+def test_worked_examples_are_not_citable_context():
+    """The examples must warn the model not to source its answer from them."""
+    text = _SYSTEM_INSTRUCTION.lower()
+    assert "may not be in your context" in text
+    assert "never cite them" in text
+
+
+def test_worked_examples_push_conclusion_over_ambiguity():
+    """The Deflect example exists to fix 'retrieves right rules, refuses to
+    conclude' — the prompt must say a resolved chain means committing."""
+    text = _SYSTEM_INSTRUCTION.lower()
+    assert "do not declare ambiguity" in text
+    assert "commit to the conclusion" in text
+
+
+def test_worked_example_deflect_chains_zone_rule():
+    """Example 2 mirrors the prod failure: Deflect (809) chained with the
+    passive-abilities-on-Board rule (365.1)."""
+    assert "809.1" in _SYSTEM_INSTRUCTION
+    assert "365.1" in _SYSTEM_INSTRUCTION
+    text = _SYSTEM_INSTRUCTION.lower()
+    assert "deflect" in text
+    assert "trash" in text
+
+
+# ---------------------------------------------------------------------------
 # Rule 2 — must remain intact (anti-hallucination of card names)
 # ---------------------------------------------------------------------------
 

@@ -93,7 +93,9 @@ class Settings(BaseSettings):
 
     # Cache
     cache_ttl_s: int = 86400
-    prompt_version: str = "v5"
+    # v6: few-shot chaining examples in the system prompt (improvement plan 4.1).
+    # Bumping invalidates the response cache — the version is part of the key.
+    prompt_version: str = "v6"
 
     # DB connection pool sizing. maxconn must not exceed the database's
     # max_connections; a worker that finds the pool exhausted gets a fast 503
