@@ -335,8 +335,10 @@ def test_hyde_gemini_uses_hyde_prompt_verbatim():
 
 def test_hyde_gemini_config_parity():
     """max_output_tokens~160 and temperature=0.0 mirror the openai-compat HyDE
-    arm; timeout defaults to 5.0s (HyDE's own short timeout), not the 30s
-    generation timeout."""
+    arm; timeout defaults to 10.0s — the Gemini API rejects manual deadlines
+    under 10s with 400 INVALID_ARGUMENT ("Minimum allowed deadline is 10s"),
+    which the never-raise contract would swallow, silently disabling the HyDE
+    arm on every call. Still well under the 30s generation timeout."""
     from app.rag.generation import _hyde_gemini
 
     client = _RecordingGeminiClient(response=_FakeResponse(text="answer"))
@@ -345,7 +347,7 @@ def test_hyde_gemini_config_parity():
     config = client.calls[0]["config"]
     assert config.max_output_tokens == 160
     assert config.temperature == 0.0
-    assert config.http_options.timeout == 5000, "timeout_s default 5.0 -> 5000ms, not the 30s generation timeout"
+    assert config.http_options.timeout == 10000, "timeout_s default 10.0 -> 10000ms, the API's minimum manual deadline"
 
 
 from app.rag.generation import has_empty_answer_section

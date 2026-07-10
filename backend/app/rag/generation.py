@@ -338,7 +338,7 @@ def _hyde_gemini(
     model: str,
     question: str,
     *,
-    timeout_s: float = 5.0,
+    timeout_s: float = 10.0,
 ) -> str:
     """Generate a hypothetical answer (HyDE) for the retrieval HyDE arm, via Gemini.
 
