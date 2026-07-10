@@ -198,9 +198,47 @@ def _build_context_block(question: str, chunks: list[Chunk]) -> str:
     return "\n".join(lines)
 
 
-def build_prompt(question: str, chunks: list[Chunk]) -> str:
-    """Pure function: build the full prompt string for Gemini."""
-    return "\n".join([_SYSTEM_INSTRUCTION, _build_context_block(question, chunks)])
+# Conditional/simultaneous language signals a multi-step interaction even when
+# the question names 0-1 cards ("if it's exhausted, then can it attack?"). Case-
+# insensitive, compiled once at module level.
+_CONDITIONAL_LANGUAGE_RE = re.compile(
+    r"\b(if|then|simultaneously|whenever)\b|at the same time|whenever both",
+    re.IGNORECASE,
+)
+
+
+def needs_scaffold(question: str, card_count: int) -> bool:
+    """Pure detector: True when the question needs the multi-card reasoning
+    scaffold — 2+ distinct cards involved, OR conditional/simultaneous
+    language present (see design D3, hard-bucket-v2)."""
+    return card_count >= 2 or bool(_CONDITIONAL_LANGUAGE_RE.search(question))
+
+
+# Appended after _SYSTEM_INSTRUCTION (never mutates it — see design D3) when
+# needs_scaffold() is True. Reinforces rule 7's Reasoning/Answer format; it
+# never redefines it, and deliberately avoids a line-anchored "Answer:"
+# heading of its own so it cannot confuse _ANSWER_HEADING_RE's "last heading"
+# logic.
+_MULTI_CARD_SCAFFOLD = """
+
+Multi-card interaction guidance (applies to this question):
+This question involves multiple cards, triggers, or conditional/simultaneous
+timing. In the Reasoning section, before concluding:
+- Enumerate EACH relevant card's ability or trigger separately, quoting its exact condition.
+- State the resolution order of these triggers/abilities, per the priority, timing, or sequencing rules cited in the context.
+- Only after resolving every step, state the single final conclusion.
+Continue to use the Reasoning: / Answer: format from rule 7.
+"""
+
+
+def build_prompt(question: str, chunks: list[Chunk], extra_system: str = "") -> str:
+    """Pure function: build the full prompt string for Gemini.
+
+    *extra_system* (default "") augments the system instruction — used to
+    inject the multi-card reasoning scaffold when needs_scaffold() is True.
+    Appended, never replacing, _SYSTEM_INSTRUCTION.
+    """
+    return "\n".join([_SYSTEM_INSTRUCTION + extra_system, _build_context_block(question, chunks)])
 
 
 def _safe_response_text(response) -> str | None:
@@ -383,6 +421,7 @@ def _call_openai_compat_raw(
     model: str,
     temperature: float,
     timeout_s: float,
+    extra_system: str = "",
 ) -> str:
     import openai
 
@@ -391,7 +430,7 @@ def _call_openai_compat_raw(
         response = _completion_with_retry(lambda: client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": _SYSTEM_INSTRUCTION},
+                {"role": "system", "content": _SYSTEM_INSTRUCTION + extra_system},
                 {"role": "user", "content": _build_context_block(question, chunks)},
             ],
             temperature=temperature,

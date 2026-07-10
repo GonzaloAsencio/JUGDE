@@ -21,12 +21,12 @@ class FakePool:
 
 
 class FakeLLMProvider(LLMProvider):
-    def generate(self, question: str, chunks: list[Chunk]) -> str:
+    def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         return "Fake answer for testing."
 
 
 class FakeLLMProviderTimeout(LLMProvider):
-    def generate(self, question: str, chunks: list[Chunk]) -> str:
+    def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         raise GenerationTimeout("timeout")
 
 
