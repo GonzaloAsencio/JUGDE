@@ -251,7 +251,7 @@ def _judge_gemini(prompt: str) -> str:
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set and no JUDGE_* env vars configured")
     client = genai.Client(api_key=api_key)
-    model = os.getenv("JUDGE_GEMINI_MODEL", "gemini-2.0-flash")
+    model = os.getenv("JUDGE_GEMINI_MODEL", "gemini-flash-lite-latest")
     return _call_gemini(client, model, prompt, temperature=0.0, timeout_s=_judge_timeout_s())
 
 

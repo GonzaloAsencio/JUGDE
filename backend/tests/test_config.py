@@ -17,6 +17,20 @@ def test_settings_rrf_defaults(monkeypatch):
     assert s.enable_reranker is False
 
 
+def test_gemini_model_default_is_not_retired(monkeypatch):
+    """Google retired the free tier for gemini-2.0-flash (429 with limit: 0 on
+    every metric) and gemini-2.5-* is closed to new users — either default
+    would make every Gemini-provider deploy without an explicit GEMINI_MODEL
+    fail 100% of requests. The default must be a -latest alias so it tracks
+    the models the free tier actually serves."""
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    from app.config import Settings
+    s = Settings(_env_file=None)
+    assert s.gemini_model == "gemini-flash-lite-latest"
+
+
 def test_enable_reranker_false_by_default(monkeypatch):
     # No longer a no-op as of PR2 — the pipeline now gates reranking on this
     # flag (pipeline.py _retrieve). Default stays False until eval confirms
