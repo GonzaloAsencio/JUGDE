@@ -94,6 +94,12 @@ class QueryResponse(BaseModel):
     latency_ms: int
 ```
 
+> ⚠️ **Contrato vigente (drift respecto a este baseline)**: `confidence` se implementó
+> como **float 0–1** (mejor coseno semántico; 1.0 en exact card match; 0.0 sin
+> citations) — NO el `Literal["high","medium","low"]` de arriba. El frontend consume
+> el float. Fuente de verdad: `backend/app/rag/schemas.py::QueryResponse`
+> (`defer_to_judge`, `query_id` y `corpus_version` tampoco existen en la respuesta actual).
+
 ## System prompt baseline
 
 ```

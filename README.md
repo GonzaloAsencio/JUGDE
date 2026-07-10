@@ -44,9 +44,9 @@ Just want to try it? Use the live app — no install required.
 - **Refuses to speculate** — defers when the retrieved context lacks the answer, instead of fabricating a ruling.
 - **Hybrid retrieval** — dense pgvector cosine ANN + Postgres full-text search, fused with Reciprocal Rank Fusion (RRF), plus a HyDE (hypothetical-document embedding) arm.
 - **Card `@mention` autocomplete** with automatic card-name and keyword detection (`backend/app/rag/card_detect.py`, `rules.py`).
-- **Per-answer confidence score** and citation cards rendered in the UI.
+- **Per-answer confidence score** (float 0–1: best semantic cosine; 1.0 on an exact card match; 0.0 when no citations survive — note Spec 05's `high/medium/low` literal was never the shipped contract) and citation cards rendered in the UI.
 - **In-app rulebook browser** at `/rules`.
-- **Response caching** (Upstash Redis, optional) and **per-IP rate limiting** (slowapi: 10 req/min, 100 req/day).
+- **Response caching** (Upstash Redis, optional) and **per-IP rate limiting** (slowapi: 10 req/min, 100 req/day). ⚠️ Deploy assumption: the client IP is the first `x-forwarded-for` hop, which is only trustworthy because Vercel overwrites that header — if the frontend proxy moves off Vercel, adapt `frontend/app/api/query/route.ts` first or the limits become spoofable (see the comment there).
 - **Observability** — Langfuse traces and Sentry error reporting (both optional / env-gated).
 - **Eval-first** — 40-question hand-curated eval set with an LLM-as-judge harness plus deterministic retrieval recall.
 
