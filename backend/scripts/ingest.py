@@ -77,6 +77,12 @@ def _split_into_sections(markdown: str) -> list[dict]:
 _HEADER_LINE = re.compile(r"^#{1,6}\s+[^\n]*\n*")
 _RULE_LINE_START = re.compile(r"(?m)^\d{3,}\.")
 _RULE_UNIT_SPLIT = re.compile(r"(?m)^(?=\d{3,}\.)")
+# Título de regla top-level como texto plano dentro de una sección markdown:
+# `809. **Deflect**`. El rulebook solo tiene headers markdown al nivel de los
+# cientos (800. Keywords, 407. Game Actions); los keywords y game actions viven
+# como estos títulos internos — si no se rastrean, sus chunks heredan la sección
+# gruesa y tagged_lookup (section ILIKE) nunca los encuentra.
+_RULE_TITLE = re.compile(r"^(\d{3,})\.\s+\*\*(.+?)\*\*\s*$")
 
 
 def _strip_header_line(content: str) -> str:
@@ -103,23 +109,33 @@ def _chunk_rulebook_section(content: str, header: str, parent: str, source_docum
         else:
             units.append(u)
 
-    header_line = f"### {header}"
-
     chunks: list[dict] = []
     current: list[str] = []
+    # Sección efectiva del grupo actual: el último título de regla interno visto
+    # ("809. Deflect"), o el header markdown si la sección no tiene títulos internos.
+    current_label = header
 
-    def render(units_):
-        return header_line + "\n" + "\n".join(units_)
+    def render(units_, label):
+        return f"### {label}\n" + "\n".join(units_)
 
     def flush():
         nonlocal current
         if current:
-            chunks.append(_make_chunk(render(current), header, parent, "rulebook", source_document, metadata))
+            chunks.append(_make_chunk(
+                render(current, current_label), current_label, parent,
+                "rulebook", source_document, metadata,
+            ))
             current = []
 
     for unit in units:
+        title = _RULE_TITLE.match(unit.splitlines()[0])
+        if title:
+            # Frontera de familia de reglas: nunca mezclar 808.x con 809.x en un
+            # chunk — el título nuevo cierra el grupo y renombra la sección.
+            flush()
+            current_label = f"{title.group(1)}. {title.group(2)}"
         # Mide el tamaño REAL del texto candidato (incluye header + separadores).
-        if current and _approx_tokens(render(current + [unit])) > budget:
+        elif current and _approx_tokens(render(current + [unit], current_label)) > budget:
             flush()
         current.append(unit)
 
