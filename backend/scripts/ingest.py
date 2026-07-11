@@ -82,7 +82,13 @@ _RULE_UNIT_SPLIT = re.compile(r"(?m)^(?=\d{3,}\.)")
 # cientos (800. Keywords, 407. Game Actions); los keywords y game actions viven
 # como estos títulos internos — si no se rastrean, sus chunks heredan la sección
 # gruesa y tagged_lookup (section ILIKE) nunca los encuentra.
-_RULE_TITLE = re.compile(r"^(\d{3,})\.\s+\*\*(.+?)\*\*\s*$")
+# SIN ancla `$` y capturando solo la PRIMERA negrita: los títulos de familia
+# también aparecen como oración ('383. **Triggered Abilities** are repeatable
+# effects...') — el ancla los ignoraba y las familias 361-399 colapsaban bajo
+# '360. Abilities' (eval-014/015); y una oración que TERMINA en negrita
+# ('400. **Abilities** ... **Ability Cards.**') capturaba hasta la última
+# negrita y producía labels con '**' embebido.
+_RULE_TITLE = re.compile(r"^(\d{3,})\.\s+\*\*(.+?)\*\*")
 
 
 def _strip_header_line(content: str) -> str:

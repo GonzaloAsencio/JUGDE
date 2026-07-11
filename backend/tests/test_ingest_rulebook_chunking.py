@@ -118,6 +118,68 @@ def test_rulebook_section_without_inner_titles_keeps_header():
     assert all(c["section"] == "500. Big Section" for c in chunks)
 
 
+def _abilities_style_section() -> dict:
+    """Sección estilo '360. Abilities': el título de familia es una ORACIÓN
+    ('383. **Triggered Abilities** are repeatable effects...'), no un título
+    pelado. Diagnóstico 2026-07-11 (eval-014/015): _RULE_TITLE exigía fin de
+    línea tras la negrita, así que las familias 361-399 colapsaron bajo
+    '360. Abilities' (27 chunks con el mismo label) y el chunk con 383.3.d.1
+    embebía un header que miente sobre su contenido."""
+    body = [
+        "### 360. Abilities",
+        "360.1. An ability is rules text on a card. " + "x" * 150,
+        "383. **Triggered Abilities** are repeatable effects that happen when a **Condition** is met.",
+        "383.1. Triggered abilities can be recognized by the word when. " + "x" * 150,
+        "383.2. Triggered abilities have a condition and an effect. " + "x" * 150,
+    ]
+    return {"header": "360. Abilities", "level": 3, "content": "\n".join(body)}
+
+
+def test_family_sentence_title_relabels_section():
+    """Un chunk con 383.x debe llevar section '383. Triggered Abilities' aunque
+    el título de familia sea una oración y no una línea-título."""
+    chunks = _chunk_section(_abilities_style_section(), "rulebook", "rulebook")
+    fam383 = [c for c in chunks if "383.1." in c["content"]]
+    assert fam383, "debe existir un chunk con 383.1"
+    assert all(c["section"] == "383. Triggered Abilities" for c in fam383)
+
+
+def test_family_sentence_title_embedded_header_stops_lying():
+    """El header embebido del chunk 383.x debe ser '### 383. Triggered Abilities',
+    no '### 360. Abilities' — el coseno embebe ese header."""
+    chunks = _chunk_section(_abilities_style_section(), "rulebook", "rulebook")
+    fam383 = [c for c in chunks if "383.1." in c["content"]]
+    assert all(c["content"].startswith("### 383. Triggered Abilities") for c in fam383)
+
+
+def test_family_sentence_title_does_not_mix_families():
+    """La línea-oración de familia cierra el grupo anterior: nada de 360.x y
+    383.x en el mismo chunk."""
+    chunks = _chunk_section(_abilities_style_section(), "rulebook", "rulebook")
+    for c in chunks:
+        assert not ("360.1." in c["content"] and "383.1." in c["content"]), (
+            f"chunk cruza familias: {c['content'][:60]!r}"
+        )
+
+
+def test_trailing_bold_sentence_yields_clean_label():
+    """Regresión del label basura: '400. **Abilities** when added ... **Ability
+    Cards.**' (línea que TERMINA en negrita) capturaba hasta la última negrita y
+    producía section '400. Abilities** when added to the Chain become...'.
+    El label debe ser solo la primera negrita: '400. Abilities'."""
+    body = [
+        "### 360. Abilities",
+        "360.1. An ability is rules text on a card. " + "x" * 150,
+        "400. **Abilities** when added to the Chain become **Ability Cards.**",
+        "400.1. Ability cards resolve like spells. " + "x" * 150,
+    ]
+    section = {"header": "360. Abilities", "level": 3, "content": "\n".join(body)}
+    chunks = _chunk_section(section, "rulebook", "rulebook")
+    fam400 = [c for c in chunks if "400.1." in c["content"]]
+    assert fam400, "debe existir un chunk con 400.1"
+    assert all(c["section"] == "400. Abilities" for c in fam400)
+
+
 def test_header_only_section_produces_no_chunk():
     """Una sección que es solo el header (sin cuerpo) no debe generar un chunk basura."""
     section = {"header": "100. Game Concepts", "level": 2, "content": "## 100. Game Concepts"}
