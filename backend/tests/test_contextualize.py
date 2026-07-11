@@ -1,7 +1,54 @@
 """Pure logic of the context-line batch generator (contextual retrieval, plan 3.8)."""
 import json
 
-from scripts.contextualize import build_prompt, load_checkpoint, sanitize_line, save_checkpoint
+from scripts.contextualize import (
+    build_prompt,
+    classify_quota_error,
+    load_checkpoint,
+    retry_delay_seconds,
+    sanitize_line,
+    save_checkpoint,
+)
+
+_RPM_ERROR = (
+    "Gemini API error: 429 RESOURCE_EXHAUSTED. Quota exceeded for metric: "
+    "generate_content_free_tier_requests, limit: 15 "
+    "'quotaId': 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier' "
+    "'retryDelay': '45s'"
+)
+_DAILY_ERROR = (
+    "Gemini API error: 429 RESOURCE_EXHAUSTED. "
+    "'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier'"
+)
+
+
+# ---------------------------------------------------------------------------
+# quota error classification
+# ---------------------------------------------------------------------------
+
+def test_classify_rpm_throttle_is_retryable():
+    assert classify_quota_error(_RPM_ERROR) == "rpm"
+
+
+def test_classify_daily_quota_is_fatal():
+    assert classify_quota_error(_DAILY_ERROR) == "daily"
+
+
+def test_classify_unknown_429_is_fatal():
+    # Conservative: a 429 we can't attribute to the minute window stops the run.
+    assert classify_quota_error("429 RESOURCE_EXHAUSTED no quota id here") == "daily"
+
+
+def test_classify_non_quota_error_is_none():
+    assert classify_quota_error("ValueError: something else entirely") is None
+
+
+def test_retry_delay_parsed_from_error():
+    assert retry_delay_seconds(_RPM_ERROR) == 46.0  # 45s + 1 margin
+
+
+def test_retry_delay_falls_back_to_default():
+    assert retry_delay_seconds("429 with no delay hint") == 60.0
 
 
 # ---------------------------------------------------------------------------

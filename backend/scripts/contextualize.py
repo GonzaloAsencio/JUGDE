@@ -39,6 +39,7 @@ _SAVE_EVERY = 20
 
 # Señales de cuota agotada (google.genai levanta ClientError con el status).
 _QUOTA_MARKERS = ("429", "RESOURCE_EXHAUSTED", "quota")
+_RETRY_DELAY = re.compile(r"retry(?:Delay'?:?\s*'?|\s+in\s+)(\d+(?:\.\d+)?)s")
 
 
 # ---------------------------------------------------------------------------
@@ -102,9 +103,23 @@ def save_checkpoint(path: Path, data: dict) -> None:
     )
 
 
-def _is_quota_error(exc: Exception) -> bool:
-    text = f"{type(exc).__name__}: {exc}"
-    return any(marker.lower() in text.lower() for marker in _QUOTA_MARKERS)
+def classify_quota_error(text: str) -> str | None:
+    """'rpm' (ventana de minuto, retryable), 'daily' (fatal), o None (no es cuota).
+
+    Un 429 sin quotaId reconocible se trata como 'daily' — conservador: mejor
+    cortar y retomar que loopear contra un límite desconocido.
+    """
+    if not any(marker.lower() in text.lower() for marker in _QUOTA_MARKERS):
+        return None
+    if "PerMinute" in text:
+        return "rpm"
+    return "daily"
+
+
+def retry_delay_seconds(text: str, default: float = 60.0) -> float:
+    """Segundos a esperar ante un throttle de minuto (retryDelay del error + 1)."""
+    m = _RETRY_DELAY.search(text)
+    return float(m.group(1)) + 1.0 if m else default
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +138,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Genera context lines por chunk rulebook (plan 3.8)")
     parser.add_argument("--limit", type=int, default=None, help="Máximo de llamadas LLM en esta corrida")
     parser.add_argument("--dry-run", action="store_true", help="No llama al LLM; cuenta pendientes y muestra 3 prompts")
-    parser.add_argument("--sleep", type=float, default=2.5, help="Segundos entre llamadas (default 2.5 ≈ 24 rpm)")
+    parser.add_argument("--sleep", type=float, default=4.5, help="Segundos entre llamadas (default 4.5 ≈ 13 rpm, bajo el límite free-tier de 15)")
     args = parser.parse_args()
 
     chunks = _rulebook_chunks()
@@ -155,18 +170,32 @@ def main() -> None:
         pending = pending[: args.limit]
 
     done = skipped = 0
+    daily_dead = False
     try:
         for i, chunk in enumerate(pending, 1):
-            try:
-                raw = _call_gemini(
-                    client, settings.gemini_model, build_prompt(chunk["section"], chunk["content"]),
-                    temperature=0.2, timeout_s=20.0, max_output_tokens=80,
-                )
-            except Exception as exc:  # noqa: BLE001 — cuota o red: cortar y guardar
-                if _is_quota_error(exc):
-                    print(f"\nCuota agotada tras {done} líneas ({exc}). Checkpoint guardado; re-ejecutar mañana retoma.")
+            raw = None
+            for _attempt in range(5):  # throttles de minuto consecutivos máx.
+                try:
+                    raw = _call_gemini(
+                        client, settings.gemini_model, build_prompt(chunk["section"], chunk["content"]),
+                        temperature=0.2, timeout_s=20.0, max_output_tokens=80,
+                    )
                     break
-                raise
+                except Exception as exc:  # noqa: BLE001 — clasificar cuota vs error real
+                    text = f"{type(exc).__name__}: {exc}"
+                    kind = classify_quota_error(text)
+                    if kind == "rpm":
+                        delay = retry_delay_seconds(text)
+                        print(f"  throttle de minuto: espero {delay:.0f}s y reintento...")
+                        time.sleep(delay)
+                        continue
+                    if kind == "daily":
+                        print(f"\nCuota DIARIA agotada tras {done} líneas. Checkpoint guardado; re-ejecutar mañana retoma.")
+                        daily_dead = True
+                        break
+                    raise
+            if daily_dead or raw is None:
+                break
             line = sanitize_line(raw)
             if line is None:
                 skipped += 1  # sin checkpoint: reintenta en la próxima corrida
@@ -182,7 +211,7 @@ def main() -> None:
 
     total = len(chunks)
     print(f"\nGeneradas: {done} | salteadas (respuesta inservible): {skipped}")
-    print(f"Checkpoint: {len(checkpoint)}/{total} chunks con línea → {CHECKPOINT_PATH}")
+    print(f"Checkpoint: {len(checkpoint)}/{total} chunks con línea -> {CHECKPOINT_PATH}")
     if len(checkpoint) == total:
         print("COMPLETO. Siguiente paso: CORPUS_VERSION=v2.3.0 python -m scripts.ingest --context-file data/context_lines.json")
 
