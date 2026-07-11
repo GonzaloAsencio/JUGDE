@@ -136,9 +136,22 @@ def _rrf_fuse(
     rrf_k: int,
     top_k: int,
 ) -> list[Chunk]:
-    """Reciprocal Rank Fusion of two ranked Chunk lists.
+    """Reciprocal Rank Fusion of two ranked Chunk lists (vector + FTS).
 
-    For each chunk d, score(d) = sum over lists l in {vector, fts} of
+    Kept as the two-arm entry point used by hybrid_search; the actual fusion
+    is N-ary (see _rrf_fuse_many).
+    """
+    return _rrf_fuse_many([vector_results, fts_results], rrf_k, top_k)
+
+
+def _rrf_fuse_many(
+    arms: list[list[Chunk]],
+    rrf_k: int,
+    top_k: int,
+) -> list[Chunk]:
+    """Reciprocal Rank Fusion of N ranked Chunk lists.
+
+    For each chunk d, score(d) = sum over lists l in arms of
     1 / (rrf_k + rank_l(d)), where rank_l(d) is 1-based (only counted if d
     appears in l).
 
@@ -147,33 +160,31 @@ def _rrf_fuse(
     comparable (errata > patch_notes > rulebook).
 
     Dedup key: chunk.id.
-    Tie-break: chunk that appeared in vector_results wins (stable).
-    Preserves original similarity from vector side; FTS-only chunks keep 0.0.
+    Tie-break: chunk that appeared in arms[0] (the primary arm) wins (stable).
+    Canonical Chunk object: primary side wins (its similarity is a real
+    cosine); a chunk first seen in a later arm keeps that arm's object.
     Truncates to top_k.
     """
     # Build score accumulators and canonical Chunk objects.
-    # We track whether a chunk came from vector to apply tie-break.
+    # We track whether a chunk came from the primary arm to apply tie-break.
     scores: dict[str, float] = {}
     chunks_by_id: dict[str, Chunk] = {}
-    in_vector: set[str] = set()
+    in_primary: set[str] = set()
 
-    for rank_0, chunk in enumerate(vector_results):
-        rank = rank_0 + 1  # 1-based
-        boost = _authority_boost(chunk.source_type)
-        scores[chunk.id] = scores.get(chunk.id, 0.0) + boost / (rrf_k + rank)
-        chunks_by_id[chunk.id] = chunk  # vector side wins for Chunk object
-        in_vector.add(chunk.id)
+    for arm_idx, arm in enumerate(arms):
+        for rank_0, chunk in enumerate(arm):
+            rank = rank_0 + 1  # 1-based
+            boost = _authority_boost(chunk.source_type)
+            scores[chunk.id] = scores.get(chunk.id, 0.0) + boost / (rrf_k + rank)
+            if arm_idx == 0:
+                chunks_by_id[chunk.id] = chunk  # primary side wins for Chunk object
+                in_primary.add(chunk.id)
+            elif chunk.id not in chunks_by_id:
+                chunks_by_id[chunk.id] = chunk  # secondary-only: keep that arm's object
 
-    for rank_0, chunk in enumerate(fts_results):
-        rank = rank_0 + 1  # 1-based
-        boost = _authority_boost(chunk.source_type)
-        scores[chunk.id] = scores.get(chunk.id, 0.0) + boost / (rrf_k + rank)
-        if chunk.id not in chunks_by_id:
-            chunks_by_id[chunk.id] = chunk  # FTS-only: use FTS chunk (similarity=0.0)
-
-    # Sort: descending score; tie-break: vector-side chunks first (stable)
+    # Sort: descending score; tie-break: primary-side chunks first (stable)
     def sort_key(chunk_id: str) -> tuple:
-        return (-scores[chunk_id], 0 if chunk_id in in_vector else 1)
+        return (-scores[chunk_id], 0 if chunk_id in in_primary else 1)
 
     sorted_ids = sorted(scores.keys(), key=sort_key)
     return [chunks_by_id[cid] for cid in sorted_ids[:top_k]]
@@ -181,20 +192,21 @@ def _rrf_fuse(
 
 def fuse_results(
     primary: list[Chunk],
-    secondary: list[Chunk],
+    *secondaries: list[Chunk],
     rrf_k: int = 60,
     top_k: int = 5,
 ) -> list[Chunk]:
-    """RRF-fuse two FULL retrieval result lists with equal weight (the fuse_eq
+    """RRF-fuse N FULL retrieval result lists with equal weight (the fuse_eq
     strategy that won the offline experiment: recall@5 41%->59%).
 
-    Used to combine the raw-question arm with the HyDE arm. *primary* is the raw
-    arm: it wins ties and owns the canonical Chunk object (its similarity is a
-    real cosine), so a question that already retrieves well is never displaced by
-    the HyDE arm. Authority boost (errata > patch_notes > rulebook) applies to
-    both arms. Delegates to _rrf_fuse, which already implements exactly this.
+    Used to combine the raw-question arm with the HyDE arm and, under query
+    decomposition (3.2), one arm per deterministic sub-query. *primary* is the
+    raw arm: it wins ties and owns the canonical Chunk object (its similarity
+    is a real cosine), so a question that already retrieves well is never
+    displaced by a secondary arm. Authority boost (errata > patch_notes >
+    rulebook) applies to every arm.
     """
-    return _rrf_fuse(primary, secondary, rrf_k, top_k)
+    return _rrf_fuse_many([primary, *secondaries], rrf_k, top_k)
 
 
 # A card printed in several sets is indexed once per printing, with identical

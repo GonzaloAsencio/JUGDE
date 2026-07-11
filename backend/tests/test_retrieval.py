@@ -294,6 +294,46 @@ def test_fuse_results_authority_boost_applies_across_arms():
 
 
 # ---------------------------------------------------------------------------
+# N-ary fusion (3.2 query decomposition): raw + HyDE + one arm per sub-query.
+# fuse_results accepts any number of secondary arms; scores sum across ALL
+# arms and the primary (raw) arm keeps its tie-break and canonical-Chunk role.
+# ---------------------------------------------------------------------------
+
+def test_fuse_results_accepts_n_secondary_arms():
+    result = fuse_results(
+        [_chunk("a")], [_chunk("b", 0.0)], [_chunk("c", 0.0)], rrf_k=_RRF_K, top_k=10
+    )
+    assert {c.id for c in result} == {"a", "b", "c"}
+
+
+def test_fuse_results_consensus_across_arms_outranks_single_arm():
+    # a chunk that two sub-query arms agree on scores 2/(k+1) and must outrank
+    # a chunk seen by only one arm at the same per-arm rank
+    result = fuse_results(
+        [_chunk("solo")], [_chunk("both", 0.0)], [_chunk("both", 0.0)],
+        rrf_k=_RRF_K, top_k=10,
+    )
+    assert result[0].id == "both"
+
+
+def test_fuse_results_n_ary_tie_break_still_favors_primary():
+    # equal scores across a 3-arm call → primary arm must still win position
+    result = fuse_results([_chunk("p")], [_chunk("s", 0.0)], [], rrf_k=_RRF_K, top_k=10)
+    assert result[0].id == "p"
+
+
+def test_fuse_results_n_ary_keeps_primary_similarity_on_dedup():
+    # canonical Chunk (real cosine) must come from the primary arm even when
+    # the same chunk appears in later arms with similarity 0.0
+    result = fuse_results(
+        [_chunk("x", 0.95)], [_chunk("x", 0.0)], [_chunk("x", 0.0)],
+        rrf_k=_RRF_K, top_k=10,
+    )
+    assert len(result) == 1
+    assert result[0].similarity == 0.95
+
+
+# ---------------------------------------------------------------------------
 # fts_search tests (monkeypatch get_conn)
 # ---------------------------------------------------------------------------
 
