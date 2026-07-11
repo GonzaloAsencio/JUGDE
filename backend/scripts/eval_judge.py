@@ -70,30 +70,17 @@ def _parse_refs(rule_reference: str | None) -> list[str]:
     return [r.strip() for r in rule_reference.split(",") if r.strip()]
 
 
-def _numeric_prefix(ref: str) -> str | None:
-    m = re.match(r"^(\d+)", ref)
-    return m.group(1) if m else None
-
-
-def _section_matches_prefix(section: str, prefix: str) -> bool:
-    s = section.strip()
-    return s == prefix or s.startswith(prefix + ".") or s.startswith(prefix + " ")
-
-
-def _sub_prefix(ref: str) -> str | None:
-    """Return the second-level prefix, e.g. '103.2.b' → '103.2'. None if no dot."""
-    parts = ref.split(".")
-    return f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else None
-
-
 def _rule_codes_cover(ref: str, codes) -> bool:
-    """True if any rule code shares *ref*'s numeric lineage.
+    """True if any rule code evidences *ref*: the exact rule or a sub-rule of
+    it (``103.2.b`` covers ``103.2``).
 
-    A chunk covers the ref when it lists the exact rule, a sub-rule of it
-    (``103`` covers ``103.2``), or its parent (``103.2`` covers ``103.2.b``).
+    The reverse direction (parent covers child) is deliberately NOT a hit:
+    every chunk of a rule family carries the bare header code (``383``), so
+    parent coverage would count any family chunk as recall for any rule in
+    the family — a paper hit, not evidence the rule text was retrieved.
     """
     for code in codes:
-        if code == ref or code.startswith(ref + ".") or ref.startswith(code + "."):
+        if code == ref or code.startswith(ref + "."):
             return True
     return False
 
@@ -109,21 +96,10 @@ def _single_ref_hit(ref: str, citations) -> bool:
         if _rule_codes_cover(ref, getattr(c, "rule_codes", None) or []):
             return True
 
-    # Fallback (legacy): section prefix + content_preview. Kept for citations
-    # that predate rule_codes or carry no codes.
-    prefix = _numeric_prefix(ref)
-    sub = _sub_prefix(ref)
-
-    for c in citations:
-        if prefix and _section_matches_prefix(c.section, prefix):
-            return True
-        preview = c.content_preview
-        if ref in preview:
-            return True
-        if sub and sub in preview:
-            return True
-
-    return False
+    # Fallback (legacy): exact ref in content_preview, for citations that
+    # predate rule_codes or carry no codes. Section-prefix and parent-prefix
+    # matches were dropped — same-family evidence is not evidence of the rule.
+    return any(ref in c.content_preview for c in citations)
 
 
 def match_rule_reference(rule_reference: str | None, citations) -> bool:
