@@ -54,6 +54,30 @@ def test_enable_reranker_env_override_false(monkeypatch):
     assert s.enable_reranker is False
 
 
+def test_query_decomposition_off_by_default(monkeypatch):
+    # 3.2 lands behind a flag: the eval gate decides the default flip
+    # (same rollout pattern as the reranker, #42 -> #46).
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    for var in ("ENABLE_QUERY_DECOMPOSITION", "MAX_SUBQUERIES"):
+        monkeypatch.delenv(var, raising=False)
+    from app.config import Settings
+    s = Settings(_env_file=None)
+    assert s.enable_query_decomposition is False
+    assert s.max_subqueries == 3
+
+
+def test_query_decomposition_env_override(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
+    monkeypatch.setenv("ENABLE_QUERY_DECOMPOSITION", "true")
+    monkeypatch.setenv("MAX_SUBQUERIES", "2")
+    from app.config import Settings
+    s = Settings()
+    assert s.enable_query_decomposition is True
+    assert s.max_subqueries == 2
+
+
 def test_reranker_settings_defaults(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key")

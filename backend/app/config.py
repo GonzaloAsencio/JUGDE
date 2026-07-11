@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     enable_reranker: bool = True
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     rerank_pool_size: int = 15
+    # Query decomposition (improvement plan 3.2): multi-entity questions get one
+    # deterministic sub-query arm per detected card/keyword (zero LLM tokens,
+    # one local embed + one SQL each). Off until the eval gate confirms wins
+    # with zero losses — same rollout pattern as the reranker (#42 -> #46).
+    enable_query_decomposition: bool = False
+    max_subqueries: int = 3
 
     # LLM provider: "gemini" (default) | "openai_compat" (Groq, LM Studio, Ollama, etc.)
     llm_provider: str = "gemini"

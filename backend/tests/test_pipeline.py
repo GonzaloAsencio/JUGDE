@@ -81,6 +81,8 @@ def _fake_settings(corpus_version: str = "v1"):
     s.enable_reranker = False
     s.reranker_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     s.rerank_pool_size = 15
+    s.enable_query_decomposition = False
+    s.max_subqueries = 3
     return s
 
 
@@ -1402,3 +1404,210 @@ def test_scaffolded_response_still_parses_reasoning_answer_format():
         "Answer:"
     )
     assert has_empty_answer_section(empty_scaffolded_response) is True
+
+
+# ---------------------------------------------------------------------------
+# Query decomposition (improvement plan 3.2). Multi-entity questions embed
+# poorly (scenario prose dominates the cosine; probe: 9/12 named cards absent
+# from context), so the pipeline builds one deterministic sub-query per
+# detected card/keyword — zero LLM tokens — retrieves per sub-query, and
+# RRF-fuses every arm. Behind enable_query_decomposition (default off) until
+# the eval gate confirms wins with zero losses.
+# ---------------------------------------------------------------------------
+
+def _decomposition_settings():
+    s = _fake_settings()
+    s.enable_query_decomposition = True
+    return s
+
+
+async def test_decomposition_disabled_keeps_single_arm():
+    """Flag off + two detected cards → exactly one hybrid_search call (raw arm).
+    Regression guarantee: default behavior is byte-identical."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [_make_chunk()]
+
+    with patch("app.rag.pipeline.load_card_names", return_value=("Vex Apathetic", "Tideturner")):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        answer_question(
+                            "My opponent controls Vex Apathetic. Can Tideturner move first?",
+                            FakeEmbedder(), MagicMock(), FakeLLMProvider(), _fake_settings(),
+                        )
+
+    assert len(calls) == 1
+
+
+async def test_decomposition_adds_one_arm_per_detected_card():
+    """Flag on + two detected cards → raw arm + one deterministic sub-query per card."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [_make_chunk()]
+
+    with patch("app.rag.pipeline.load_card_names", return_value=("Vex Apathetic", "Tideturner")):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        answer_question(
+                            "My opponent controls Vex Apathetic. Can Tideturner move first?",
+                            FakeEmbedder(), MagicMock(), FakeLLMProvider(), _decomposition_settings(),
+                        )
+
+    assert len(calls) == 3
+    assert 'What does the card "Vex Apathetic" do?' in calls
+    assert 'What does the card "Tideturner" do?' in calls
+
+
+async def test_decomposition_includes_keyword_subqueries():
+    """Detected keywords count as entities and get their own sub-query arm."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [_make_chunk()]
+
+    with patch("app.rag.pipeline.load_card_names", return_value=("Tideturner",)):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        answer_question(
+                            "Can Tideturner move before the stun resolves?",
+                            FakeEmbedder(), MagicMock(), FakeLLMProvider(), _decomposition_settings(),
+                        )
+
+    # 1 card + 1 keyword = 2 entities → trigger fires: raw + 2 sub-queries
+    assert len(calls) == 3
+    assert 'What does the card "Tideturner" do?' in calls
+    assert 'How does "stun" work?' in calls
+
+
+async def test_decomposition_single_entity_stays_raw_only():
+    """One detected entity → no sub-queries: single-entity questions already
+    retrieve well (tagged_lookup reserves the card slot) and must stay
+    byte-identical."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [_make_chunk()]
+
+    with patch("app.rag.pipeline.load_card_names", return_value=("Tideturner",)):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        answer_question(
+                            "What color is Tideturner?",
+                            FakeEmbedder(), MagicMock(), FakeLLMProvider(), _decomposition_settings(),
+                        )
+
+    assert len(calls) == 1
+
+
+async def test_decomposition_caps_arms_at_max_subqueries():
+    """More entities than max_subqueries → cards win the budget (stronger
+    signal than keywords) and total arms stay bounded."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [_make_chunk()]
+
+    settings = _decomposition_settings()
+    settings.max_subqueries = 2
+
+    with patch("app.rag.pipeline.load_card_names", return_value=("Akshan", "Fortress", "Eclipse")):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        answer_question(
+                            "Akshan holds Fortress and I use Eclipse on him. Who is correct?",
+                            FakeEmbedder(), MagicMock(), FakeLLMProvider(), settings,
+                        )
+
+    assert len(calls) == 1 + 2  # raw + capped sub-queries
+
+
+async def test_decomposition_subquery_chunks_reach_citations():
+    """A chunk found ONLY by a sub-query arm must survive fusion into citations."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    raw_chunk = _make_chunk(section="RAW")
+    sub_chunk = _make_chunk(section="SUBQ")
+    object.__setattr__(raw_chunk, "id", "raw_id")
+    object.__setattr__(sub_chunk, "id", "sub_id")
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [raw_chunk] if len(calls) == 1 else [sub_chunk]
+
+    with patch("app.rag.pipeline.load_card_names", return_value=("Vex Apathetic", "Tideturner")):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        result = answer_question(
+                            "My opponent controls Vex Apathetic. Can Tideturner move first?",
+                            FakeEmbedder(), MagicMock(), FakeLLMProvider(), _decomposition_settings(),
+                        )
+
+    sections = {c.section for c in result.citations}
+    assert "SUBQ" in sections, "sub-query arm must contribute to the fused context"
+    assert "RAW" in sections
+
+
+async def test_decomposition_dedupes_user_mention_against_detected_card():
+    """A card given via card_mentions AND auto-detected in the question must
+    produce ONE sub-query, not two (case-insensitive dedup)."""
+    from tests.conftest import FakeEmbedder, FakeLLMProvider
+
+    calls: list[str] = []
+
+    def fake_hybrid(pool, emb, text, cv, **kw):
+        calls.append(text)
+        return [_make_chunk()]
+
+    with patch("app.rag.pipeline.load_card_names", return_value=("Vex Apathetic", "Tideturner")):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.hybrid_search", side_effect=fake_hybrid):
+                with patch("app.rag.pipeline.get_cached", return_value=None):
+                    with patch("app.rag.pipeline.set_cached"):
+                        from app.rag.pipeline import answer_question
+                        answer_question(
+                            "My opponent controls Vex Apathetic. Can Tideturner move first?",
+                            FakeEmbedder(), MagicMock(), FakeLLMProvider(), _decomposition_settings(),
+                            card_mentions=["tideturner"],
+                        )
+
+    subquery_calls = [
+        c for c in calls if c.startswith("What does the card") and "ideturner" in c
+    ]
+    assert len(subquery_calls) == 1

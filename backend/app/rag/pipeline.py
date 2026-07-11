@@ -94,6 +94,41 @@ def _detect_keywords(question: str) -> list[str]:
     return found
 
 
+def _build_subqueries(
+    detected_cards: list[str],
+    card_mentions: list[str],
+    keywords: list[str],
+    max_subqueries: int,
+) -> list[str]:
+    """Deterministic sub-queries for multi-entity questions (improvement plan 3.2).
+
+    Multi-entity questions embed poorly — the scenario prose dominates the
+    cosine (probe: 9/12 named cards absent from context) — so each detected
+    entity gets its own focused retrieval arm. The phrasing is a fixed template
+    (zero LLM tokens); each arm costs one local embed + one SQL.
+
+    Trigger: 2+ entities. Single-entity questions already retrieve well
+    (tagged_lookup reserves the card slot) and must stay byte-identical.
+    Cards win the max_subqueries budget over keywords (stronger signal), and
+    keywords are sorted because _detect_keywords iterates a frozenset — an
+    unsorted cap would pick a different keyword per process.
+    """
+    cards = list(detected_cards)
+    seen = {c.casefold() for c in cards}
+    for mention in card_mentions:
+        if mention.casefold() not in seen:
+            cards.append(mention)
+            seen.add(mention.casefold())
+
+    entities = [("card", c) for c in cards] + [("keyword", kw) for kw in sorted(keywords)]
+    if len(entities) < 2:
+        return []
+    return [
+        f'What does the card "{name}" do?' if kind == "card" else f'How does "{name}" work?'
+        for kind, name in entities[:max_subqueries]
+    ]
+
+
 def _has_exact_card_match(chunks: list, card_match_tags: set[str]) -> bool:
     """True if any card tag appears as a WHOLE WORD in a surviving chunk's section.
 
@@ -210,15 +245,15 @@ def _retrieve(
     # tags so tagged_lookup pulls them into reserved slots (see _assemble_context).
     # Best-effort: a vocabulary-load failure must never break query answering, so
     # the feature degrades to the prior behaviour instead of raising.
-    auto_card_tags: list[str] = []
+    detected_cards: list[str] = []
     try:
         card_vocab = load_card_names(db_pool, corpus_version)
-        auto_card_tags = [
-            c.lower()
-            for c in detect_card_mentions(base_question, card_vocab, known_keywords=_KNOWN_KEYWORDS)
-        ]
+        detected_cards = detect_card_mentions(
+            base_question, card_vocab, known_keywords=_KNOWN_KEYWORDS
+        )
     except Exception as e:  # pragma: no cover - defensive: never fail a query on detection
         logger.warning("card_detect.failed", query_id=query_id, error=str(e))
+    auto_card_tags = [c.lower() for c in detected_cards]
 
     # User-directed tags (@tags + card mentions + auto-detected cards) may prepend;
     # auto-detected KEYWORDS are a weaker heuristic and only fill leftover budget.
@@ -246,21 +281,37 @@ def _retrieve(
     # widened to rerank_pool_size and reranked back down to top_k below.
     pool_k = settings.rerank_pool_size if settings.enable_reranker else settings.top_k
     hyde_text = provider.hyde(base_question)
-    arm_top_k = settings.top_k_fetch if hyde_text else pool_k
+
+    # Query decomposition (3.2): one extra arm per detected entity on
+    # multi-entity questions. Sub-queries are deterministic templates, so this
+    # adds zero LLM tokens — only one local embed + one SQL per arm. With the
+    # flag off (default) secondary_texts reduces to the HyDE arm alone and the
+    # retrieval below is byte-identical to the pre-3.2 pipeline.
+    subqueries: list[str] = []
+    if settings.enable_query_decomposition:
+        subqueries = _build_subqueries(
+            detected_cards, card_mentions or [], auto_tags, settings.max_subqueries
+        )
+
+    secondary_texts = ([hyde_text] if hyde_text else []) + subqueries
+    arm_top_k = settings.top_k_fetch if secondary_texts else pool_k
     chunks = hybrid_search(
         db_pool, embedder.encode(base_question), base_question, corpus_version,
         top_k=arm_top_k,
         top_k_fetch=settings.top_k_fetch,
         rrf_k=settings.rrf_k,
     )
-    if hyde_text:
-        hyde_chunks = hybrid_search(
-            db_pool, embedder.encode(hyde_text), hyde_text, corpus_version,
-            top_k=arm_top_k,
-            top_k_fetch=settings.top_k_fetch,
-            rrf_k=settings.rrf_k,
-        )
-        chunks = fuse_results(chunks, hyde_chunks, rrf_k=settings.rrf_k, top_k=pool_k)
+    if secondary_texts:
+        secondary_arms = [
+            hybrid_search(
+                db_pool, embedder.encode(text), text, corpus_version,
+                top_k=arm_top_k,
+                top_k_fetch=settings.top_k_fetch,
+                rrf_k=settings.rrf_k,
+            )
+            for text in secondary_texts
+        ]
+        chunks = fuse_results(chunks, *secondary_arms, rrf_k=settings.rrf_k, top_k=pool_k)
 
     # Rerank the semantic pool ONLY — never the tagged/explicit chunks below.
     # tagged_lookup is a deterministic entity match that drives
