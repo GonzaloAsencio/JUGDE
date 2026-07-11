@@ -87,7 +87,7 @@ def test_split_sections_no_headers_returns_empty():
 def test_make_chunk_has_required_keys():
     chunk = _make_chunk("content", "section", "parent", "rulebook", "doc")
     assert set(chunk.keys()) == {
-        "id", "content", "source_type", "source_document",
+        "id", "content", "content_key", "source_type", "source_document",
         "section", "parent_section", "corpus_version", "metadata",
     }
 

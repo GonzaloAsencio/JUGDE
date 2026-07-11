@@ -228,6 +228,15 @@ def _detect_set(source_document: str, content: str | None = None) -> str:
     return "core"
 
 
+def content_key(source_document: str, content: str) -> str:
+    """Clave estable ENTRE versiones de corpus (contenido crudo, sin versión).
+
+    Artefactos derivados del contenido (context lines de 3.8) se mapean por
+    esta clave para sobrevivir a re-versionados.
+    """
+    return str(uuid.uuid5(_CHUNK_NAMESPACE, f"{source_document}:{content}"))
+
+
 def _make_chunk(
     content: str,
     section: str,
@@ -236,12 +245,17 @@ def _make_chunk(
     source_document: str,
     metadata: dict | None = None,
 ) -> dict:
-    # El ID es determinístico sobre (source_document, content) — NO incluye metadata,
-    # así taggear la expansión nunca cambia el ID de un chunk existente.
-    chunk_id = str(uuid.uuid5(_CHUNK_NAMESPACE, f"{source_document}:{content}"))
+    # El ID es determinístico sobre (version, source_document, content) — NO
+    # incluye metadata, así taggear la expansión nunca cambia el ID.
+    # La versión es OBLIGATORIA en la clave: id es PK global y el upsert hace
+    # ON CONFLICT DO UPDATE, así que sin versión, ingestar una versión nueva
+    # le ROBABA a la anterior todos los chunks de contenido idéntico
+    # (v2.2.0 quedó en 189 filas tras el ingest de v2.2.1).
+    chunk_id = str(uuid.uuid5(_CHUNK_NAMESPACE, f"{CORPUS_VERSION}:{source_document}:{content}"))
     return {
         "id": chunk_id,
         "content": content,
+        "content_key": content_key(source_document, content),
         "source_type": source_type,
         "source_document": source_document,
         "section": section,
@@ -249,6 +263,26 @@ def _make_chunk(
         "corpus_version": CORPUS_VERSION,
         "metadata": metadata if metadata is not None else {},
     }
+
+
+def apply_context_lines(chunks: list[dict], context_map: dict) -> tuple[int, int]:
+    """Prependea la línea de contexto (3.8) a los chunks mapeados por content_key.
+
+    El id NO se recalcula: queda claveado al contenido crudo, así re-ingestar
+    con líneas mejoradas upsertea las mismas filas en vez de duplicar.
+    Devuelve (aplicadas, chunks rulebook sin línea).
+    """
+    applied = 0
+    missing = 0
+    for chunk in chunks:
+        entry = context_map.get(chunk["content_key"])
+        if entry:
+            line = entry["line"] if isinstance(entry, dict) else entry
+            chunk["content"] = f"{line}\n\n{chunk['content']}"
+            applied += 1
+        elif chunk["source_type"] == "rulebook":
+            missing += 1
+    return applied, missing
 
 
 def build_chunks(source_path: str, source_type: str) -> list[dict]:
@@ -366,6 +400,11 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Muestra qué haría sin escribir")
     parser.add_argument("--fresh", action="store_true", help="Borra chunks existentes y re-inserta todo")
     parser.add_argument("--update", action="store_true", help="Solo inserta chunks nuevos")
+    parser.add_argument(
+        "--context-file", default=None, metavar="JSON",
+        help="Líneas de contexto por content_key (scripts/contextualize.py, plan 3.8): "
+             "se prependean al contenido antes de embeber",
+    )
     args = parser.parse_args()
 
     if not args.dry_run and not DATABASE_URL:
@@ -388,6 +427,12 @@ def main():
     if not all_chunks:
         print("No hay chunks para ingestar.")
         return
+
+    if args.context_file:
+        import json
+        context_map = json.loads(Path(args.context_file).read_text(encoding="utf-8"))
+        applied, missing = apply_context_lines(all_chunks, context_map)
+        print(f"Context lines aplicadas: {applied} ({missing} chunks rulebook sin línea)")
 
     # 2. Embeddings
     print("\nGenerando embeddings...")
