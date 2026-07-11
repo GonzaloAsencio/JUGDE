@@ -88,6 +88,56 @@ def test_openai_compat_provider_generate_forwards_extra_system():
     assert mock_call.call_args.kwargs["extra_system"] == "SCAFFOLD"
 
 
+# ---------------------------------------------------------------------------
+# Output token budget forwarding (improvement plan 1.2)
+# ---------------------------------------------------------------------------
+
+
+def test_gemini_provider_forwards_max_output_tokens():
+    provider = GeminiProvider(
+        _FakeClient(), "gemini-2.0-flash", temperature=0.1, timeout_s=10.0, max_output_tokens=512,
+    )
+    with patch("app.rag.generation.build_prompt", return_value="prompt"):
+        with patch("app.rag.generation._call_gemini", return_value="answer") as mock_call:
+            provider.generate("q?", [])
+
+    assert mock_call.call_args.kwargs["max_output_tokens"] == 512
+
+
+def test_openai_compat_provider_forwards_max_output_tokens():
+    provider = OpenAICompatProvider(
+        base_url="http://x", api_key="k", model="m",
+        temperature=0.1, timeout_s=10.0, max_output_tokens=512,
+    )
+    with patch("app.rag.generation._call_openai_compat_raw", return_value="answer") as mock_call:
+        provider.generate("q?", [])
+
+    assert mock_call.call_args.kwargs["max_output_tokens"] == 512
+
+
+def test_create_provider_passes_max_output_tokens_from_settings():
+    from unittest.mock import MagicMock
+    from app.rag.provider import create_provider
+
+    settings = MagicMock()
+    settings.llm_provider = "gemini"
+    settings.gemini_model = "gemini-2.0-flash"
+    settings.gemini_temperature = 0.1
+    settings.gemini_timeout_s = 10.0
+    settings.max_output_tokens = 999
+
+    provider = create_provider(settings, llm_client=_FakeClient())
+    assert provider._max_output_tokens == 999
+
+    settings.llm_provider = "openai_compat"
+    settings.llm_base_url = "http://x"
+    settings.llm_api_key = "k"
+    settings.llm_model = "m"
+
+    provider = create_provider(settings)
+    assert provider._max_output_tokens == 999
+
+
 def test_fake_llm_provider_accepts_extra_system_kwarg_without_breaking():
     """Fakes in conftest.py must satisfy the extended ABC signature (keyword-only
     extra_system with a default) so the pipeline can always call generate(...,
