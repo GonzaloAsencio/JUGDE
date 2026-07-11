@@ -25,6 +25,14 @@ export async function POST(req: NextRequest) {
 
   // Real client IP (first hop of x-forwarded-for) so the backend rate-limits
   // per user instead of per proxy egress IP.
+  //
+  // INFRASTRUCTURE ASSUMPTION: trusting the FIRST hop is only safe because
+  // Vercel overwrites x-forwarded-for with the real client IP (client-supplied
+  // values are discarded). If this proxy ever moves off Vercel, the first hop
+  // becomes client-controlled: an attacker spoofs a fresh IP per request, gets
+  // unlimited rate-limit buckets, and burns the daily Gemini quota. On any
+  // other host, switch to the platform's trusted client-IP header or the
+  // rightmost untrusted hop.
   const realIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   if (realIp) headers['X-Real-IP'] = realIp;
 
