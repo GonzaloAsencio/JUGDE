@@ -16,6 +16,15 @@ def test_extracts_dotted_subrules():
     assert "146.1" in codes
 
 
+def test_extracts_levels_nested_past_the_letter():
+    # Riftbound numbering nests digits after the letter level: 383.3.d.1.
+    # Truncating to 383.3.d makes exact-lineage recall matching impossible
+    # for these rules.
+    text = "383.3.d.1. If multiple players separately control Triggered Abilities."
+    codes = extract_rule_codes(text)
+    assert "383.3.d.1" in codes
+
+
 def test_ignores_four_digit_numbers_like_dates_and_dims():
     # 2026 (year) and 1024 (dims) are not 3-digit rule codes
     text = "Last Updated 2026-03. Embeddings are 1024 dimensions."
