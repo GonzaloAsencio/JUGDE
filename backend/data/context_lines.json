@@ -1,0 +1,2806 @@
+{
+ "0002a794-e9cb-54f7-9bce-8401fdc0b4a0": {
+  "line": "Context: How should I stack multiple cards attached to the same unit so I can still read all their bonuses and effects?",
+  "section": "434. Attach"
+ },
+ "00255187-0f13-50c1-8a76-ddaf9e3982b5": {
+  "line": "Context: Does the damage dealt by a unit during a spell like Challenge count as extra damage from the spell itself or just damage from the unit?",
+  "section": "417. Deal"
+ },
+ "00901c6b-1fe7-5fe6-b49e-97b524572201": {
+  "line": "Context: How much extra melee damage does my unit get when it attacks if it has the Assault keyword?",
+  "section": "807. Assault"
+ },
+ "00f99ee3-f7e5-52e2-9408-2bd1010d80db": {
+  "line": "Context: What happens during a cleanup step if a specific game effect like combat requires extra actions before the turn ends?",
+  "section": "324. Special Cleanups"
+ },
+ "00fc77a6-b0ee-5c79-91dc-c5ee169c94cd": {
+  "line": "Context: Can I play a card from my hand right now, or does the game state prevent me from taking actions?",
+  "section": "338. Step 2: Execute"
+ },
+ "010db08f-0865-506b-8336-864c94051d6d": {
+  "line": "Context: Can I play a Gear card with Quick-Draw during my opponent's turn and attach it to one of my units?",
+  "section": "819. Quick-Draw"
+ },
+ "012bb764-8ed6-59ab-94ea-289ee58452ab": {
+  "line": "Context: In what order do I resolve multiple keywords or effects listed on my card?",
+  "section": "800. Keywords"
+ },
+ "0171527e-cd62-537d-a6cc-25816964dd27": {
+  "line": "Context: Does my unit's ability still trigger if it dies at the same time as the unit that was supposed to trigger it?",
+  "section": "383. Triggered Abilities"
+ },
+ "01784853-8b4a-55c3-ba25-5b788345ad75": {
+  "line": "Context: How do I know if my unit counts as Mighty after I play a spell that increases its Might?",
+  "section": "707. Mighty"
+ },
+ "018176e7-86cb-54e4-b959-cf537115075f": {
+  "line": "Context: Can I score a battlefield my teammate controls during my turn?",
+  "section": "463. Scoring"
+ },
+ "037a84ac-98d4-5e0e-83d7-05393326ad57": {
+  "line": "Context: How long does a delayed ability last if it is attached to a specific card that moves to a different zone?",
+  "section": "390. Delayed Abilities"
+ },
+ "037dbab0-4da7-55b1-bd07-2c83a37c89d0": {
+  "line": "Context: What happens to my unit's total shield value if I play a card that grants shield to a unit that already has it?",
+  "section": "814. Shield"
+ },
+ "03fb45a2-d74a-5f16-8b88-dee691a760d5": {
+  "line": "Context: When does a card with the Temporary keyword get destroyed during my turn?",
+  "section": "816. Temporary"
+ },
+ "04b9b673-6e9c-5c0c-b4e4-6c32f4c3601d": {
+  "line": "Context: How can I tell if a card is supposed to be face down or if I need to keep its identity hidden from my opponent?",
+  "section": "129. Back Side"
+ },
+ "050a1d3c-0998-5ef9-a9bc-c85eb9fa0245": {
+  "line": "Context: How do I know if a card ability is one that I have to pay a cost to use?",
+  "section": "377. Activated Abilities"
+ },
+ "05ac55e2-fe32-511f-8f5b-a74b9c612870": {
+  "line": "Context: If a card lets me play something while ignoring its energy cost, do I still have to pay the power cost?",
+  "section": "353. The Process of Play"
+ },
+ "05d070dc-dffe-54b9-8946-4ad0749fd451": {
+  "line": "Context: What happens to the turn order if multiple players or I play cards that grant extra turns at the same time?",
+  "section": "735. Certain^ Game^ Effects^ will^ instruct^ a^ player^ to^ “take^ a^ turn^ after^ this.”^ These^ effects^ create^ a^ temporary^"
+ },
+ "06fe22e6-19dd-522b-999f-67d0292e70ab": {
+  "line": "Context: What do I need to do first when I play a card that requires me to make choices or pick a location for a unit?",
+  "section": "353. The Process of Play"
+ },
+ "074cdf13-00d2-5b53-bf68-335062735eaf": {
+  "line": "Context: What happens if I play a card that changes a unit's name, type, or Might while other effects are already affecting those stats?",
+  "section": "468. Layers"
+ },
+ "07c6fd4d-0b7f-5bf4-baf3-05f2b83a6179": {
+  "line": "Context: Does an ability that triggers when I target a card count as a Play Effect, or is it just a Targeting Effect?",
+  "section": "383. Triggered Abilities"
+ },
+ "085c9664-0259-56b3-a46e-29d906d0908a": {
+  "line": "Context: How do I know who gets to act next when the turn is in a closed state and the current player passes priority?",
+  "section": "301. The Turn"
+ },
+ "0864b6bf-c476-5a74-9cbe-2219a08aab23": {
+  "line": "Context: If I am playing with a deck that my friend lent me, who is considered the owner of those cards for the purpose of game effects?",
+  "section": "127. Ownership"
+ },
+ "08a07b62-5f4e-5e39-afa8-a595b56b03e1": {
+  "line": "Context: Can I still check if a Gear has an Equip cost even if its text is currently inactive?",
+  "section": "into account when determining a card’s Equip cost for any reason."
+ },
+ "08d49a64-37f2-5782-9389-b56c3f91bfec": {
+  "line": "Context: Can I attack a unit controlled by a third player in a multiplayer game?",
+  "section": "457. Combat"
+ },
+ "08dbf20e-e25b-54b2-a77e-3a1c64a4776a": {
+  "line": "Context: Can I put a new buff on a unit that already has one, or do I have to remove the old one first?",
+  "section": "702. Buffs"
+ },
+ "08e36910-8a2d-5672-929a-596be8dc5bd2": {
+  "line": "Context: Can I move my units onto the Baron Pit battlefield token from anywhere on the board?",
+  "section": "177. Tokens"
+ },
+ "08fd57cf-1645-5f30-a9a9-aacdedf9ad3f": {
+  "line": "Context: How do I win a match in a best-of-three series and what do I need to reset between each game?",
+  "section": "476. Modes of Play"
+ },
+ "093dddb2-585d-5ca2-8726-b8a7fcc62f0d": {
+  "line": "Context: Can my opponent use a card effect to target or discard cards from my hand, and am I allowed to look at the cards my opponent has face-up on the board at any time?",
+  "section": "108. Non-Board Zones."
+ },
+ "098b72a3-f4d1-595c-980c-a4113a5864a7": {
+  "line": "Context: Can I trigger other card effects when I finish attaching a piece of Gear to my Unit?",
+  "section": "into account when determining a card’s Equip cost for any reason."
+ },
+ "099eee51-68c8-5100-8aeb-ef3d4d2b3a7b": {
+  "line": "Context: How do I determine who currently controls a battlefield or if it is currently unclaimed?",
+  "section": "187. Battlefields"
+ },
+ "0a1cbce6-c47d-52bc-b5e0-88d4e793b72e": {
+  "line": "Context: What happens to a staged combat if all units leave the battlefield before the fight actually starts?",
+  "section": "318. Cleanups"
+ },
+ "0a860902-b0b6-5270-bf2e-ad292a3bf72f": {
+  "line": "Context: Can I play my Gear card anywhere on the board, or does it have to go on my Base?",
+  "section": "148. Gear"
+ },
+ "0afb73ca-404b-5e94-a45f-290b87fa7121": {
+  "line": "Context: If multiple replacement effects happen at the same time, who gets to decide which one resolves first?",
+  "section": "369. Replacement Effects"
+ },
+ "0b8adbfb-5c0b-5734-bccd-719d01c7fa82": {
+  "line": "Context: Can I activate an ability if I don't have any valid targets or options available for it?",
+  "section": "400. Abilities"
+ },
+ "0c50c510-5b46-5c00-ae53-451827bae05f": {
+  "line": "Context: How do I know if a card has a triggered ability if the trigger condition is written in the middle or at the end of the text?",
+  "section": "383. Triggered Abilities"
+ },
+ "0cb98d9a-c33e-5d43-bc5d-cf2ceaf7eff1": {
+  "line": "Context: How do Champion and Signature supertypes affect which cards I am allowed to include in my deck?",
+  "section": "133. Category"
+ },
+ "0d81cab6-ad3a-5623-b52b-03f7295a34ce": {
+  "line": "Context: How do I know if a card counts as a Legend or a Champion when it is sitting in its specific zone?",
+  "section": "353. The Process of Play"
+ },
+ "0d8a04b1-1963-5753-8a1f-2fe47fcbbe6c": {
+  "line": "Context: How do I know when a passive ability that only lasts for a certain amount of time stops working?",
+  "section": "390. Delayed Abilities"
+ },
+ "0de20465-805f-5b67-9010-9d8d66c86e27": {
+  "line": "Context: My opponent is targeting my unit with an ability, so how do I pay the extra Power cost for Deflect and does the Power have to match the spell's color?",
+  "section": "809. Deflect"
+ },
+ "0e14b4da-c9ab-5171-8e13-1f76a0be22f7": {
+  "line": "Context: Can I move an attached card independently, can I attach one card to multiple things, and does changing control of a card affect the things attached to it?",
+  "section": "718. Attached"
+ },
+ "0eb791f1-70b0-55b0-a30e-1b5dd4ac980c": {
+  "line": "Context: Can I play this card right now if the Showdown state is already closed?",
+  "section": "353. The Process of Play"
+ },
+ "0f5f9ff1-3974-5dcc-bd8c-73eaff89a332": {
+  "line": "Context: Can I move a permanent from one space to another on the board as an action, and does this count as changing zones?",
+  "section": "441. Moving"
+ },
+ "0f713395-7047-5245-a717-f83b2603adb3": {
+  "line": "Context: How do I determine which base or battlefield my gear is currently attached to?",
+  "section": "151. Gear"
+ },
+ "0f885f57-62bd-53af-a328-1698f4387da2": {
+  "line": "Context: How do I know if my unit currently has a shield when an ability checks for it?",
+  "section": "814. Shield"
+ },
+ "0fc1b948-6856-500d-8c44-e4e5d245c0da": {
+  "line": "Context: What happens if I try to use Weaponmaster to equip a card that has no equip cost or cannot be moved to my unit?",
+  "section": "821. Weaponmaster"
+ },
+ "10ab485e-4e7e-5d45-b5f0-1de836566209": {
+  "line": "Context: How do I know if I am the one responsible for a game action or if it is just happening automatically because of the game rules?",
+  "section": "411. Responsibility"
+ },
+ "10af0dd6-5822-5252-a887-ae9466880e02": {
+  "line": "Context: How do I know when my card actually gets the ability listed after the Level keyword?",
+  "section": "824. Level"
+ },
+ "10c25382-338a-5894-8d54-1a30db318fa1": {
+  "line": "Context: Where do my Runes, Legends, and Battlefields go when I play a card that tells me to Create them?",
+  "section": "439. Create"
+ },
+ "116bb7e1-5d46-5242-8da8-e4a9a008854a": {
+  "line": "Context: What happens to the second part of a card's effect if the first part didn't actually do anything?",
+  "section": "353. The Process of Play"
+ },
+ "11826525-adab-5c7c-bf97-df46958cd9c8": {
+  "line": "Context: Can I still target an attached card with an effect, and does it keep its original types and tags while it is boosting the card underneath it?",
+  "section": "718. Attached"
+ },
+ "11b42248-f342-5a2a-95a0-ba803460afbf": {
+  "line": "Context: How do I handle revealing cards from the top of my deck and showing them to my opponent before putting them back?",
+  "section": "424. Reveal"
+ },
+ "11f90fc8-58d7-5c84-8f15-b2133bfbe198": {
+  "line": "Context: Does my card's Deathknell ability still trigger if I use a recall effect to save it from being sent to the trash after it gets killed?",
+  "section": "808. Deathknell"
+ },
+ "12886b9e-f942-53c6-9afe-da82d1f686a7": {
+  "line": "Context: What happens if I have to draw more cards than are left in my deck?",
+  "section": "413. Draw"
+ },
+ "12af7a69-73d0-559c-b6be-27028a48f9ee": {
+  "line": "Context: Do I have to pay the cost for a triggered ability when it first triggers or when it actually resolves?",
+  "section": "383. Triggered Abilities"
+ },
+ "12d34963-b65d-5af8-98ca-bf4c4ced28c7": {
+  "line": "Context: Can I play or move a Legend card from my Legend Zone into the field during the game?",
+  "section": "133. Category"
+ },
+ "1300d981-f69e-5adb-8def-d1dd0d48062d": {
+  "line": "Context: What happens to a non-combat showdown if a combat showdown starts at the same battlefield while we are in the showdown open state?",
+  "section": "318. Cleanups"
+ },
+ "142b2068-a92d-5cf8-94e9-ef32050765f9": {
+  "line": "Context: How do I know if a card's ability is currently active or if it only works while the card is on the board?",
+  "section": "360. Abilities"
+ },
+ "143ccfd5-f552-52da-8b9c-0de7ad36abd5": {
+  "line": "Context: How do I interpret card text that tells me to add specific amounts of energy or domain power to my pool?",
+  "section": "429. Add"
+ },
+ "145f1826-6356-533b-bec1-cf6a36bffb5b": {
+  "line": "Context: Who gets to act first when the chain is finished and no more effects are waiting to be added?",
+  "section": "337. Step 1: Finalize"
+ },
+ "155c626f-a9a0-595e-999d-9ab1a5d95503": {
+  "line": "Context: What happens when I activate an ability or play a card during the execution step?",
+  "section": "338. Step 2: Execute"
+ },
+ "15d1efa0-bd41-52f0-915f-edb2ed79f119": {
+  "line": "Context: How do I calculate the total damage my attacking units deal during the combat damage step?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "16190865-6327-5449-a520-b527184a3965": {
+  "line": "Context: How do I identify the Chaos and Order symbols and their associated colors on a card?",
+  "section": "134. Domain"
+ },
+ "164cf558-0a6b-56f1-8044-d11050532441": {
+  "line": "Context: Am I allowed to look at my opponent's hand or a facedown card they control on the battlefield?",
+  "section": "128. Privacy"
+ },
+ "1655d4a4-77ee-58b9-b9c6-b698fcfd6d39": {
+  "line": "Context: Can I play this spell during a showdown or while the game state is closed?",
+  "section": "152. Spells"
+ },
+ "16c197df-85e4-556a-a362-fa0e8b832832": {
+  "line": "Context: What happens if my opponent and I both pass our turn to play spells or abilities during a showdown?",
+  "section": "341. Showdowns"
+ },
+ "176028f5-1a63-559a-bbfb-c0ab55aa85eb": {
+  "line": "Context: If multiple things happen at the same time that trigger my replacement effects, how do I decide which one to apply first?",
+  "section": "369. Replacement Effects"
+ },
+ "17714e81-68c3-575f-9527-abf7ff6c0333": {
+  "line": "Context: How do I know when an effect is supposed to happen automatically after something else occurs in the game?",
+  "section": "383. Triggered Abilities"
+ },
+ "19105df2-4ed8-502a-8ffb-739f6bbd5555": {
+  "line": "Context: What happens to my spell if my opponent moves their creature to their hand or another zone before my spell resolves?",
+  "section": "353. The Process of Play"
+ },
+ "19139714-df2c-50ce-809b-7499b9a12138": {
+  "line": "Context: How do I figure out who is the attacker and who is the defender when a battle starts?",
+  "section": "459. Step 1: The Combat Showdown Step"
+ },
+ "194d0ba8-bd0f-58b9-94a7-43ed7abced0d": {
+  "line": "Context: How do I know if a card effect is targeting something or just affecting it generally?",
+  "section": "353. The Process of Play"
+ },
+ "1a004aaa-05ec-5899-9865-605bc8303777": {
+  "line": "Context: Can I play a card with Hidden normally instead of using its special ability, and does having multiple copies of the keyword change anything?",
+  "section": "811. Hidden"
+ },
+ "1b275691-58d5-5b94-8783-e19a02da9c48": {
+  "line": "Context: Can I pay extra resources when I play a unit to make it enter the field ready instead of exhausted?",
+  "section": "805. Accelerate"
+ },
+ "1b3126de-59f1-5b67-9cb5-a0ce582ca957": {
+  "line": "Context: Does bonus damage still trigger if my opponent uses a shield or effect to reduce the initial attack damage to zero?",
+  "section": "713. Bonus Damage"
+ },
+ "1b87323e-3d4f-5efe-b1aa-9d4a04a7a0c9": {
+  "line": "Context: Can I play a card with a Reaction ability if its specific trigger condition is only met while it is already sitting on the chain?",
+  "section": "813. Reaction"
+ },
+ "1cc788b4-9711-54d5-8fc7-d695689a8cf9": {
+  "line": "Context: Who is responsible for a kill when my spell or ability destroys an opponent's card?",
+  "section": "411. Responsibility"
+ },
+ "1cfa8b6a-d3cf-559a-86f7-2c8d7ca5f779": {
+  "line": "Context: How do I figure out which card effect I need to resolve first when two different abilities are changing the board state at the same time?",
+  "section": "468. Layers"
+ },
+ "1d095e52-99e4-5142-be6c-bf52f4240d2c": {
+  "line": "Context: How do I track damage on my units when a spell or ability hits multiple targets at once?",
+  "section": "417. Deal"
+ },
+ "1d09b7bc-1dd2-564b-9e19-a90291a027e9": {
+  "line": "Context: How do I calculate the final cost of a spell when I have multiple discounts that apply to specific parts of the cost versus discounts that apply to the total cost?",
+  "section": "353. The Process of Play"
+ },
+ "1d0f18f9-56b9-52fe-901a-e957727b726c": {
+  "line": "Context: Can I use a card's passive ability to change its play cost or timing even if the card is still in my hand?",
+  "section": "360. Abilities"
+ },
+ "1d498b7d-5b43-5349-93a6-654b7aa3ae47": {
+  "line": "Context: Can I still assign combat damage to a unit if it has a Prevent effect on it?",
+  "section": "437. Prevent"
+ },
+ "1d4b2fb2-14a0-59db-9c91-5d0a14cccfb7": {
+  "line": "Context: Who owns a token or object that I just created during my turn?",
+  "section": "439. Create"
+ },
+ "1d7fccda-3cb9-588a-afe7-e34f3b15dc69": {
+  "line": "Context: Can I choose to perform a limited action whenever I want, or does something else have to trigger it for me?",
+  "section": "408. Game Actions"
+ },
+ "1db84833-e21e-5a35-a3d2-2efc71405021": {
+  "line": "Context: Can I just create a new card or permanent whenever I want, or do I need a specific card effect to do it?",
+  "section": "appropriate type."
+ },
+ "1e334011-f972-50cb-be48-758a422b63ea": {
+  "line": "Context: How do I keep track of my XP total and do I have to tell my opponent how much I have?",
+  "section": "729. XP"
+ },
+ "1ea307e0-c3b8-5653-a570-74f66c5176c1": {
+  "line": "Context: How do I put Runes from the top of my Rune Deck onto the board?",
+  "section": "430. Channel"
+ },
+ "1ea3c6a6-9d37-5766-91d3-a46183dd732c": {
+  "line": "Context: Can I move my unit to a battlefield that already has units from two other players on it?",
+  "section": "444. Spells"
+ },
+ "1f157c58-d8a9-516b-a53c-3923bad358e2": {
+  "line": "Context: How do I tell if a card effect is targeting the units themselves or the battlefield location?",
+  "section": "353. The Process of Play"
+ },
+ "1fce7e47-e9c7-5485-90c1-464a984586a5": {
+  "line": "Context: Can I perform a discretionary action at any point during my own turn as long as the game state is neutral and open?",
+  "section": "408. Game Actions"
+ },
+ "207421cf-382c-5f5e-8bf7-7372dca9469b": {
+  "line": "Context: Can my attached card use its abilities while it is still in the process of being attached to another card?",
+  "section": "725. Inactive"
+ },
+ "207661a0-1913-567a-a835-36559c7e746d": {
+  "line": "Context: If I pay the extra cost for a card with Repeat, do I get to trigger its effect twice when it resolves?",
+  "section": "820. Repeat"
+ },
+ "20a53ce6-facb-5c19-b0ff-fd2890aa9500": {
+  "line": "Context: If I attach a card with effect text to another card, do those abilities get added to the card I attached it to?",
+  "section": "136. Effect Text"
+ },
+ "20b9bcd6-91cc-52d1-ac17-5529f73a4db2": {
+  "line": "Context: Can I use my Reaction abilities to add Energy and Power to my pool to pay for a card I am currently playing?",
+  "section": "353. The Process of Play"
+ },
+ "20ca9a87-65c5-5ced-9534-d1a35d60e240": {
+  "line": "Context: How do I know if a card has a tag or if it counts as a token?",
+  "section": "133. Category"
+ },
+ "20e9a001-c551-53f2-adfd-cf7a7eafa661": {
+  "line": "Context: If I give a unit that already has Assault another Assault ability from a card effect, do the values add together?",
+  "section": "807. Assault"
+ },
+ "21034031-3f91-5b78-b493-310a7d708dd7": {
+  "line": "Context: Am I allowed to look at a card that is currently in a secret zone?",
+  "section": "128. Privacy"
+ },
+ "211ec150-8a8d-5484-ab5e-ad902f0803af": {
+  "line": "Context: How do I apply a keyword effect that appears before a bracket to the instruction that follows it?",
+  "section": "135. Rules Text"
+ },
+ "21203cdf-0a40-51fc-8450-3a2b55652bcb": {
+  "line": "Context: Does banishing a card count as killing or discarding it for the purpose of triggering other card effects?",
+  "section": "427. Banish"
+ },
+ "21ba41ab-2f48-5b1c-9444-670b21c529ca": {
+  "line": "Context: Can I play a card or use an ability during a showdown even if it is not my turn?",
+  "section": "806. Action"
+ },
+ "22161ff0-a203-5775-ad36-63fc86bd0d4d": {
+  "line": "Context: How do I put cards from my discard pile back into the bottom of my main deck or rune deck?",
+  "section": "416. Recycle"
+ },
+ "2275a4a4-8828-5dd0-b67a-2fca00c44840": {
+  "line": "Context: How many battlefields do I need to bring in my deck for a standard one-on-one game?",
+  "section": "476. Modes of Play"
+ },
+ "22f7a182-8532-5320-97b9-5d89a90f592c": {
+  "line": "Context: How long does a delayed ability last if the card that created it leaves the board or changes zones?",
+  "section": "390. Delayed Abilities"
+ },
+ "22faf554-d70f-59d1-85fd-1de6ec216bbb": {
+  "line": "Context: How do I use a card's ability that has a cost, and does it go on the chain like playing a card?",
+  "section": "377. Activated Abilities"
+ },
+ "2319f555-edeb-52d5-966f-7a648e04805e": {
+  "line": "Context: Can I use an Add ability while another spell or effect is still resolving?",
+  "section": "429. Add"
+ },
+ "2337268e-7cb3-5c00-96f5-84e50aaebdfa": {
+  "line": "Context: What happens to my unit's damage output if a debuff drops its Might below zero, and do those negative points still count if I buff it later?",
+  "section": "143. Units"
+ },
+ "23bdfb6f-0289-5d36-808a-712574adc08a": {
+  "line": "Context: Can I move my units into a battlefield where other players are already fighting if I am not currently involved in that combat?",
+  "section": "457. Combat"
+ },
+ "246d2966-811a-57ee-aad7-84cff5260517": {
+  "line": "Context: How do I set up my Battlefields at the start of the game and how do I determine who wins the match?",
+  "section": "476. Modes of Play"
+ },
+ "248d6784-e776-5c7a-9cfb-9b30c8cb8e1c": {
+  "line": "Context: How do I know if the card I am trying to play is allowed to be used in my current game state?",
+  "section": "353. The Process of Play"
+ },
+ "24979afc-9249-55b6-9770-a35786c6fb87": {
+  "line": "Context: Does the damage dealt during combat come from the unit itself or from the player?",
+  "section": "417. Deal"
+ },
+ "254985f0-d3cb-5eda-a2f0-70be6ef3c631": {
+  "line": "Context: Can I use spells or abilities on a token unit just like I would with a regular unit card?",
+  "section": "177. Tokens"
+ },
+ "25562045-83bf-5ae8-83e6-49a2e7426c79": {
+  "line": "Context: Can my opponent respond to an activated ability that does not have a physical card associated with it?",
+  "section": "377. Activated Abilities"
+ },
+ "261f7173-7143-5380-b62c-ac57bb885b07": {
+  "line": "Context: Can I target or destroy a Battlefield like I would a permanent card?",
+  "section": "170. Battlefields"
+ },
+ "26de3b77-a106-5e7b-b7fb-8b31ffddb992": {
+  "line": "Context: Can I choose multiple targets for a card effect if the card requires more than one target to be selected at the same time?",
+  "section": "353. The Process of Play"
+ },
+ "2712baf1-f24c-5f53-8bcf-2ddeb73ba8c2": {
+  "line": "Context: Does my card keep its damage, exhaustion, buffs, and other status effects after I return it to my hand with a Recall?",
+  "section": "451. Recalls"
+ },
+ "273ed732-0c9d-525d-9ab4-3cefcc7d9d0d": {
+  "line": "Context: What happens when I play a card with Vision, and can I choose to recycle the top card of my deck for each copy if I have multiple instances of the ability?",
+  "section": "817. Vision"
+ },
+ "276413f4-51b0-5593-b24f-d73bec6e10f6": {
+  "line": "Context: Do I have to put a triggered ability on the chain if the card says I may use it?",
+  "section": "383. Triggered Abilities"
+ },
+ "2814eaee-6a6f-537b-89e8-0ac5fec081c8": {
+  "line": "Context: Can I save my leftover Energy and Power for my next turn or do I lose them when my turn ends?",
+  "section": "163. Basic Runes"
+ },
+ "2858e273-61b8-5ad8-ae5a-2eaf16f914ad": {
+  "line": "Context: When can I play a card or activate an ability during a turn?",
+  "section": "325. Chains and Showdowns"
+ },
+ "28876bbb-b07e-53ee-a9bb-77b0bcc0a027": {
+  "line": "Context: What happens to my spell if all of its targets become invalid before it resolves, and do my other abilities still trigger?",
+  "section": "353. The Process of Play"
+ },
+ "289b15d9-0d54-5da8-bd25-5ec41f65d4c5": {
+  "line": "Context: What happens if I have multiple copies of Quick-Draw on the same gear or if I am checking if my gear has the Quick-Draw ability?",
+  "section": "819. Quick-Draw"
+ },
+ "28d3db11-da84-5eee-8e86-a9e1031e485d": {
+  "line": "Context: How do I know if a specific spell or ability counts as a Reaction for other card effects?",
+  "section": "813. Reaction"
+ },
+ "291c10af-1789-5d76-8b69-ea50ae460416": {
+  "line": "Context: What are the stats and special abilities of the Reflection, Bird, and Brush tokens I can create during a game?",
+  "section": "177. Tokens"
+ },
+ "293d4eb7-2fb1-5b80-bfdf-86c26cc6f605": {
+  "line": "Context: What happens if I have to trigger an ability but there are no legal targets or options available for me to choose?",
+  "section": "400. Abilities"
+ },
+ "2996926f-ebf7-5477-9549-d1b033526686": {
+  "line": "Context: When does a combat actually start at a battlefield if there is already a showdown happening there?",
+  "section": "454. Combat"
+ },
+ "29ab8e60-571f-5a55-a6d4-e15ae94efbbb": {
+  "line": "Context: Can I choose to burn out whenever I want, or do I have to wait for a card effect to tell me to do it?",
+  "section": "431. Burn Out"
+ },
+ "2af69ff5-ca40-505b-b5f2-dd3e17c73bb5": {
+  "line": "Context: If I have a replacement effect that changes how I play a token, does that replacement also apply to any extra effects or modifications that were supposed to happen to the original token?",
+  "section": "369. Replacement Effects"
+ },
+ "2b10a5a5-c04f-5b4f-8c63-39ff2ebecc6c": {
+  "line": "Context: Can I exhaust a unit that is already turned sideways, or does it do anything if an effect tells me to exhaust a unit that is already exhausted?",
+  "section": "414. Exhaust"
+ },
+ "2b1ee2e0-aaa1-52bb-a429-5a6752def90c": {
+  "line": "Context: Who is responsible for resolving a battlefield ability if no player currently controls that battlefield?",
+  "section": "187. Battlefields"
+ },
+ "2baee6e4-c49d-5b5b-bdfc-de4ecb14825e": {
+  "line": "Context: How do I resolve the process of activating a unit ability and does it count as a spell?",
+  "section": "145. Units"
+ },
+ "2bd9c2ce-cf4d-57b9-b5fb-e12bd569ecfc": {
+  "line": "Context: Do I have to choose which cards I am targeting before I decide whether or not I actually want to perform the action on them?",
+  "section": "353. The Process of Play"
+ },
+ "2c7f8260-f2bf-58bf-95f7-85020f77b13c": {
+  "line": "Context: How do I tell which side of the card is the front if I am not sure which way it is facing?",
+  "section": "130. Front Side"
+ },
+ "2caec112-c557-5c8e-b8f0-64b525eb3ded": {
+  "line": "Context: Can I choose to pay an optional cost to get a discount when I am playing a card that says I may discard something as an additional cost?",
+  "section": "353. The Process of Play"
+ },
+ "2cfe63b4-02a8-50d0-8f1b-582fd7834023": {
+  "line": "Context: Does attaching a card to a new one remove it from the previous one, and do the attached card's abilities stop working while it adds its might bonus to the top card?",
+  "section": "434. Attach"
+ },
+ "2d4938c5-87bd-553d-b634-1da60bbc31e8": {
+  "line": "Context: Who gets to act first after I start a chain?",
+  "section": "325. Chains and Showdowns"
+ },
+ "2d925459-9c7c-52a5-85a9-b182c6f9c756": {
+  "line": "Context: What happens when there are no more tasks or chain items left to resolve during my turn?",
+  "section": "325. Chains and Showdowns"
+ },
+ "2e4dea74-ff9f-54de-9aeb-6bd7e68cdcb6": {
+  "line": "Context: How do I calculate the defensive bonus my unit gets when it has a Shield ability?",
+  "section": "814. Shield"
+ },
+ "2e60e169-244b-59f7-a820-f2fcae0c2d68": {
+  "line": "Context: What happens to the turn order when a card effect tells me to take an extra turn after my current one?",
+  "section": "735. Certain^ Game^ Effects^ will^ instruct^ a^ player^ to^ “take^ a^ turn^ after^ this.”^ These^ effects^ create^ a^ temporary^"
+ },
+ "2f941254-9f74-5395-97f8-60dde0b96abe": {
+  "line": "Context: If I have two cards changing the same stat, how do I know which one applies last when one of them gets turned off and then back on again?",
+  "section": "468. Layers"
+ },
+ "301c1099-6580-585a-8c75-0c86ffe5c5cf": {
+  "line": "Context: How do I put a rune card into play, and does it count as a permanent or a main deck card?",
+  "section": "133. Category"
+ },
+ "302090b4-805e-5026-8711-430b24734110": {
+  "line": "Context: Am I allowed to look at my opponent's banished cards, and can I see how many cards they are holding in their hand?",
+  "section": "108. Non-Board Zones."
+ },
+ "308f433a-10f0-5ed5-8379-d02ec043e9d7": {
+  "line": "Context: How do I know if I choose a rune when I cast the spell or only when it actually resolves?",
+  "section": "353. The Process of Play"
+ },
+ "309be870-3947-552e-a10d-0eddbdd065cd": {
+  "line": "Context: What happens to my leftover Energy and Power when my turn ends and the next player starts their turn?",
+  "section": "316. Main Phase"
+ },
+ "30f5b2fc-1282-52db-9ecf-c0c6fc23683f": {
+  "line": "Context: Can I still play a unit using Ambush if the unit that was at the location leaves play before I finish playing my card?",
+  "section": "822. Ambush"
+ },
+ "310e3e18-2741-5ad0-be6f-8d2d200948b9": {
+  "line": "Context: Can I use a spell or ability to target a piece of Gear that is currently sitting in my Trash pile?",
+  "section": "148. Gear"
+ },
+ "3142e7c1-1207-5604-ba25-c093bcae3596": {
+  "line": "Context: How do I know if a card's passive ability is supposed to replace another game effect instead of just happening normally?",
+  "section": "360. Abilities"
+ },
+ "3161fe24-03f4-55ad-a08a-24337be4185b": {
+  "line": "Context: What happens if my spell's target is removed or becomes illegal before the effect actually resolves?",
+  "section": "353. The Process of Play"
+ },
+ "318efcf7-dce4-52c0-882f-1216ec115771": {
+  "line": "Context: How do I start playing the game using the cards in my deck?",
+  "section": "125. Cards"
+ },
+ "32c16254-9708-5f35-a266-077710b7bc7f": {
+  "line": "Context: Can I deal damage with an effect that isn't specifically labeled as a deal damage action?",
+  "section": "417. Deal"
+ },
+ "32d622b6-3d2a-59d2-8308-0f9af99b315a": {
+  "line": "Context: Can I move my Chosen Champion back to my Champion Zone if there is already a card sitting there?",
+  "section": "108. Non-Board Zones."
+ },
+ "3398d4b1-e7d0-557d-bdb5-33688137c4bd": {
+  "line": "Context: When do my units heal and when do all the temporary effects from this turn stop working?",
+  "section": "316. Main Phase"
+ },
+ "344ecf52-dd44-5147-b857-111316a3beed": {
+  "line": "Context: How do I know if an effect that happens later in the turn is a triggered ability or a replacement effect?",
+  "section": "390. Delayed Abilities"
+ },
+ "347f4a06-a6f6-5536-8be2-84e22b4c9499": {
+  "line": "Context: How do I know if a battlefield is still considered contested or in combat after units are already there?",
+  "section": "318. Cleanups"
+ },
+ "349f1d00-33c8-5da5-ba9e-b1fb5b32411d": {
+  "line": "Context: Can I play my Chosen Champion directly from my Champion Zone, and is my opponent allowed to look at the cards I have sitting in that zone?",
+  "section": "108. Non-Board Zones."
+ },
+ "35325cfe-c26e-5396-a857-9535f73d5a76": {
+  "line": "Context: Can I start a new chain or resolve abilities while the game is currently performing a cleanup or resolving other chain items?",
+  "section": "318. Cleanups"
+ },
+ "3547429b-9ec8-592b-9661-9e9c07f1de8d": {
+  "line": "Context: Can I sacrifice a unit to pay for a card effect if that sacrifice would make my other target for the card illegal?",
+  "section": "353. The Process of Play"
+ },
+ "35d3db63-3db8-5e71-809e-0b9af275b322": {
+  "line": "Context: How do I determine the numerical value for a card with the Deflect ability if no number is printed on it?",
+  "section": "809. Deflect"
+ },
+ "35fc3695-c415-5798-abfb-22cbbc913a53": {
+  "line": "Context: How do I determine the number of battlefields allowed in play and set up the specific win conditions for my game format?",
+  "section": "476. Modes of Play"
+ },
+ "36195339-4cee-52cd-a57b-812c21bd378a": {
+  "line": "Context: How do I know when a card or ability I just played is officially locked into the chain and can no longer be cancelled?",
+  "section": "325. Chains and Showdowns"
+ },
+ "369fe0c7-61f2-5355-ae01-24ff6c08b7d1": {
+  "line": "Context: How do I know when a keyword ability with a specific condition like Legion actually stops working or when its duration ends?",
+  "section": "727. Keywords"
+ },
+ "36f9b98d-91b4-5678-808d-28feab4bc011": {
+  "line": "Context: Can I show my opponent a card in my hand to bluff them without triggering effects that happen when a card is revealed?",
+  "section": "424. Reveal"
+ },
+ "3738e1d3-9707-5eae-8662-430f606adbb3": {
+  "line": "Context: What happens to a permanent when I recall it back to my base instead of moving it?",
+  "section": "447. Units"
+ },
+ "37797465-1b96-54aa-97a5-b730f18da45a": {
+  "line": "Context: Can I play a card if an ability or game effect tells me to play it during its resolution?",
+  "section": "419. Play"
+ },
+ "3842dacd-1a68-5b01-91d5-24a3775eb02c": {
+  "line": "Context: How do I calculate the total cost my opponent has to pay when they target my unit that has multiple sources of Deflect?",
+  "section": "809. Deflect"
+ },
+ "39791ad5-1c4b-5e7e-bdd3-7df2e7b3ef43": {
+  "line": "Context: How do I know if I am allowed to exhaust my unit to pay for an ability or action?",
+  "section": "414. Exhaust"
+ },
+ "39f55e9a-9d22-535b-a505-51d83bb79cd7": {
+  "line": "Context: What happens if a special cleanup effect triggers another cleanup step?",
+  "section": "324. Special Cleanups"
+ },
+ "3a0f2c15-62eb-5f0d-911f-dbc8f2e95e06": {
+  "line": "Context: Where do new cards go when an effect creates them if the card doesn't say where they should appear?",
+  "section": "439. Create"
+ },
+ "3a685fb6-d6c3-5ffd-a930-e7ffb8193403": {
+  "line": "Context: What happens if I have multiple pending items on the chain that need to be finalized before I can pass priority?",
+  "section": "337. Step 1: Finalize"
+ },
+ "3a68fa60-193b-53b8-a48a-870c2fb5e516": {
+  "line": "Context: If my opponent controls a battlefield, who gets to make the decisions and add the abilities to the chain when they trigger?",
+  "section": "187. Battlefields"
+ },
+ "3a973072-2125-54b0-8f41-96d59e61c262": {
+  "line": "Context: Can I choose zero targets when a card says I can affect up to a certain number of units, and does splitting damage count as targeting every unit I choose?",
+  "section": "353. The Process of Play"
+ },
+ "3a9782c8-6573-5be2-aa97-f3a1a48d4d67": {
+  "line": "Context: Can I use an ability to change or affect a card while it is currently being revealed?",
+  "section": "424. Reveal"
+ },
+ "3c06fb79-c2ab-5ac8-b9af-bbd4c3fa0284": {
+  "line": "Context: What happens to my damaged units at the end of the turn and do my empty battlefields become uncontrolled?",
+  "section": "318. Cleanups"
+ },
+ "3c941698-a6f3-511f-9075-20e225454730": {
+  "line": "Context: What happens to a location if my opponent and I both have no units left there after the resolution step?",
+  "section": "461. Step 3: The Resolution Step"
+ },
+ "3d05a752-b618-5279-91c3-9c8a1a0fe4c5": {
+  "line": "Context: How do I finish my turn and move to the ending phase after I am done playing cards and using abilities?",
+  "section": "316. Main Phase"
+ },
+ "3dbd1502-3e2c-5565-bced-b4729f750878": {
+  "line": "Context: What happens to the buffs on my unit if it leaves the field or returns to my champion zone?",
+  "section": "704. Buffs"
+ },
+ "3fa4f31b-bda9-51b0-9c43-1d25885b7491": {
+  "line": "Context: Can I score more than once on the same battlefield during my turn?",
+  "section": "463. Scoring"
+ },
+ "4024c142-8868-5f06-8190-5965508b30cb": {
+  "line": "Context: Can I activate another ability or play a new spell while one is still in the middle of resolving?",
+  "section": "152. Spells"
+ },
+ "405c0214-7711-5e0d-8b08-f44436a83b31": {
+  "line": "Context: Can I use a card to prevent or replace points if they are gained after the first Burn Out has already started resolving?",
+  "section": "431. Burn Out"
+ },
+ "41231904-e2fb-518a-9186-65b3910979aa": {
+  "line": "Context: If a card creates a delayed ability that deals damage based on a creature's Might, does it use the Might value from when the ability was created or when it actually resolves?",
+  "section": "damage equal to his current Might of 5."
+ },
+ "42042905-3eeb-58aa-8a02-ee5c5686bdb8": {
+  "line": "Context: Do I have to pay the extra cost if my triggered ability says I can do something to get an additional effect?",
+  "section": "400. Abilities"
+ },
+ "42bb235a-a2ee-5e44-90f8-69548ee922cd": {
+  "line": "Context: What happens if my card effect gives me negative bonus damage, and how does bonus damage apply when I attack a single target?",
+  "section": "713. Bonus Damage"
+ },
+ "4359e9ee-3a01-5eb3-b472-aba601ad4890": {
+  "line": "Context: Can I play a facedown card during my opponent's turn if it has the Reaction ability?",
+  "section": "811. Hidden"
+ },
+ "439ce9b0-c53c-512c-b83c-b97b687e782d": {
+  "line": "Context: How many cards do I have to move when an ability tells me to recycle from my trash if I have fewer cards there than the number requested?",
+  "section": "416. Recycle"
+ },
+ "43aee097-e2ee-5215-9e86-d56c15cc4f5b": {
+  "line": "Context: Does my card's special ability turn off if I lose enough XP or if my opponent takes control of the card?",
+  "section": "824. Level"
+ },
+ "43c6c310-1218-5a5f-a0fa-4eb1328699be": {
+  "line": "Context: If I have multiple units with Tank in combat, can I choose which one takes the damage, and do I have to kill them all before my other units can be hit?",
+  "section": "815. Tank"
+ },
+ "44221b6e-bf0e-5f87-8148-271cfc675c52": {
+  "line": "Context: Can I change the order in which my units deal damage to my opponent's creatures, and what exactly counts as lethal damage for a unit?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "44272149-1973-5ec2-ad64-d950ba8b8108": {
+  "line": "Context: How do I set up a game with different player counts, team structures, or winning point totals?",
+  "section": "476. Modes of Play"
+ },
+ "44ac43b1-a2dc-5231-9c54-1cc85ed23e0f": {
+  "line": "Context: Does a card attached to another card still have its own active abilities, or do they get added to the card it is attached to?",
+  "section": "718. Attached"
+ },
+ "44d97f9f-be55-5136-82fd-07d8e4b5fed4": {
+  "line": "Context: How do I know if a card counts as a unit while it is in my hand, discard pile, or on the field?",
+  "section": "141. Unit is"
+ },
+ "4602bfd1-3283-5cc0-96e3-c8a11ca4ff02": {
+  "line": "Context: I just played a Weaponmaster unit, can I use its ability to pay a reduced cost to attach an existing Equipment card I already have on the board?",
+  "section": "821. Weaponmaster"
+ },
+ "464303db-5d57-56d1-ae30-dd14ed18f747": {
+  "line": "Context: Can I play spells back and forth with my opponent while a combat or showdown is currently happening?",
+  "section": "341. Showdowns"
+ },
+ "46ece9c1-f006-51d7-840a-d6d6206145ed": {
+  "line": "Context: Can I score a battlefield that my teammate was already controlling at the start of my turn, or hide cards at a location they currently control?",
+  "section": "476. Modes of Play"
+ },
+ "47586036-277e-5674-846d-d786b31b9ee5": {
+  "line": "Context: Can I use a counter card whenever I want, or do I need a specific card effect to let me do it?",
+  "section": "425. Counter"
+ },
+ "484e5754-33fb-5f58-aff0-7269b6e2884a": {
+  "line": "Context: What happens to a Gear card left sitting on the battlefield after its unit is destroyed or removed?",
+  "section": "451. Recalls"
+ },
+ "48a6876e-6c15-52a4-9a11-b34c5b24c0de": {
+  "line": "Context: If I have units fighting at multiple battlefields at the same time, who gets to choose which fight happens first?",
+  "section": "456. Combat"
+ },
+ "4909ec60-42cb-5653-885b-7181183a24f4": {
+  "line": "Context: What happens if a card effect I resolve triggers another ability that needs to be added to the current chain?",
+  "section": "325. Chains and Showdowns"
+ },
+ "496eeef3-46fe-5235-9085-f3e1b179ce2c": {
+  "line": "Context: Can I use the Power produced by a Rune to pay for a card that requires a different Domain, or does it have to match the Rune's Domain?",
+  "section": "162. Runes"
+ },
+ "49b10148-a346-5194-8dba-c4c667e5ed54": {
+  "line": "Context: What happens if a new task triggers while I am already resolving a chain of effects?",
+  "section": "325. Chains and Showdowns"
+ },
+ "49dae055-4191-590f-a00f-66ec538395de": {
+  "line": "Context: What happens if I have to recycle cards but I do not have enough cards in my discard pile to fulfill the full amount?",
+  "section": "416. Recycle"
+ },
+ "4a5b922f-dca4-53b1-8892-598f1dabb367": {
+  "line": "Context: Does my unit trigger an ability or receive bonus damage if the damage it would have taken was completely prevented by a shield or effect?",
+  "section": "417. Deal"
+ },
+ "4a7814b6-5d0a-542b-9e8c-ed1200e2220a": {
+  "line": "Context: Does the text written at the bottom of my card actually do anything while it is just sitting in my hand or on the table?",
+  "section": "136. Effect Text"
+ },
+ "4ac806e7-8926-55fd-b79a-dbed3bd5cbfc": {
+  "line": "Context: How do I know if a card effect is a replacement effect that changes how another action happens?",
+  "section": "369. Replacement Effects"
+ },
+ "4be884ae-11dc-5ea3-b08f-92f5ad0db056": {
+  "line": "Context: Can I choose which of my units with Backline takes damage if my opponent attacks me, and do I have to kill all my other units first before I can hit them?",
+  "section": "826. Backline"
+ },
+ "4c6cab99-b36c-52de-8908-7f9b36a7137c": {
+  "line": "Context: What happens at the end of the turn if I have enough points to win or if combat is still going on?",
+  "section": "318. Cleanups"
+ },
+ "4c9d4750-fc3d-5d11-8334-4a23ee3a2a34": {
+  "line": "Context: Does a unit with Accelerate count as becoming ready when it enters the board, or does it trigger abilities that care about units readying?",
+  "section": "805. Accelerate"
+ },
+ "4ded26b5-bbe0-51b8-9c5c-f712759d3550": {
+  "line": "Context: How do I determine who is the Attacker and who is the Defender once the combat showdown begins?",
+  "section": "459. Step 1: The Combat Showdown Step"
+ },
+ "4ee5afd8-c1b0-57e5-809f-1e88e7207345": {
+  "line": "Context: Do I have to pay a cost when I use an activated ability versus when a triggered ability happens automatically?",
+  "section": "400. Abilities"
+ },
+ "4eec9e5f-5905-58c8-a609-9d1512fb8da0": {
+  "line": "Context: What happens when my opponent and I both have multiple abilities trigger at the same time and we need to figure out who puts theirs on the chain first?",
+  "section": "383. Triggered Abilities"
+ },
+ "4f46a081-dd2f-5b8b-bf0c-f69f81d8d9a1": {
+  "line": "Context: How do I know which triggered abilities activate when I perform a Conquer action?",
+  "section": "383. Triggered Abilities"
+ },
+ "4f6a4a83-fb06-5d87-b9b4-8f3cbe791988": {
+  "line": "Context: What happens if I try to detach a card that is not currently attached to anything?",
+  "section": "435. Detach"
+ },
+ "4f92bdc6-43d0-5b76-b8ee-2585baaa0c0c": {
+  "line": "Context: What do I need to bring and set up before I can start a game of Riftbound?",
+  "section": "101. Deck Construction"
+ },
+ "5018bc12-c89e-50bf-852b-f66caa64e22b": {
+  "line": "Context: Can I target the same unit multiple times with different Weaponmaster triggers, or do I have to pick different targets for each one?",
+  "section": "821. Weaponmaster"
+ },
+ "5042e02e-dcb9-5c4f-9994-5fef2afbd62e": {
+  "line": "Context: If I use a hidden spell or permanent effect to play a unit, do I have to put it into the same battlefield where the effect happened?",
+  "section": "811. Hidden"
+ },
+ "50868da5-bc41-5f40-894d-9460104a09d0": {
+  "line": "Context: Can I play a spell or use an ability during my teammate's turn if they invite me to do so?",
+  "section": "476. Modes of Play"
+ },
+ "5114ab31-abfa-5411-949d-0c08d4743827": {
+  "line": "Context: How do I put a card facedown on my battlefield to use the Hide ability?",
+  "section": "421. Hide"
+ },
+ "513e1560-6eeb-5103-91f6-235e65bf3a24": {
+  "line": "Context: Can I put more than one card into my facedown zone at the same time?",
+  "section": "107. The Board"
+ },
+ "5156552b-6641-593a-92ce-2ed276a889da": {
+  "line": "Context: What happens if I give a creature a keyword ability that it already has, and how long does a keyword last if the card doesn't say when it expires?",
+  "section": "800. Keywords"
+ },
+ "51d1854d-fc28-5a0c-be34-5df2e917e27f": {
+  "line": "Context: What are the specific stats and keywords for the different types of tokens like Sprites, Sand Soldiers, Mechs, or Gold gears?",
+  "section": "177. Tokens"
+ },
+ "51f43726-1937-5677-ba18-33df5be9067d": {
+  "line": "Context: When exactly does the game trigger a cleanup step during my turn?",
+  "section": "318. Cleanups"
+ },
+ "51fff70c-095c-57e4-966d-77f0cb05a8e8": {
+  "line": "Context: Can I attack multiple opponents at the same time or force a combat involving more than two players?",
+  "section": "457. Combat"
+ },
+ "520ccd5b-0c35-5a50-a67c-d9c2b39c5cf6": {
+  "line": "Context: How do I know if I am allowed to pick a specific card as a target for my spell or ability?",
+  "section": "353. The Process of Play"
+ },
+ "52b0fb7a-5820-5739-8493-5518c419b4c2": {
+  "line": "Context: Can I just decide to buff my units whenever I want, or do I need a card effect to tell me I can do it?",
+  "section": "426. Buff"
+ },
+ "52fbafee-dd5d-5ac6-88ef-b775f607b6c6": {
+  "line": "Context: Does my opponent's card that stops moves prevent me from recalling my gear back to my hand?",
+  "section": "451. Recalls"
+ },
+ "536956c4-6eb9-5961-8420-e0b243622445": {
+  "line": "Context: If I use an effect that lets me ignore a card's base cost, do I still have to pay for optional additional costs like Accelerate?",
+  "section": "353. The Process of Play"
+ },
+ "536f3549-cbad-5d30-ba67-3e48332d2712": {
+  "line": "Context: If I have multiple triggered abilities go off at the same time, do I get to choose the order they go on the chain?",
+  "section": "383. Triggered Abilities"
+ },
+ "53c5ca4a-8a44-5218-b9a9-0c2b405cc50d": {
+  "line": "Context: When my opponent targets a card with an ability that says choose, do I put my triggered ability on the chain immediately or wait until after their spell is finalized?",
+  "section": "383. Triggered Abilities"
+ },
+ "54740afb-bbb4-529a-83dd-3cbb622be2f1": {
+  "line": "Context: What happens if I play a card that tells me to discard or sacrifice more cards than I actually have in my hand or on the board?",
+  "section": "353. The Process of Play"
+ },
+ "54a8b797-6fb9-5dc0-82e3-56568d0136ae": {
+  "line": "Context: Can I activate a card with the Reaction keyword during my opponent's turn or outside of a Showdown?",
+  "section": "813. Reaction"
+ },
+ "54cad4fb-fae4-5143-b13f-95be0f7f53a9": {
+  "line": "Context: Can I use a unit's ability to save another unit from dying if they both die at the same time?",
+  "section": "369. Replacement Effects"
+ },
+ "551b9b6d-afdb-5c81-b295-cf4777306e04": {
+  "line": "Context: Can I play a card from somewhere other than my hand or my Chosen Champion zone?",
+  "section": "419. Play"
+ },
+ "56438020-8c2e-5eda-b012-924be8fae7fb": {
+  "line": "Context: Can my opponent attack my weaker units if I have a unit with Tank on the field?",
+  "section": "815. Tank"
+ },
+ "56c0caad-6aac-5e18-a2af-2fe25c20e093": {
+  "line": "Context: What happens if my opponent plays a new unit into the battlefield after combat has already started?",
+  "section": "459. Step 1: The Combat Showdown Step"
+ },
+ "57e283b7-c4ab-5b2a-b06e-9b1ebd08288c": {
+  "line": "Context: What happens if a card effect tells me to ignore or disable a card's text while it is on the field?",
+  "section": "720. Inactive"
+ },
+ "57f7ce5c-325b-575a-994f-facee2c498d5": {
+  "line": "Context: How do I determine which card or effect is responsible for killing my unit or gear?",
+  "section": "428. Kill"
+ },
+ "586b018d-9ce0-5403-a309-6af1edaae2bb": {
+  "line": "Context: How many Signature cards can I put in my deck and do they have to match my Champion Legend?",
+  "section": "101. Deck Construction"
+ },
+ "58d8ddc7-f0bc-5408-9092-3f4387c977fc": {
+  "line": "Context: What happens if I have to discard cards from my deck but I run out of cards before I finish the effect?",
+  "section": "431. Burn Out"
+ },
+ "595598a6-10f8-5499-a7ee-c87d3e1119f8": {
+  "line": "Context: What do the sword and shield symbol or the sideways card symbol mean when I see them in a card's cost?",
+  "section": "135. Rules Text"
+ },
+ "5a5676d5-5105-5f21-b3de-3b7bca98dc41": {
+  "line": "Context: What happens if my units and my opponent's units end up on the same battlefield because of a spell or a move action?",
+  "section": "316. Main Phase"
+ },
+ "5aaf5a2c-ccd0-570a-b74b-0f87883b5471": {
+  "line": "Context: Do I draw a card on my first turn if I go first, and how many battlefields do I need to include in my deck for a four-player free-for-all game?",
+  "section": "476. Modes of Play"
+ },
+ "5ad233e1-a74c-56f9-9803-1f3cdb7e153c": {
+  "line": "Context: How do I use the abilities on my Basic Runes to generate power or resources?",
+  "section": "163. Basic Runes"
+ },
+ "5b224496-9b98-5be7-aa0a-8df6b0c2f976": {
+  "line": "Context: If I have multiple cards that reduce the cost of a spell, can I choose the order I apply them to make the spell cheaper?",
+  "section": "353. The Process of Play"
+ },
+ "5bc877c5-77fd-5180-a818-df5ffee0b8e4": {
+  "line": "Context: If my teammate loses or concedes during a team match, does our whole team lose the game?",
+  "section": "476. Modes of Play"
+ },
+ "5c849ad1-a662-5e99-901f-0ce1e56ebd57": {
+  "line": "Context: Does my card trigger if I move an enemy unit because of an opponent's spell effect?",
+  "section": "411. Responsibility"
+ },
+ "5daa778f-cfe1-54d5-8c92-52f04aebde14": {
+  "line": "Context: What do I do when my unit has two conflicting combat damage priority abilities, like Tank and another effect that forces it to be assigned damage last?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "5e7f78f5-3f77-5bbf-8b05-0cb2b6c61fc1": {
+  "line": "Context: Can I choose to sacrifice my strongest unit to pay for a card effect if that choice makes it impossible to complete the rest of the card's instructions?",
+  "section": "353. The Process of Play"
+ },
+ "5f3c6b0f-d83c-576b-9f43-b3d88789483d": {
+  "line": "Context: Does my card's triggered ability still happen if I stop meeting the level requirement after the trigger condition is met?",
+  "section": "727. Keywords"
+ },
+ "5f5a9f12-22bd-5e36-9933-ed992fe830d0": {
+  "line": "Context: Where do I put my Champion Legend, Chosen Champion, and Battlefields when I am setting up the game?",
+  "section": "108. Non-Board Zones."
+ },
+ "5f6275c9-e707-55b6-8fd4-486dffca2c9f": {
+  "line": "Context: How do I figure out which card effect to apply first when two different cards are trying to change the same stat at the same time?",
+  "section": "468. Layers"
+ },
+ "5fb13097-129d-574d-bc16-74ea8930271f": {
+  "line": "Context: How do I move my Units using a Standard Move?",
+  "section": "442. Moving"
+ },
+ "5fec27d7-b569-5527-9c54-b0c8413ac42b": {
+  "line": "Context: Does my Conquer ability still trigger if my opponent uses a card to cancel or replace the Victory Point I was supposed to gain?",
+  "section": "383. Triggered Abilities"
+ },
+ "6004fb8b-ac0c-5c0f-9e07-81f513f8a750": {
+  "line": "Context: Can I look at my opponent's facedown card to see what it is?",
+  "section": "129. Back Side"
+ },
+ "6045c217-d1ce-5058-97dc-90c7ff4afbee": {
+  "line": "Context: Do I still get the bonus effect if I choose to pay an optional additional cost that was reduced to zero by another card?",
+  "section": "353. The Process of Play"
+ },
+ "60ed7473-8e61-5e16-bce6-8e4f5d73f857": {
+  "line": "Context: What happens if I play a new unit to the battlefield after the combat showdown has already started?",
+  "section": "459. Step 1: The Combat Showdown Step"
+ },
+ "61274ccd-2683-5b8b-9be5-b0002433a362": {
+  "line": "Context: What happens if my opponent and I both have abilities that trigger at the exact same time?",
+  "section": "301. The Turn"
+ },
+ "6291864c-9958-508b-884e-06248a29d586": {
+  "line": "Context: How do I earn a point when I take control of a battlefield that I have not scored yet this turn?",
+  "section": "463. Scoring"
+ },
+ "62c03ec9-14fa-57d1-957d-bcddf4cb7268": {
+  "line": "Context: Who gets priority and focus when a showdown starts or when the chain resolves and play returns to an open state?",
+  "section": "341. Showdowns"
+ },
+ "6368836d-2ea6-5878-9c9d-832947b7e123": {
+  "line": "Context: Does the italicized reminder text on a card actually change how the card works or is it just there to help me understand the rules?",
+  "section": "135. Rules Text"
+ },
+ "6396082c-982f-5b9a-8c66-c9d32f64e81c": {
+  "line": "Context: Do I have to show my card to everyone when I look at it from my deck or hand?",
+  "section": "424. Reveal"
+ },
+ "63981e28-a5b6-5e40-baa1-cfea09ed8abd": {
+  "line": "Context: If my card triggers when it leaves a location, does it still create the token at the original spot even if the card moves somewhere else before the effect resolves?",
+  "section": "damage equal to his current Might of 5."
+ },
+ "63acae7d-8596-5e38-84c2-66c465cdd376": {
+  "line": "Context: If I play a spell that has both a delayed effect and a Legion replacement effect, does the Legion effect override the original instruction entirely?",
+  "section": "152. Spells"
+ },
+ "64775df3-ccf9-5903-8ef7-5455c64b361e": {
+  "line": "Context: What happens to the order of the cards when I recycle multiple cards into my deck at the same time?",
+  "section": "416. Recycle"
+ },
+ "649a7553-7afd-57e0-9fa0-c52e0d4c1031": {
+  "line": "Context: I am going second, so do I get an extra Rune during my first Channel Phase?",
+  "section": "476. Modes of Play"
+ },
+ "64f59cd6-0a5f-5b09-a0f3-1e91f66dec6a": {
+  "line": "Context: Can I play a unit into a battlefield where other players are already in the middle of a combat?",
+  "section": "457. Combat"
+ },
+ "650d15c4-dafd-5b52-9114-66c088f0611c": {
+  "line": "Context: How do I track the remaining amount of damage prevention on my unit after it has already blocked some damage?",
+  "section": "437. Prevent"
+ },
+ "653e8dd7-c8b0-5d19-a95a-f9457f31efc2": {
+  "line": "Context: Can my spell still hit a unit if it left the battlefield and came back before the spell resolved?",
+  "section": "353. The Process of Play"
+ },
+ "660f0511-33b4-523a-8a9e-01fd46a265a6": {
+  "line": "Context: Do I draw a card on my first turn if I go first, and what extra resources does the second player get?",
+  "section": "476. Modes of Play"
+ },
+ "6638f53c-9381-51e9-8f2a-4027f75ab43a": {
+  "line": "Context: How do I set up my battlefields at the start of the game and how do I win the match?",
+  "section": "476. Modes of Play"
+ },
+ "66f7151e-ced2-5527-838f-ea8f177b7676": {
+  "line": "Context: How do I know if my units are considered friendly, enemies, or alone when checking card effects?",
+  "section": "739. Special Terms"
+ },
+ "67214996-0dca-53ae-9e22-cffe67bc7596": {
+  "line": "Context: Can I put more than one copy of the same Battlefield card in my deck?",
+  "section": "101. Deck Construction"
+ },
+ "67e47f8e-399b-583f-af48-5f0349691e1f": {
+  "line": "Context: What happens to the cards and their abilities when I remove an attachment from a card on the field?",
+  "section": "435. Detach"
+ },
+ "67ed0b94-2ddc-5ad2-b5df-e41f5873578d": {
+  "line": "Context: How do I put a buff on my unit and how do I remove one when I need to spend it?",
+  "section": "702. Buffs"
+ },
+ "680fcd8a-9e28-5dd5-b878-bf5c4b3cfb85": {
+  "line": "Context: What happens if my opponent and I both have replacement effects that trigger at the same time?",
+  "section": "369. Replacement Effects"
+ },
+ "686c2946-650f-57cd-927d-021713df3610": {
+  "line": "Context: How do I handle the chain when a card effect creates a reflexive trigger that adds multiple new abilities at once?",
+  "section": "388. Reflexive Triggers"
+ },
+ "69121f6b-af3f-5785-b675-fa29ba07d2ae": {
+  "line": "Context: How do I know if a reflexive trigger automatically goes on the chain or if I have to meet a specific condition first?",
+  "section": "387. Reflexive Triggers"
+ },
+ "69385cc8-bf3a-5c79-a30f-155ca50683e7": {
+  "line": "Context: How do we determine the turn order and handle Battlefields when playing a team game?",
+  "section": "476. Modes of Play"
+ },
+ "694c50df-aff7-55a9-bce9-8f18b3102142": {
+  "line": "Context: Can I play a card from my hand or Champion Zone facedown on a battlefield to use it for free on a later turn?",
+  "section": "811. Hidden"
+ },
+ "6a1d7e0f-5a92-5bc3-8e57-57a37fd410f5": {
+  "line": "Context: What happens to my facedown cards if I lose control of the battlefield they are attached to?",
+  "section": "107. The Board"
+ },
+ "6a392718-fbbb-5cd6-9374-f038360be9c7": {
+  "line": "Context: If I attach a card to another card, does it count as moving that card to a new location?",
+  "section": "434. Attach"
+ },
+ "6a68d68b-09b3-5511-942d-ca90687b2635": {
+  "line": "Context: Does a card's text still work if I haven't specifically activated it?",
+  "section": "723. Rules Text"
+ },
+ "6ad1ed7a-8ae4-5230-8a75-7b4eae348053": {
+  "line": "Context: How do I know what actions I need to perform when I play a spell or activate an ability?",
+  "section": "135. Rules Text"
+ },
+ "6b35cd2e-2b44-5f9b-a7b2-20e2ade6c926": {
+  "line": "Context: How do I handle a card effect that tells me to channel a rune in a specific state like exhausted?",
+  "section": "430. Channel"
+ },
+ "6b5686b3-7a1f-54f9-99e9-81b99c5b0b5d": {
+  "line": "Context: How do I know if a card or game piece counts as a game object that can trigger effects or be used for actions?",
+  "section": "120. Game Objects"
+ },
+ "6c001e84-432d-5e14-91f7-92f568520543": {
+  "line": "Context: What happens if an effect forces me to play a unit into a combat I am not currently participating in?",
+  "section": "457. Combat"
+ },
+ "6c434ab2-db3a-5f0d-8d29-fbd72926e462": {
+  "line": "Context: How many cards do I get to draw at the start of my turn and where do they come from?",
+  "section": "413. Draw"
+ },
+ "6c57399a-8787-5bbe-aba8-7abc2d589cb3": {
+  "line": "Context: How do I know if a card ability is triggered and when it is supposed to happen?",
+  "section": "383. Triggered Abilities"
+ },
+ "6c6d8968-6076-51da-a435-9f86efed1596": {
+  "line": "Context: What happens to the card or token I just replaced, and does it count as being banished?",
+  "section": "438. Replace"
+ },
+ "6c8a96e9-dac3-5b4c-b849-d6670c8f1119": {
+  "line": "Context: Can I target a unit that is already stunned with a stun effect to trigger my card abilities?",
+  "section": "423. Stun"
+ },
+ "6e873779-7577-5a94-aab7-8a9f0f13d1c9": {
+  "line": "Context: How do I determine which zone or area my unit is currently located in?",
+  "section": "146. Units"
+ },
+ "6ea48d13-6cd3-54f8-a5fd-4d25338089cb": {
+  "line": "Context: How do I know which cards I am allowed to put in my deck based on the Legend I chose?",
+  "section": "175. Legends"
+ },
+ "6ea56239-d9bc-5cdc-919a-14e05cd2cf41": {
+  "line": "Context: How do I calculate my creature's total Might when I have multiple effects that both increase and decrease its stats?",
+  "section": "468. Layers"
+ },
+ "6ed6d99a-9f4a-54c1-9d5c-ef8951b2996c": {
+  "line": "Context: Can I skip choosing a target if there is only one valid unit on the battlefield?",
+  "section": "353. The Process of Play"
+ },
+ "6ef0e3ad-5d65-513b-a0b9-451c68ef7aae": {
+  "line": "Context: What happens to the card I played and the resources I spent if my opponent uses an effect to counter my action?",
+  "section": "425. Counter"
+ },
+ "6f040071-cc56-5a42-a5a5-1fd6a8e82c71": {
+  "line": "Context: How do I track a linked ability that was created by another card effect but doesn't have a specific turn limit?",
+  "section": "390. Delayed Abilities"
+ },
+ "6f3234ef-4b86-5df2-ad7d-08876508771a": {
+  "line": "Context: Which triggered abilities still activate if they rely on units that were on the board during the hold action or specifically mention the player who performed the hold?",
+  "section": "383. Triggered Abilities"
+ },
+ "6f4f0e43-cafb-5074-bbeb-de4d4e77f772": {
+  "line": "Context: Can I choose to Double my card whenever I want, or do I need a specific card effect to let me do it?",
+  "section": "432. Double"
+ },
+ "7044a61f-9627-5497-8028-ed768bc36885": {
+  "line": "Context: Can I add another card to the chain after I have already started it?",
+  "section": "338. Step 2: Execute"
+ },
+ "70f4d9f6-040e-5d1b-a7b4-898852aea365": {
+  "line": "Context: What happens to a piece of Gear left sitting at a Battlefield after the turn ends?",
+  "section": "149. Gear"
+ },
+ "717f392f-b75a-5238-9dba-7eeb1ea42c3d": {
+  "line": "Context: Can I ignore a unit that is currently immune to damage when I am assigning lethal combat damage to my opponent's board?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "71e72a0c-bde8-5841-ac9b-c1ebdac4c7e0": {
+  "line": "Context: What happens to my units and attackers after combat ends and the battle is resolved?",
+  "section": "461. Step 3: The Resolution Step"
+ },
+ "72aecbb7-bebb-5130-87c2-1a152465f8a0": {
+  "line": "Context: Can I move my unit into a battlefield where other players are currently fighting if I am not involved in that combat and have no units there already?",
+  "section": "442. Moving"
+ },
+ "72f2445b-8de0-5f39-b15f-85f53c089bdc": {
+  "line": "Context: Can I search for a rune or battlefield when a card effect tells me to search for a card?",
+  "section": "052. Card"
+ },
+ "72ff8d1c-abf0-5dc1-9ef6-dc2ba8cff4ae": {
+  "line": "Context: Can I undo a replacement effect to bring my original card back to the board in place of the token I just created?",
+  "section": "438. Replace"
+ },
+ "73252d5b-2351-550e-bc48-c1799cfc4567": {
+  "line": "Context: Can I use my unit's standard move to switch it from one battlefield to another if it has the Ganking ability?",
+  "section": "144. Units"
+ },
+ "73891ee1-6581-58c0-8c29-a03ff695b5ff": {
+  "line": "Context: Can I target a specific unit with my spell, or can I target my own spell or ability with its own effect?",
+  "section": "353. The Process of Play"
+ },
+ "73be1d9c-bdb4-58b5-a00e-1b8550e2ae62": {
+  "line": "Context: Can I choose not to use a once-per-turn ability when its condition is met so that I can save it for later in the same turn?",
+  "section": "383. Triggered Abilities"
+ },
+ "743c6999-1b93-5b18-8ebf-bf6e81bdbfc4": {
+  "line": "Context: What happens if I have to look at or reveal more cards than I have left in my deck?",
+  "section": "431. Burn Out"
+ },
+ "75799ad2-8588-56c3-95f0-7aaf2d83e455": {
+  "line": "Context: When can I actually use a card effect to remove damage from my units?",
+  "section": "418. Heal"
+ },
+ "75cc8a36-f0c7-5266-98d2-4a5e8cade32a": {
+  "line": "Context: When I play a spell that lets me split damage among multiple units, when do I pick my targets and how many can I choose?",
+  "section": "353. The Process of Play"
+ },
+ "75eda543-0dc5-50d4-b10a-50ad696146dd": {
+  "line": "Context: How do I play a card that is currently face-down on the battlefield, and what happens to it if it leaves the field or the game ends?",
+  "section": "421. Hide"
+ },
+ "76fc1bcb-8684-58dc-8f40-33d42193fe0c": {
+  "line": "Context: Can I perform as many optional actions as I want during my turn as long as I can pay the costs and meet the requirements?",
+  "section": "408. Game Actions"
+ },
+ "77993bf2-b999-51e6-97f2-3c10ccd5e31c": {
+  "line": "Context: How do I resolve an effect that tells me to discard a specific number of cards from my hand?",
+  "section": "422. Discard"
+ },
+ "7803570d-7524-5cc9-bd02-4be0496910fb": {
+  "line": "Context: Where does my attached card go if the card it was attached to leaves the board and moves to a non-board zone?",
+  "section": "435. Detach"
+ },
+ "7895f3a1-b756-5d2c-8418-fa5533c3ba31": {
+  "line": "Context: How do we figure out who goes first and what the turn order is after the game starts?",
+  "section": "108. Non-Board Zones."
+ },
+ "78bcd329-685d-5f40-89a4-85a692898483": {
+  "line": "Context: How do I keep track of damage on my units and when does that damage finally go away?",
+  "section": "143. Units"
+ },
+ "78f110a5-0813-50f4-979c-83a5b341a698": {
+  "line": "Context: How do I perform a mulligan to swap out cards from my starting hand?",
+  "section": "108. Non-Board Zones."
+ },
+ "7952e017-3975-50ad-90d9-a190875c15b6": {
+  "line": "Context: Can I play cards or use abilities while a Showdown is currently happening?",
+  "section": "341. Showdowns"
+ },
+ "798848d5-37d1-5f79-bcbb-c8e238a70967": {
+  "line": "Context: If I play a card with Repeat multiple times, do I have to pay for each instance separately and does the spell count as being played more than once?",
+  "section": "820. Repeat"
+ },
+ "7995e21f-833a-5df0-b8c4-8e6dc421f326": {
+  "line": "Context: If I use a spell to double a unit's might, does it double the base value or the current value including temporary buffs like shields?",
+  "section": "432. Double"
+ },
+ "7b3a48e1-b30f-554b-930b-602005b6d30a": {
+  "line": "Context: Where do my permanents, runes, and attached cards go when I play them, and can my opponent see what is in my play area?",
+  "section": "107. The Board"
+ },
+ "7b63debb-2e7f-5fed-8955-e6a63bb0373f": {
+  "line": "Context: When I play a card for a specific cost instead of its printed mana cost, how do I calculate the final amount I have to pay after applying my other cost reductions?",
+  "section": "353. The Process of Play"
+ },
+ "7c30a1c3-d6f1-5b24-ac36-309e3db1e710": {
+  "line": "Context: Who is considered the owner or controller of a card, spell, or permanent once I play it onto the board?",
+  "section": "188. Everything Else"
+ },
+ "7c4ef2ae-b548-55af-9672-b693b2107fb9": {
+  "line": "Context: How do I know if my card has a Level or what its current Level is when an effect asks me to check it?",
+  "section": "824. Level"
+ },
+ "7cc92b63-73f7-5612-9ddf-f4632a8b29f7": {
+  "line": "Context: Can my attached card still use its abilities or trigger effects at the exact moment it is being detached from another card?",
+  "section": "725. Inactive"
+ },
+ "7d64df62-bdaf-5fb5-9c7e-c5b5ed12240f": {
+  "line": "Context: What happens if I am told to play a card from my deck but there are no valid targets available?",
+  "section": "419. Play"
+ },
+ "7e382d5a-72ec-5709-a108-840717c8e012": {
+  "line": "Context: Can I play a unit with Reaction anywhere on the board, or does it still have to follow the normal rules for where I can deploy units?",
+  "section": "813. Reaction"
+ },
+ "7ea15329-33de-5253-a352-8fa9c7bb0ab0": {
+  "line": "Context: What happens after the most recent card or ability on the chain finishes resolving?",
+  "section": "340. Step 4: Resolve"
+ },
+ "7f2737bc-6c65-5683-be58-ad98b5c946a6": {
+  "line": "Context: How do I know if a spell has the Action keyword and what does that mean for how it behaves on the chain?",
+  "section": "152. Spells"
+ },
+ "7f53890c-d5aa-5413-94b4-c8ffc4210e80": {
+  "line": "Context: How do I figure out which effect happens first when two cards modify the same stat at the same time?",
+  "section": "468. Layers"
+ },
+ "7f6dab73-6a88-5dc6-9745-d5930cb5c3e6": {
+  "line": "Context: If I have to pay multiple mandatory extra costs to play a card, can I choose which one to pay first?",
+  "section": "353. The Process of Play"
+ },
+ "7f9f7810-21c5-5f0a-a575-3231f4accf09": {
+  "line": "Context: How do I link two cards together on the board so their effects work as one?",
+  "section": "434. Attach"
+ },
+ "800f199c-3b57-5079-9d8d-55b0618289a1": {
+  "line": "Context: How do I figure out how much energy or power I need to pay to play a card from my hand?",
+  "section": "131. Cost"
+ },
+ "80838784-57e8-57f2-9388-ccc469b28c8d": {
+  "line": "Context: Can I target a unit at a different location when I play a unit with Hidden, or am I restricted to only choosing targets at my current battlefield?",
+  "section": "811. Hidden"
+ },
+ "80ad1bf9-e122-5109-942a-7d515f07b247": {
+  "line": "Context: How do I organize my cards on the table to distinguish between the board and my hand or deck?",
+  "section": "104. Setup"
+ },
+ "81cb006f-cbee-565a-91a1-b164a18c30bb": {
+  "line": "Context: Can I trigger my Hold abilities multiple times in one turn if I score the same battlefield again?",
+  "section": "463. Scoring"
+ },
+ "82d9fae1-3b3b-5ead-bad8-cdd5daf13b11": {
+  "line": "Context: Can my unit's speed be changed by an Accelerate effect or other game abilities?",
+  "section": "143. Units"
+ },
+ "833f0b47-ffbf-5ba0-82a3-e17169a7a348": {
+  "line": "Context: If I use a spell to copy a unit that is already copying another card, does the new copy look like the original card or the one it is currently mimicking?",
+  "section": "468. Layers"
+ },
+ "837429ce-b920-5b2a-b967-245e4cb0d093": {
+  "line": "Context: If I have multiple cards with Legion abilities on the field, does playing just one card this turn activate all of them at the same time?",
+  "section": "812. Legion"
+ },
+ "83e9ac79-403a-5cae-b331-125b8e1425dd": {
+  "line": "Context: How do I know which card an ability is referring to when it uses words like here, my, or its?",
+  "section": "353. The Process of Play"
+ },
+ "8456d367-9cfd-5c41-9bc9-22d79f5ce660": {
+  "line": "Context: What happens when a card with Deathknell is destroyed or sent to the graveyard?",
+  "section": "808. Deathknell"
+ },
+ "848b9e93-74be-5711-b382-029f2db38894": {
+  "line": "Context: How much damage does my unit take if I use a prevent effect, and does that effect get weaker after it stops some of the damage?",
+  "section": "437. Prevent"
+ },
+ "84ee41b6-c506-5dbb-b547-e612b02d1bd4": {
+  "line": "Context: Can I put a second buff counter on a unit that already has one?",
+  "section": "426. Buff"
+ },
+ "852ca590-5bd7-56aa-88fa-fb61d8081353": {
+  "line": "Context: Can I move my units whenever I want, or do I need a specific card effect or action to move them across the board?",
+  "section": "420. Move"
+ },
+ "85c4c038-9040-5272-a435-b3a27df3a053": {
+  "line": "Context: How do I determine if a card counts as a non-unit or which cards are considered units when a spell refers to specific categories?",
+  "section": "133. Category"
+ },
+ "85c80547-000e-5957-9229-f78f5e4d3528": {
+  "line": "Context: If my opponent has multiple units with Tank or similar priority abilities, in what order do I have to assign my combat damage to them?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "85f8ecfe-51c8-5655-bb6f-55e32fa1b8b4": {
+  "line": "Context: Where does my Rune card go when I use the Recycle ability?",
+  "section": "160. Rune"
+ },
+ "869524d8-39a6-5465-8d39-951ac51c1626": {
+  "line": "Context: How do I handle card effects that say Do this or Do one of the following when they trigger?",
+  "section": "387. Reflexive Triggers"
+ },
+ "86b1057b-a26c-5a56-abef-8d46655b3fa3": {
+  "line": "Context: When do my exhausted cards turn back to their upright position so I can use them again?",
+  "section": "415. Ready"
+ },
+ "877bfbcc-e8b3-58ac-b313-c3155f752c56": {
+  "line": "Context: Do I have to pick a target for my unit's ability the moment I play the card, or do I wait until the effect actually triggers?",
+  "section": "353. The Process of Play"
+ },
+ "87d167a7-c5f9-5d0c-8dc7-c1d2c244bda4": {
+  "line": "Context: How do I know if it is my turn to play a card or activate an ability right now?",
+  "section": "301. The Turn"
+ },
+ "88bf9f01-681a-547c-8af5-4d148b0f8732": {
+  "line": "Context: Can I still use the full effects of a spell if I play it while it is Hidden?",
+  "section": "811. Hidden"
+ },
+ "8912a9f1-7dbe-5532-8943-57355716f4c6": {
+  "line": "Context: How do I know when my turn is officially over and it becomes my opponent's turn?",
+  "section": "301. The Turn"
+ },
+ "892eaf81-2ffd-5a96-a7ae-c8083f327899": {
+  "line": "Context: How do I add Energy or Power to my Rune Pool so I can pay for cards and abilities?",
+  "section": "163. Basic Runes"
+ },
+ "8965b0c1-7ff4-5389-ad06-858e6f7d3720": {
+  "line": "Context: What happens to my spell if the unit I targeted moves to its base before the effect resolves?",
+  "section": "353. The Process of Play"
+ },
+ "8a021fb8-f495-5909-903c-4988afca7e44": {
+  "line": "Context: Can I move a Battlefield card to a different spot on the table or use a spell to target one?",
+  "section": "169. Battlefields"
+ },
+ "8a210da0-7e7d-560f-8fcd-613333848f0e": {
+  "line": "Context: Does having the Unique keyword on my card actually do anything during the game or is it just a label for other cards to check?",
+  "section": "825. Unique"
+ },
+ "8a706601-cf8b-54d5-95a2-b01c1ee110b5": {
+  "line": "Context: Can I target a card in my hand with an ability that says to choose a unit?",
+  "section": "353. The Process of Play"
+ },
+ "8ac7b68d-f998-598a-a413-c6380099e87d": {
+  "line": "Context: If my unit already has Hunt and I give it Hunt again from another card, do the values add together?",
+  "section": "823. Hunt"
+ },
+ "8b703516-e5d7-59ec-a828-7c6e439ca888": {
+  "line": "Context: Does a unit in my discard pile count as Mighty based on its printed stats or the buffs it had while it was on the board?",
+  "section": "707. Mighty"
+ },
+ "8b7e533a-c711-5c3f-9d94-3abca04dd216": {
+  "line": "Context: Can my opponent destroy my gear with a card effect if that gear's abilities are currently inactive?",
+  "section": "722. Inactive"
+ },
+ "8b83d14a-1412-572e-bcd1-ba398473ba11": {
+  "line": "Context: How do I determine which player currently controls a specific card or game object on the board?",
+  "section": "186. Control"
+ },
+ "8bf28613-83c0-5e35-a29f-e103a2f13014": {
+  "line": "Context: Can I choose to banish a card from my hand or the field whenever I want, or do I need a specific card effect to tell me to do it?",
+  "section": "427. Banish"
+ },
+ "8c49e399-c11e-5886-822a-53ab29f6ab5a": {
+  "line": "Context: How do I determine the order of effects when multiple cards are changing a unit's keywords or abilities at the same time?",
+  "section": "468. Layers"
+ },
+ "8c94d005-2e48-5ed3-8f01-f4224c9125ba": {
+  "line": "Context: What happens if I play a card that says I can do something, but my opponent has a card out that says I cannot do that action?",
+  "section": "052. Card"
+ },
+ "8c9d8ff0-69da-5e87-a9ff-baf6e0d8f407": {
+  "line": "Context: How do I calculate the total damage when my card has a bonus damage effect?",
+  "section": "417. Deal"
+ },
+ "8ca6a225-ca11-5117-9bdc-b9b60a23712b": {
+  "line": "Context: Can I include both the English and foreign language versions of the same card in my deck or play them as the same card during a game?",
+  "section": "132. Name"
+ },
+ "8cd2752b-beca-5d89-884e-683d91ebfe1b": {
+  "line": "Context: How do I know if my card is currently considered equipped by my opponent?",
+  "section": "into account when determining a card’s Equip cost for any reason."
+ },
+ "8d4d3b5b-cfe0-5332-a383-ca2c43de9b8a": {
+  "line": "Context: What happens to the buffs my units were getting from a battlefield card if my opponent concedes and their cards are removed from the game?",
+  "section": "649. Conceding"
+ },
+ "8d8408ab-f22f-54c2-9c62-f1a57b96cd3c": {
+  "line": "Context: In what order do I carry out the instructions written on a card when I play it?",
+  "section": "152. Spells"
+ },
+ "8de0fcf7-c269-53eb-96e1-5a746b3aaa4d": {
+  "line": "Context: If my opponent uses an ability that stops my card from working after I have already added it to the chain, does my ability still go off?",
+  "section": "727. Keywords"
+ },
+ "8e450ca2-29e6-5fcb-98b4-4a2dcf5934a1": {
+  "line": "Context: Can I play a Gear card directly onto the Battlefield instead of my Base?",
+  "section": "151. Gear"
+ },
+ "8f1a5052-3803-5177-b9fa-0b13ab2ba824": {
+  "line": "Context: What happens if I have a card that says a unit would die but it does something else instead?",
+  "section": "369. Replacement Effects"
+ },
+ "8f54d51b-0de7-5b04-a0d2-257dfbe8aec4": {
+  "line": "Context: Can I activate an ability that adds resources while I am in the middle of paying the costs for a spell or another ability?",
+  "section": "429. Add"
+ },
+ "8fba45f9-4e23-52b0-a179-dc4eb7f35bc6": {
+  "line": "Context: How do I know if a card is currently considered temporary when an effect asks about its status?",
+  "section": "816. Temporary"
+ },
+ "8fdfaed0-5f93-5597-b7e7-1e47cec491f8": {
+  "line": "Context: Do my on-play abilities still trigger if my opponent counters the card I just played?",
+  "section": "419. Play"
+ },
+ "9034ba97-fb7f-57c4-bde9-6b0cafe91879": {
+  "line": "Context: Does the damage count as coming from the spell itself or from a different card if the effect specifies a source?",
+  "section": "417. Deal"
+ },
+ "9047ef7b-ec48-5831-ad87-7db33d3cb709": {
+  "line": "Context: If I play a spell that hits multiple targets while I have a card that gives bonus damage, does the bonus apply to every target or just one?",
+  "section": "713. Bonus Damage"
+ },
+ "90497609-227b-5d42-95db-470f36206be4": {
+  "line": "Context: What happens if I try to draw a card when my deck is empty?",
+  "section": "431. Burn Out"
+ },
+ "90d39a8d-7764-5fae-a733-2082cbe972b1": {
+  "line": "Context: What happens if I try to move my unit into a battlefield that is currently locked in combat between two other players?",
+  "section": "442. Moving"
+ },
+ "9105253f-3525-5c63-aa98-4d04769b9d6b": {
+  "line": "Context: Can I move my unit into a battlefield that already has units from two other players?",
+  "section": "408. Game Actions"
+ },
+ "91197ce1-ff5f-5f66-a08d-0510cc7ee241": {
+  "line": "Context: How do I know what the tags on my unit actually do during the game?",
+  "section": "143. Units"
+ },
+ "912b5385-0014-5612-8b26-4df289606b54": {
+  "line": "Context: How do I figure out the final stats of my creature when multiple different cards are changing its power and toughness at the same time?",
+  "section": "468. Layers"
+ },
+ "913fc382-b410-53ad-87fb-fea4bcc06e50": {
+  "line": "Context: Can I kill or move my opponent's Legend during the game, or do I have to shuffle them into my deck?",
+  "section": "173. Legends"
+ },
+ "9155f387-adc3-5623-88f6-293688236e0c": {
+  "line": "Context: How do I physically stack my cards when I attach one to another so that all the necessary text and bonuses remain visible?",
+  "section": "434. Attach"
+ },
+ "91ce9df6-c606-5f11-8663-2316e18a2f1f": {
+  "line": "Context: Do I have to make new decisions when I use the Repeat keyword to trigger a spell effect a second time?",
+  "section": "820. Repeat"
+ },
+ "91d1b6d0-0898-5eb6-aa3b-dfc4a33fd411": {
+  "line": "Context: Can I play a card or use an ability when there is no chain currently on the stack?",
+  "section": "301. The Turn"
+ },
+ "9253c562-f479-50ff-8b26-d33a43fee7fe": {
+  "line": "Context: Can a single card have multiple different types of abilities active at the same time?",
+  "section": "360. Abilities"
+ },
+ "92880882-338e-505a-87ee-98b8836b154c": {
+  "line": "Context: Can I choose to channel runes whenever I want, or do I need a card effect to tell me to do it?",
+  "section": "430. Channel"
+ },
+ "92a6bb45-8bdc-5c92-91f1-de63ce2ab33e": {
+  "line": "Context: How do I know if my unit is considered one on one, when is a unit in combat, and how do I tell the difference between a cost and an effect in a card's text?",
+  "section": "739. Special Terms"
+ },
+ "92ba4a29-043d-5c1f-b70b-f54be0c8e347": {
+  "line": "Context: What happens if a card's text tells me to do something that goes against the standard rulebook?",
+  "section": "001. Golden Rule"
+ },
+ "92e50c3b-91f0-5eb9-b96f-f62c8fe4593e": {
+  "line": "Context: Can I use my Weaponmaster to equip a card that doesn't have an Equip ability, and how do I calculate the cost if it does?",
+  "section": "821. Weaponmaster"
+ },
+ "9319be80-9839-50a6-86c0-274ea19a6702": {
+  "line": "Context: Can I start a Showdown just by moving my unit into an empty battlefield without having to declare a formal combat?",
+  "section": "446. Units"
+ },
+ "934ba92f-9d2a-500a-b315-d430e386b007": {
+  "line": "Context: How do I handle an ability that is supposed to trigger later during the turn or after a specific event happens?",
+  "section": "390. Delayed Abilities"
+ },
+ "935fcd25-ba47-5be4-bf17-194fbc314239": {
+  "line": "Context: Can I play a card or use an ability whenever I want, or are there specific times during my turn when I am allowed to do so?",
+  "section": "301. The Turn"
+ },
+ "939923b0-f97c-5551-a510-f58b7a80341e": {
+  "line": "Context: How do I know if two different abilities on the same card are connected to each other for a specific effect?",
+  "section": "394. Linked Abilities"
+ },
+ "93ef0b56-7bdb-54d0-a7ad-79badcd982b8": {
+  "line": "Context: How do I figure out which categories or sub-categories a card has based on its front and back sides?",
+  "section": "133. Category"
+ },
+ "94260f42-3f72-520e-82ac-b01029b343a1": {
+  "line": "Context: Can I play a card that requires me to exhaust a unit if all my units are already exhausted?",
+  "section": "414. Exhaust"
+ },
+ "9451614a-156f-5863-9366-539cd872d703": {
+  "line": "Context: How do I determine which zone a new card or token goes to when an effect tells me to create it?",
+  "section": "439. Create"
+ },
+ "94c72bd1-77e4-5996-a284-d0b53bf5903d": {
+  "line": "Context: What happens to my spell if my opponent moves their unit to a different zone after I target it but before the spell resolves?",
+  "section": "353. The Process of Play"
+ },
+ "9500326c-86ff-51a8-baa6-769aeec2fd26": {
+  "line": "Context: What happens to my opponent's spells and the current turn if they decide to concede in the middle of the game?",
+  "section": "649. Conceding"
+ },
+ "951bf0ff-b9fb-58c6-8985-b59fc13bcd4b": {
+  "line": "Context: How do I know if a keyword ability is actually just a condition that depends on something else happening first?",
+  "section": "727. Keywords"
+ },
+ "951f4a66-8f5a-5298-96bb-767950c71b67": {
+  "line": "Context: Can I play a unit with Ambush onto a battlefield where I already have other units, and does it trigger a reaction ability when I do?",
+  "section": "822. Ambush"
+ },
+ "9603bbf3-34b2-5905-89f1-df22df97ecdf": {
+  "line": "Context: I want to use the Weaponmaster ability to attach an equipment to my unit, but can I do it even if it is not my turn or the equipment is not normally ready to be equipped?",
+  "section": "821. Weaponmaster"
+ },
+ "96671789-da96-5a88-a4b1-2621e8c00ec6": {
+  "line": "Context: Can I play a card or activate an ability while a chain is currently resolving or waiting to resolve?",
+  "section": "325. Chains and Showdowns"
+ },
+ "9698d1e1-d237-5ad2-b828-a2292c300716": {
+  "line": "Context: Who does the word you refer to when a battlefield card has an ability that tells me to draw a card or perform an action?",
+  "section": "187. Battlefields"
+ },
+ "96c08e41-0f69-5b71-bb64-d7fbfb0d2564": {
+  "line": "Context: Can my opponent look at the units I have on my battlefield, and can they target them with spells or kill them?",
+  "section": "141. Unit is"
+ },
+ "96d81122-a4e1-5ff5-920a-075ac7e4ac03": {
+  "line": "Context: What happens if a card effect tells me to attach a card to the same card it is already attached to?",
+  "section": "434. Attach"
+ },
+ "96f9fffc-97b0-595c-a58f-1591c7418263": {
+  "line": "Context: Can I put a card with a specific domain symbol into my deck if my Champion Legend has that same domain?",
+  "section": "101. Deck Construction"
+ },
+ "970a07e5-355e-5111-85ee-c01e9046d760": {
+  "line": "Context: Where can I find the part of the card that explains what it actually does during the game?",
+  "section": "135. Rules Text"
+ },
+ "97c790e1-fb64-5b6c-8edf-5d624deb6275": {
+  "line": "Context: Can I use a rainbow power symbol to pay for a card that requires a specific domain power?",
+  "section": "135. Rules Text"
+ },
+ "97e0157e-d867-585e-aa2f-f08d6e39b621": {
+  "line": "Context: How do I calculate the final value when an effect says to double my creature's power or health?",
+  "section": "432. Double"
+ },
+ "983160df-aafd-5e12-bc0f-344fe04dbd05": {
+  "line": "Context: Can I play a card from my facedown pile if it doesn't have any valid targets on the battlefield?",
+  "section": "811. Hidden"
+ },
+ "986850fd-df20-55c0-bf56-caf71b4d2d36": {
+  "line": "Context: What do I do when I need to resolve multiple game actions or tasks in the correct order?",
+  "section": "325. Chains and Showdowns"
+ },
+ "986de93c-29b0-5a5d-b7de-fa6bbd488a38": {
+  "line": "Context: What happens to my leftover energy and power when my turn begins and I have no cards left in my deck to draw?",
+  "section": "315. Start of Turn"
+ },
+ "98f2d895-b258-500b-8f3f-dc07bb0bed24": {
+  "line": "Context: If I concede a team game, do my teammates lose too and what happens to the cards I control?",
+  "section": "649. Conceding"
+ },
+ "993293b4-cf44-5afd-b1ce-522f5533bd00": {
+  "line": "Context: How do I decide the order of replacement effects when multiple units and attachments trigger at the exact same time?",
+  "section": "369. Replacement Effects"
+ },
+ "99524571-402e-5548-9e69-b4aa99d599df": {
+  "line": "Context: If I reveal a card from the top of my deck, does it stay on top or do I have to move it somewhere else?",
+  "section": "424. Reveal"
+ },
+ "99790558-a92b-582d-ab41-55014da07c28": {
+  "line": "Context: Can I use an ability that changes how much it costs to attach an Equipment card to my creature?",
+  "section": "818. Equip"
+ },
+ "9983505e-95e5-5078-9cee-3bd5eeb1586b": {
+  "line": "Context: What happens if both my opponent and I still have units at the battlefield after the resolution step?",
+  "section": "461. Step 3: The Resolution Step"
+ },
+ "99884cd8-ea19-520b-817d-654cbe8b86bb": {
+  "line": "Context: Can I quit the game right now, and what happens to the other players if I do?",
+  "section": "649. Conceding"
+ },
+ "99e65a80-116b-5232-bef2-cf34e677be1a": {
+  "line": "Context: Do I have to pay the cost when I cast a spell or when it actually resolves, and does it work the same way for triggered abilities?",
+  "section": "739. Special Terms"
+ },
+ "9a076c3b-3436-5079-9780-7687ee033a27": {
+  "line": "Context: What happens if I play a spell that targets multiple creatures but one of them leaves the field or becomes untargetable before the effect resolves?",
+  "section": "353. The Process of Play"
+ },
+ "9a5bb48a-2cc3-57ba-b309-db77ed9cbf0d": {
+  "line": "Context: Can I look at a card that is currently in a public zone?",
+  "section": "128. Privacy"
+ },
+ "9ab95835-eedf-5254-8c22-622a093ee78e": {
+  "line": "Context: Can I lose control of a battlefield if I have no units there while a combat or showdown is still happening?",
+  "section": "187. Battlefields"
+ },
+ "9b4375d7-7b31-53a4-a881-240c76ed59c4": {
+  "line": "Context: Can I play a unit on a location that isn't my base or battlefield if a card effect says I can, and how do I choose modes for spells with bulleted lists?",
+  "section": "353. The Process of Play"
+ },
+ "9bd727e7-facd-5c52-b2db-12ceb6f3dd6b": {
+  "line": "Context: What happens if my opponent tries to put one of my cards into their own hand, deck, or trash?",
+  "section": "052. Card"
+ },
+ "9c00704c-ef44-5f33-87f9-cb77daf5e00b": {
+  "line": "Context: Does having multiple Ganking effects on the same unit let me move more than once or gain extra movement abilities?",
+  "section": "810. Ganking"
+ },
+ "9d0956c1-1d4f-524e-954c-8e803c56a224": {
+  "line": "Context: Can I deal zero damage to an opponent or their creature, or does it have to be at least one?",
+  "section": "417. Deal"
+ },
+ "9d13ab7e-662c-5179-87d8-c360edd0e45b": {
+  "line": "Context: Can I pay the equip cost multiple times to attach several cards to the same unit?",
+  "section": "into account when determining a card’s Equip cost for any reason."
+ },
+ "9e365634-54af-5fb1-bc11-4aaabe60b8b9": {
+  "line": "Context: When does the game stop considering my units to be attacking or defending and when do combat-specific buffs wear off?",
+  "section": "461. Step 3: The Resolution Step"
+ },
+ "9ea17ef9-a010-5683-90fe-3a7e41b1f696": {
+  "line": "Context: What happens when I use a Burn Out ability and how do I resolve the recycling and point-gaining steps?",
+  "section": "431. Burn Out"
+ },
+ "a03176e3-d597-5cd6-8b9a-cf42db525a54": {
+  "line": "Context: How do I attach a piece of Gear to one of my Units using its Equip ability?",
+  "section": "818. Equip"
+ },
+ "a0e9b093-30a6-57f0-a435-621e0ea2e87f": {
+  "line": "Context: Does my card count as my Chosen Champion if it has the same name as the one I picked during deck building, even if it is a different copy from my hand or deck?",
+  "section": "101. Deck Construction"
+ },
+ "a1565617-a881-5c41-972e-9334bd634363": {
+  "line": "Context: How do I tell which domain a card belongs to or what its color and symbol represent?",
+  "section": "134. Domain"
+ },
+ "a1f0124e-44bd-5b07-b402-7d0557441e3c": {
+  "line": "Context: How do I know if my card gets the bonus effect from Legion after I have already played another card this turn?",
+  "section": "812. Legion"
+ },
+ "a271b01b-c930-56f4-8c60-de3d8a3c5838": {
+  "line": "Context: Can I use the abilities on a card that is sitting in my hand or discard pile instead of being attached to something?",
+  "section": "724. Effect Text"
+ },
+ "a294c0b6-d5f0-5a0b-bb10-ebfc4860b55c": {
+  "line": "Context: Can I play hidden gear directly onto the battlefield instead of attaching it to a base?",
+  "section": "811. Hidden"
+ },
+ "a33c920e-21dd-5fa0-9fac-93a7befd87b5": {
+  "line": "Context: When can I play a spell card from my hand during my turn?",
+  "section": "152. Spells"
+ },
+ "a3592ed4-fb6d-5fc3-94e1-21d79d661f22": {
+  "line": "Context: How do I know if a card with a keyword like Legion actually gets its bonus effect?",
+  "section": "727. Keywords"
+ },
+ "a385662b-2393-539d-8190-2169d690f949": {
+  "line": "Context: Can I play cards that are not Actions or Reactions while a Showdown or Combat is currently happening?",
+  "section": "301. The Turn"
+ },
+ "a3ac6dda-b61b-53bc-b6bb-4848362109d4": {
+  "line": "Context: When does a Showdown start if both my opponent and I are trying to take control of the same Battlefield?",
+  "section": "341. Showdowns"
+ },
+ "a3b859ac-5f65-5f30-9bd6-4e09adafb5d6": {
+  "line": "Context: How do I know if a card effect refers to a unit on the board or a card in my trash?",
+  "section": "353. The Process of Play"
+ },
+ "a3b92bd1-42b4-5e16-85d6-e6684a345d99": {
+  "line": "Context: What happens when I play a card while another ability is still resolving?",
+  "section": "353. The Process of Play"
+ },
+ "a3c364f3-b609-5131-9f42-f36560c36def": {
+  "line": "Context: If I play a spell that deals damage to multiple targets but I don't have enough damage to hit them all, how do I decide which ones actually take damage?",
+  "section": "353. The Process of Play"
+ },
+ "a3ff799f-b5ee-5a52-adc9-b4e28d2226f7": {
+  "line": "Context: How do I track and update my current XP total when I gain or spend it during a game?",
+  "section": "730. XP"
+ },
+ "a473a7d5-f6b4-59ef-8ffa-fd51811f5080": {
+  "line": "Context: What happens to my token if it gets sent to my hand or discard pile?",
+  "section": "177. Tokens"
+ },
+ "a4c77dd1-bdde-591c-8a72-81e0d1a4f946": {
+  "line": "Context: How do I calculate the cost of a card when an ability lets me play it while ignoring its energy or power requirements?",
+  "section": "353. The Process of Play"
+ },
+ "a4cb4d89-cbd4-529f-bdf8-ef4b591b8847": {
+  "line": "Context: Where do I put my main and rune decks at the start of the game and how do we decide who goes first?",
+  "section": "108. Non-Board Zones."
+ },
+ "a52647d0-e24f-5d2f-ad63-4326f4a24d46": {
+  "line": "Context: How do I know if a battlefield is still contested and when exactly does the combat or control change happen?",
+  "section": "187. Battlefields"
+ },
+ "a537614c-abef-51e3-a85f-867e4f683078": {
+  "line": "Context: Can my opponent use a card effect to move or remove my Champion Legend from its designated spot on the board?",
+  "section": "107. The Board"
+ },
+ "a5ce42b4-68af-54bc-a0b7-4cc4aa414ba4": {
+  "line": "Context: What happens to my unattached gear, stolen permanents, and hidden cards when the cleanup step begins?",
+  "section": "318. Cleanups"
+ },
+ "a6385279-95c5-5690-bdf8-451237dbec1e": {
+  "line": "Context: Can I choose not to pay the cost for a triggered ability after it has already been put on the chain?",
+  "section": "400. Abilities"
+ },
+ "a66b0bf6-7e32-5ae2-9225-174d67871798": {
+  "line": "Context: My unit just gained Defender during combat, but does its ability trigger if the other requirements for the effect aren't met yet?",
+  "section": "383. Triggered Abilities"
+ },
+ "a70e5fcd-11ab-54ae-a362-7094e3f04d8c": {
+  "line": "Context: What do the leaf, sun and moon, and diamond symbols on my cards actually mean?",
+  "section": "134. Domain"
+ },
+ "a72c4051-ca56-5806-a0cb-09b607d12eaf": {
+  "line": "Context: Where do I keep my Runes and do they count as permanents while they are on the board?",
+  "section": "160. Rune"
+ },
+ "a7917ae8-8a94-5fa8-8ff5-ec89bac2b262": {
+  "line": "Context: If my opponent and I both play cards that change the same stat at different times, which one actually takes effect first?",
+  "section": "468. Layers"
+ },
+ "a84055f4-f86c-5455-a160-1bd32293bb61": {
+  "line": "Context: Can I use my unit's standard move to switch from one battlefield to another if it has the Ganking ability?",
+  "section": "810. Ganking"
+ },
+ "a95c425a-e22e-5c05-b057-7cfe93faa69d": {
+  "line": "Context: How do I know if a card currently has the Deathknell ability for other card effects to check?",
+  "section": "808. Deathknell"
+ },
+ "aa0cb8e1-cfb9-5006-981c-36eeeb387427": {
+  "line": "Context: What does the [C] symbol on my card mean and how do I handle it if my card has multiple domains or no domain at all?",
+  "section": "135. Rules Text"
+ },
+ "aaba4d94-6ba9-5c44-b574-a7528d77b840": {
+  "line": "Context: How do I handle a card that makes every player sacrifice a unit if it doesn't use the word target?",
+  "section": "353. The Process of Play"
+ },
+ "ab544466-693b-5433-9525-9bf0187ba13a": {
+  "line": "Context: Can I rearrange the cards in my banishment pile or do I have to keep them in the order they were removed from play?",
+  "section": "108. Non-Board Zones."
+ },
+ "ab68bf83-ef12-57c8-b6a6-1d89d9a84659": {
+  "line": "Context: If I move a card that has other cards attached to it, do the attached cards move with it and stay in the same location?",
+  "section": "718. Attached"
+ },
+ "abae0e65-4610-51bc-948c-5abc06bcf08a": {
+  "line": "Context: How do I tell if a card ability counts as targeting a unit or if it just affects them generally?",
+  "section": "353. The Process of Play"
+ },
+ "ac5c887d-a109-5efd-a7c8-76cd14a45439": {
+  "line": "Context: What happens if I try to activate an ability while another card effect is still currently resolving?",
+  "section": "400. Abilities"
+ },
+ "acb56c55-d116-5fa3-9107-310cc51adce8": {
+  "line": "Context: How do I assign damage to my opponent's units during the combat damage step and does assigning damage happen at the same time as dealing it?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "acce9b06-f42e-5914-9f9d-17652bacdbbc": {
+  "line": "Context: Can I perform multiple game actions at the same time or do I have to do them one by one?",
+  "section": "301. The Turn"
+ },
+ "ad228f58-508a-51bd-a668-c1e0c5643875": {
+  "line": "Context: Does my unit's ability trigger if I assign it to defend for the first time during a combat?",
+  "section": "383. Triggered Abilities"
+ },
+ "ad729894-d589-5875-9d1b-97807b89ae4b": {
+  "line": "Context: When does a unit's ability that says when I attack actually go on the chain during combat?",
+  "section": "383. Triggered Abilities"
+ },
+ "add6528d-d451-5f9a-84a4-56694c41ab9c": {
+  "line": "Context: How do I figure out the final stats or abilities of a card when multiple different effects are changing it at the same time?",
+  "section": "468. Layers"
+ },
+ "adebd58c-d282-5bc1-bca1-7072139df603": {
+  "line": "Context: When does an instruction on a card actually happen if it doesn't specify a timing like as you play or during resolution?",
+  "section": "135. Rules Text"
+ },
+ "adff9fee-0ca9-516a-9588-1d4f7ecbf557": {
+  "line": "Context: Can I use a coin or a piece of paper to represent a token, and who officially controls the token if I create it with an ability?",
+  "section": "177. Tokens"
+ },
+ "aee5595f-2c4d-5fc4-b407-e61bcdbd94cc": {
+  "line": "Context: If I buff a card that gains keywords based on its Might stat, what happens to those keywords and its stats if that buff is removed while the card is in combat?",
+  "section": "468. Layers"
+ },
+ "af137627-5f1e-5b89-af35-83a8e301e408": {
+  "line": "Context: If my unit triggers an ability that targets an enemy, what happens if I lose control of that unit or the target changes while the ability is waiting on the chain?",
+  "section": "damage equal to his current Might of 5."
+ },
+ "af1ab99a-bebb-581f-915c-66b4a2762340": {
+  "line": "Context: What happens if a card effect triggers a cleanup while I am already resolving another effect or in the middle of a cleanup process?",
+  "section": "318. Cleanups"
+ },
+ "af50a3ad-eb61-56d5-8cb1-95d8b5aec01d": {
+  "line": "Context: What happens if I play a card but realize I cannot fulfill its requirements by the time it is supposed to resolve?",
+  "section": "806. Action"
+ },
+ "b061fbe9-5533-57c7-b041-2938faf0ef50": {
+  "line": "Context: What happens if I am one point away from winning and I score using a Hold ability?",
+  "section": "463. Scoring"
+ },
+ "b0a50fc0-4779-5823-9d4e-ff19da8cb698": {
+  "line": "Context: What happens to the cards I set aside after I finish my turn?",
+  "section": "108. Non-Board Zones."
+ },
+ "b1742f50-d52e-5466-bb32-e5a9d929c710": {
+  "line": "Context: Can I still activate an ability that requires me to discard cards if I do not have enough cards in my hand to pay the cost?",
+  "section": "422. Discard"
+ },
+ "b17e86eb-4e93-5162-8110-0a6ac846ea96": {
+  "line": "Context: How do I pass my turn or give priority to the next player so we can move to the next step?",
+  "section": "338. Step 2: Execute"
+ },
+ "b1d56b02-2155-5c27-8dca-3e7e0edd1c7a": {
+  "line": "Context: Can I play a card from my trash if the unit I just killed with a spell was that same card?",
+  "section": "383. Triggered Abilities"
+ },
+ "b1df77ec-bdda-5ba4-829a-28d143dc8174": {
+  "line": "Context: If multiple replacement effects try to change the same event at the same time, how do I determine the order in which they apply?",
+  "section": "369. Replacement Effects"
+ },
+ "b1f9dfcb-8949-54f8-9793-838b0a1899b1": {
+  "line": "Context: If I recycle multiple cards at the same time, can I choose the order they go to the bottom of my deck?",
+  "section": "416. Recycle"
+ },
+ "b2088857-a42a-58dd-92f8-1a527814f531": {
+  "line": "Context: What happens to a unit or gear card immediately after I play it onto the board?",
+  "section": "353. The Process of Play"
+ },
+ "b20899ca-b4db-5a7c-9798-c2c2c05346d1": {
+  "line": "Context: Can my opponent look through my trash pile to see what cards I have in there?",
+  "section": "130. Front Side"
+ },
+ "b217ee31-5069-52e1-97bc-ef1e09fd9077": {
+  "line": "Context: Can I use the Legion ability if I already finalized a different card earlier this turn?",
+  "section": "812. Legion"
+ },
+ "b2987890-5dd1-50bf-8d7d-e8238f405696": {
+  "line": "Context: How do I calculate the final cost of a card when I have multiple effects that increase and decrease its price?",
+  "section": "353. The Process of Play"
+ },
+ "b2d96ee7-c4e2-5660-98b4-12b8d3615769": {
+  "line": "Context: What happens to the turn order if I play a card that lets me take an extra turn right after my current one?",
+  "section": "735. Certain^ Game^ Effects^ will^ instruct^ a^ player^ to^ “take^ a^ turn^ after^ this.”^ These^ effects^ create^ a^ temporary^"
+ },
+ "b33cd6e4-b457-53ab-b4ab-18ebb87ed664": {
+  "line": "Context: What happens if my opponent's ability targets become illegal or the effect would create an illegal game state while the ability is resolving?",
+  "section": "400. Abilities"
+ },
+ "b3a23134-894c-5f0c-92ac-d7ca5489c69c": {
+  "line": "Context: What happens if my facedown zone's capacity shrinks and I have more cards there than the new limit allows?",
+  "section": "107. The Board"
+ },
+ "b3a3386a-e5f3-590e-9e6e-fec351ae31cf": {
+  "line": "Context: Can I choose which cards to discard from my hand, and do abilities that trigger when a card is discarded happen after the card hits the trash?",
+  "section": "422. Discard"
+ },
+ "b3b21bab-dd16-5ca3-91fe-6e431effba80": {
+  "line": "Context: Can I choose to attack my opponent's units with Backline before I have finished dealing lethal damage to their other units?",
+  "section": "826. Backline"
+ },
+ "b4544f19-eba5-55b5-a344-464fb90775cf": {
+  "line": "Context: What happens to the game flow and priority if my opponent concedes while we are in the middle of a chain?",
+  "section": "649. Conceding"
+ },
+ "b4600651-28c5-5c3e-9ea9-590d71f8a407": {
+  "line": "Context: Can I put a card with multiple domains in my deck if my chosen champion does not match all of those domains?",
+  "section": "101. Deck Construction"
+ },
+ "b46cf952-e5ed-5285-96dc-afaeb612c71c": {
+  "line": "Context: Can I choose to prevent damage whenever I want, or do I need a card effect to tell me I am allowed to do it?",
+  "section": "437. Prevent"
+ },
+ "b64e2035-8633-55fc-af55-aad1ce4b7513": {
+  "line": "Context: Can I swap my card back from Banishment if the card I replaced was a token that disappeared?",
+  "section": "438. Replace"
+ },
+ "b6fb97fa-5b93-58fb-95bc-6daff6c2f5e6": {
+  "line": "Context: Can I ready a unit that is already standing upright, or does that do nothing?",
+  "section": "415. Ready"
+ },
+ "b7111f99-d636-5e09-ae5f-6272a7334298": {
+  "line": "Context: How do I calculate the final might of my unit when I attach a card that gives a bonus while another effect is already limiting its stats?",
+  "section": "468. Layers"
+ },
+ "b73880b2-7e25-59d3-a8c5-3395ee729146": {
+  "line": "Context: Do I have to decide how much damage each target takes when I cast the spell, or can I wait until it resolves?",
+  "section": "353. The Process of Play"
+ },
+ "b74f679d-5afc-5403-bbbe-7e89a0837376": {
+  "line": "Context: Does the artwork on my card have any effect on the game or my abilities?",
+  "section": "139. Illustration"
+ },
+ "b87b86a2-bd7c-56e1-b95b-15da925e6330": {
+  "line": "Context: Does my unit keep its Shield if it is no longer considered a defender during combat?",
+  "section": "814. Shield"
+ },
+ "b8a2babc-3f60-5204-afd3-720b8d59e147": {
+  "line": "Context: Does my unit's ability trigger if I play a card that normally costs five or more, even if I paid less for it due to a cost reduction effect?",
+  "section": "131. Cost"
+ },
+ "b8e4ceca-4536-5d2c-9c3d-f9105a9f0e0f": {
+  "line": "Context: Does a card still have its special abilities if I attach it to another card?",
+  "section": "135. Rules Text"
+ },
+ "b91c36cc-70f0-5dfc-9814-5f6125bea504": {
+  "line": "Context: Where do my tokens go when they are destroyed or recycled, and do they have a cost or domain like normal cards?",
+  "section": "177. Tokens"
+ },
+ "bad60213-8f22-5a04-b37a-db7e3ed103f4": {
+  "line": "Context: Does my Hold ability still trigger if my opponent uses a card to negate or replace the victory point I was supposed to gain?",
+  "section": "383. Triggered Abilities"
+ },
+ "bb204c00-55b9-573e-9b3d-3a9069a80a4a": {
+  "line": "Context: How do I generate the resources I need to pay for my cards?",
+  "section": "161. Runes"
+ },
+ "bb240a10-b68c-5d5b-81ce-469c87b8ef00": {
+  "line": "Context: Can I use a card ability that says it works during showdowns at other times during the game?",
+  "section": "806. Action"
+ },
+ "bbd89505-dcea-524a-8fbc-edff923f85aa": {
+  "line": "Context: What happens if I skip the FEPR process during the combat damage step and move straight to the resolution step?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "bbf978af-04b3-5cb2-bf37-4ed07216b923": {
+  "line": "Context: Can my teammate play spells or activate abilities during my turn if I give them permission?",
+  "section": "316. Main Phase"
+ },
+ "bbfc6ab3-17cc-574b-b423-ecea3d8ede49": {
+  "line": "Context: How do I stop my creature from taking damage when an effect says to prevent it?",
+  "section": "437. Prevent"
+ },
+ "bd8e0b5f-5e1e-5f46-97dc-a152154e92fb": {
+  "line": "Context: Does a card stay on the board after I play it or does it go to the discard pile?",
+  "section": "133. Category"
+ },
+ "bdff1328-b621-5e3c-842b-f9d5e0585090": {
+  "line": "Context: Can I use this specific unit as my Chosen Champion if it shares a tag with my Champion Legend?",
+  "section": "101. Deck Construction"
+ },
+ "be38f398-429a-5421-a77a-7550982782df": {
+  "line": "Context: Does my ability go on the chain like a spell, or does it resolve immediately like a unit or gear?",
+  "section": "400. Abilities"
+ },
+ "be649a42-4063-51fd-a54a-ac99d47b14f2": {
+  "line": "Context: Do I have to pay the extra cost listed on a card if it doesn't say I can choose to do so?",
+  "section": "353. The Process of Play"
+ },
+ "be6c4147-6963-531f-a653-6a183f93a062": {
+  "line": "Context: How do I swap the attack or health stats between two different cards on the field?",
+  "section": "433. Swap"
+ },
+ "bec82d0e-a9bd-5d38-9083-05e0ec0578af": {
+  "line": "Context: What happens after I finish resolving an effect if there are still more cards waiting on the chain?",
+  "section": "340. Step 4: Resolve"
+ },
+ "bf215da6-07b2-50bd-9e69-7a5793cb2ac9": {
+  "line": "Context: How do I interpret card text when the wording on the card seems to contradict the official rulebook?",
+  "section": "050. Silver Rule"
+ },
+ "bf2d763e-fb2c-547e-bd8b-7b6185c79426": {
+  "line": "Context: Can I concede the game if my battlefield has been replaced by a token with no abilities?",
+  "section": "649. Conceding"
+ },
+ "bf739a1e-2571-5d2c-af64-b3851db9deb4": {
+  "line": "Context: How do I know if a card effect counts as a choice that I have to make versus something that just happens automatically to everything on the board?",
+  "section": "353. The Process of Play"
+ },
+ "c00838ea-df50-5b1e-9c2e-672329eb0bb4": {
+  "line": "Context: Does a delayed ability still trigger if the card that created it has already been removed from the board?",
+  "section": "392. Delayed Abilities"
+ },
+ "c01c8550-2104-5493-88fc-87dfe34458c7": {
+  "line": "Context: Can I use a card's ability if it is currently sitting in my trash pile?",
+  "section": "383. Triggered Abilities"
+ },
+ "c09364cd-ae9f-5ba6-b254-71d74d1ef661": {
+  "line": "Context: If I have an ability that splits damage and another card that gives me bonus damage, does the extra damage increase the total amount I can split among my targets?",
+  "section": "713. Bonus Damage"
+ },
+ "c108ab1b-77a3-5b2a-98e9-f3acf0728f2b": {
+  "line": "Context: What happens if I try to play a card but the requirements for its effect are no longer met by the time it resolves?",
+  "section": "813. Reaction"
+ },
+ "c125b8c6-4b3b-5332-857c-162a4fd89c9b": {
+  "line": "Context: How do I calculate the final Might, Energy Cost, or Power Cost of a card when multiple effects are increasing or decreasing those numbers?",
+  "section": "468. Layers"
+ },
+ "c12711a0-fbb5-5af0-be9c-9809d04b0c07": {
+  "line": "Context: What happens to a unit with Deathknell when it gets killed or destroyed by lethal damage?",
+  "section": "428. Kill"
+ },
+ "c13a217b-8ea7-5009-aadb-44b395dcd8bd": {
+  "line": "Context: Can I trigger my unit's ability if a spell I cast kills an enemy unit?",
+  "section": "428. Kill"
+ },
+ "c28151dd-e165-5152-9ceb-7a374b9c6989": {
+  "line": "Context: Can I move multiple units to the same spot at the same time even if they are starting from different locations?",
+  "section": "144. Units"
+ },
+ "c2c403e9-4b17-5360-b0b7-d5d76a492e53": {
+  "line": "Context: My opponent played a spell targeting multiple units, but now the total might is too high, so which units can I still choose to hit?",
+  "section": "353. The Process of Play"
+ },
+ "c3021519-85fb-596e-9dc8-31091d029fba": {
+  "line": "Context: Can I move my unit to a battlefield if there are already units from two other players there or if a combat involving two other players is currently happening?",
+  "section": "144. Units"
+ },
+ "c30d3634-cda3-52e3-8969-934193c98180": {
+  "line": "Context: How do I apply a discount when I choose to pay an optional additional cost for a spell?",
+  "section": "353. The Process of Play"
+ },
+ "c31643b3-d7d4-57f2-95c0-b639084ed4d1": {
+  "line": "Context: Can I put more than one copy of a card with the Unique keyword into my deck?",
+  "section": "825. Unique"
+ },
+ "c3efde28-3c67-58d3-8d83-555cfba08700": {
+  "line": "Context: When is it my turn to play spells or activate abilities during a Showdown?",
+  "section": "301. The Turn"
+ },
+ "c4333dc6-efe0-5340-9c56-e05805803096": {
+  "line": "Context: If I take control of a battlefield during the resolution step, do I get a conquer point even if I wasn't the one who originally contested it?",
+  "section": "461. Step 3: The Resolution Step"
+ },
+ "c4479f02-18bb-5444-aedb-b342f136b66f": {
+  "line": "Context: Can I score points for the battlefields my teammate controls during my turn?",
+  "section": "315. Start of Turn"
+ },
+ "c4fc8352-f962-571e-a96f-a9e878df1a07": {
+  "line": "Context: How do I know if an ability adds Energy or Power to my Rune Pool?",
+  "section": "163. Basic Runes"
+ },
+ "c531afdd-79fa-583b-bbe4-d97ba3849042": {
+  "line": "Context: How much XP do I gain when I trigger a Hunt ability on my unit?",
+  "section": "823. Hunt"
+ },
+ "c535196d-7312-559e-9b9f-d05c966e9af3": {
+  "line": "Context: If I target a unit with a spell or ability and that unit leaves the battlefield and comes back, is it still considered the same target?",
+  "section": "353. The Process of Play"
+ },
+ "c5372e78-21b9-553f-91f2-fada5b569d0b": {
+  "line": "Context: Can I use Focus to play another card after a triggered ability finishes resolving and the chain closes?",
+  "section": "341. Showdowns"
+ },
+ "c5e7f5c7-9b96-5cb0-abff-57097770c56d": {
+  "line": "Context: What happens to my card's ability if the target or location changes after I trigger it but before it actually resolves?",
+  "section": "353. The Process of Play"
+ },
+ "c68e2776-e044-5295-93d6-8a4394adc4f3": {
+  "line": "Context: Does my card still get the Might Bonus if I attach it to a unit that doesn't have a Might value, or if I move the attachment to a different card?",
+  "section": "137. Might Bonus"
+ },
+ "c6c29ae0-9bd1-58fe-8ab4-dc7c7004395c": {
+  "line": "Context: Can I target a Legend with a spell or use its passive, triggered, and activated abilities during the game?",
+  "section": "173. Legends"
+ },
+ "c71c8209-1a50-5f5c-87ce-ac89f0180a17": {
+  "line": "Context: Can my opponent move their units into a non-combat showdown to turn it into a combat showdown?",
+  "section": "316. Main Phase"
+ },
+ "c75f2662-724b-5af0-b86f-ef8284c3d028": {
+  "line": "Context: How do I calculate the total Might of a card when I attach another card that has a Might Bonus to it?",
+  "section": "137. Might Bonus"
+ },
+ "c76092ed-dd65-59b3-b23f-fe1f523b4fce": {
+  "line": "Context: When I conquer a battlefield and gain a victory point, when do my units' conquer abilities actually go onto the chain?",
+  "section": "383. Triggered Abilities"
+ },
+ "c7b40ea7-b393-54e0-81e5-5c327371f49d": {
+  "line": "Context: How do I know if my unit's ability counts as a Hold Effect when I score victory points during the beginning phase?",
+  "section": "383. Triggered Abilities"
+ },
+ "c7bd1586-0258-522c-87bf-e18e5f2f3b5f": {
+  "line": "Context: How much damage does my unit need to take before it gets killed?",
+  "section": "143. Units"
+ },
+ "c7e8134f-036e-5ba6-8e00-e030af211490": {
+  "line": "Context: How do I know if my card is still being played or if it has officially finished resolving?",
+  "section": "349. Playing Cards"
+ },
+ "c825aee0-b68b-5f72-bb7d-ffc0ef30a735": {
+  "line": "Context: How do I set up my Battlefields if I am not the player going first?",
+  "section": "476. Modes of Play"
+ },
+ "c91acf5e-e0fc-5ef0-a347-6c07707f2722": {
+  "line": "Context: How do I know when a combat showdown actually begins during my turn?",
+  "section": "459. Step 1: The Combat Showdown Step"
+ },
+ "c96b3956-81fb-5171-bef1-55f09c6bb90d": {
+  "line": "Context: What happens if I conquer a battlefield and have already scored all the other battlefields this turn?",
+  "section": "463. Scoring"
+ },
+ "c9a5588f-5bfd-5618-b7b3-aecfeb4e8bd7": {
+  "line": "Context: Does detaching a card count as targeting it, and where does a gear go if I detach it from a top-most card?",
+  "section": "435. Detach"
+ },
+ "cac20eb0-699a-5f7a-b964-580188a99a79": {
+  "line": "Context: Can I use a card that targets units on the board to affect a unit that is currently in my trash?",
+  "section": "141. Unit is"
+ },
+ "cb4eed61-6723-57ca-b608-0c7eca9194ef": {
+  "line": "Context: What counts as killing a card when an effect or ability forces me to move a permanent from the board to the trash?",
+  "section": "428. Kill"
+ },
+ "cbcca0d5-c155-58aa-8f83-b35941aa70de": {
+  "line": "Context: How do I know if my unit's ability counts as a conquer effect that triggers when I win a battlefield?",
+  "section": "383. Triggered Abilities"
+ },
+ "cbeb3e2e-cba4-57f0-ae5e-5ca9d3338ee3": {
+  "line": "Context: What happens to my units if they have the wrong designation or no designation at all when combat ends?",
+  "section": "318. Cleanups"
+ },
+ "cc02b596-978e-5604-8979-e4045212b84c": {
+  "line": "Context: Can I change what happens to cards I have revealed from my deck before I finish resolving the effect?",
+  "section": "424. Reveal"
+ },
+ "cc1d7ae4-1699-5861-8330-7a77188e7131": {
+  "line": "Context: How do I play a piece of Gear and what happens when I activate its ability?",
+  "section": "150. Gear"
+ },
+ "cd7f81c0-97d3-5959-b0c5-4a98887862b3": {
+  "line": "Context: Does a combat start if I move my unit into a battlefield where my opponent already has units or where a showdown is currently happening?",
+  "section": "447. Units"
+ },
+ "cd9048f9-4a55-51ff-81ba-a6a88e805724": {
+  "line": "Context: Can I look at the cards my opponent has already discarded into their trash pile, and where do my cards go after I play them?",
+  "section": "108. Non-Board Zones."
+ },
+ "ce53dd27-2a56-5ce2-94d8-0ebe63d08261": {
+  "line": "Context: What happens to a spell or ability if the target I chose leaves the board or changes zones before the effect resolves?",
+  "section": "353. The Process of Play"
+ },
+ "ce87c461-acaa-5f22-b154-b618c1ed7835": {
+  "line": "Context: If my opponent's units are all defeated and I am the only one left on the battlefield, do I take control of it and score it?",
+  "section": "341. Showdowns"
+ },
+ "ced9360d-0a15-515b-9d1f-88997a58a8dd": {
+  "line": "Context: Can I target a unit that already has a buff counter with a spell that buffs it to trigger a secondary effect like drawing a card?",
+  "section": "426. Buff"
+ },
+ "cf69fc4b-50e4-5f8b-afb5-82de2c6e5b40": {
+  "line": "Context: What specific actions am I required to perform during the start of my turn, combat, or the end of my turn?",
+  "section": "325. Chains and Showdowns"
+ },
+ "cfa00d9f-9d7d-5f9b-bca2-2646ff190348": {
+  "line": "Context: Can I activate a card ability on my opponent's turn or while they are in the middle of playing a card?",
+  "section": "377. Activated Abilities"
+ },
+ "cfa32a40-86a4-5ad1-8c5f-644f9d44927f": {
+  "line": "Context: What happens if two different card effects try to change the same stat on a creature at the same time and they depend on each other?",
+  "section": "468. Layers"
+ },
+ "cff6adc8-9acd-5ae8-8e7b-f570c4bf2233": {
+  "line": "Context: Can I still trigger an ability if the condition is met but the extra requirement, like being at a specific location, isn't true at that moment?",
+  "section": "383. Triggered Abilities"
+ },
+ "d010ae76-6f07-5ffa-b978-5d016459376f": {
+  "line": "Context: What happens after I activate an ability and my opponent wants to play a reaction before it resolves?",
+  "section": "400. Abilities"
+ },
+ "d070147c-a165-52d3-8e12-8cd7a66b7955": {
+  "line": "Context: Can I use a triggered ability on a card that is in my hand or graveyard instead of on the battlefield?",
+  "section": "383. Triggered Abilities"
+ },
+ "d13f3636-3b96-50d1-b24b-f42935566fca": {
+  "line": "Context: Can I put both Kai’Sa, Evolutionary and Kai’Sa, Survivor in my deck at the same time, and do they count as the same card for my Chosen Champion?",
+  "section": "132. Name"
+ },
+ "d18c72e6-0059-5fb4-a360-217353cb38e0": {
+  "line": "Context: Does a card still count as having a keyword if its text has been turned inactive?",
+  "section": "722. Inactive"
+ },
+ "d1a3167d-0f4b-5ab4-a161-b6aa2336599e": {
+  "line": "Context: What happens if I am forced to discard more cards than I actually have in my hand?",
+  "section": "422. Discard"
+ },
+ "d1e0070c-8d5e-5521-905e-61f9deb2161f": {
+  "line": "Context: What happens when two different cards try to change how the same event works at the same time?",
+  "section": "369. Replacement Effects"
+ },
+ "d22d6dd7-1b01-5d91-86ce-2f504db533b0": {
+  "line": "Context: How do I know if my unit is still considered an attacker for the duration of an assault?",
+  "section": "807. Assault"
+ },
+ "d2a63da3-6de6-5486-94d0-3a40b68b22b6": {
+  "line": "Context: When do my units' hold abilities go on the chain if I gain a victory point for holding a battlefield during my beginning phase?",
+  "section": "383. Triggered Abilities"
+ },
+ "d2abdd81-08b3-5b42-ba63-f188543dbf41": {
+  "line": "Context: Can I use a discount to pay for the extra cost of a card I am playing?",
+  "section": "353. The Process of Play"
+ },
+ "d3d91704-257a-55fb-9fd5-a184446160bd": {
+  "line": "Context: I am playing a spell that moves my units, so how do I pick where they go and do I have to choose the specific targets right now?",
+  "section": "353. The Process of Play"
+ },
+ "d45bb51c-e78c-5f14-a46a-50f2af5434ed": {
+  "line": "Context: Can I still play a card if a replacement effect changes the unit I was supposed to sacrifice as a cost?",
+  "section": "353. The Process of Play"
+ },
+ "d4aa6843-917b-5169-9bc7-1708ceddd9c0": {
+  "line": "Context: Can I swap a card or token for a new one while keeping all the same effects and status counters currently on it?",
+  "section": "438. Replace"
+ },
+ "d4b15aac-350c-5461-8b14-23155c2a65df": {
+  "line": "Context: How do I handle a card effect that tells me to recycle cards from specific zones?",
+  "section": "416. Recycle"
+ },
+ "d50efa25-3d5f-5cdb-beaa-95915f4fd339": {
+  "line": "Context: If two of my units die at the exact same time, can I choose which one triggers my card that says it activates the first time a unit dies?",
+  "section": "383. Triggered Abilities"
+ },
+ "d5101f64-5662-5070-adef-8b61c39c86e0": {
+  "line": "Context: Can I look through my opponent's trash pile to see what cards they have already played, and am I allowed to rearrange the order of the cards in my own trash?",
+  "section": "108. Non-Board Zones."
+ },
+ "d541a611-543e-56f2-a97d-4e475a0de4f5": {
+  "line": "Context: What happens if I have no cards left in my deck or trash and I am forced to draw or perform an action that triggers another Burn Out?",
+  "section": "431. Burn Out"
+ },
+ "d657c26d-2ac6-5c09-9b7b-1266cb7c19db": {
+  "line": "Context: Can I use an ability that says it only works after a certain condition is met even if that condition hasn't happened yet?",
+  "section": "727. Keywords"
+ },
+ "d6cba298-12a3-5ff2-852a-44d38580de78": {
+  "line": "Context: Can I respond to an opponent's ability that adds resources to their Rune Pool before it finishes resolving?",
+  "section": "429. Add"
+ },
+ "d73501fc-55f6-5dc0-a38d-7b4138dd5c8d": {
+  "line": "Context: What happens if I look at the top cards of my deck for an effect but there are not enough cards left to finish the rest of the instructions?",
+  "section": "431. Burn Out"
+ },
+ "d7c1822d-c888-5dcd-9829-694d73c642da": {
+  "line": "Context: How do I keep control of a battlefield after a fight ends or when there is no combat happening?",
+  "section": "187. Battlefields"
+ },
+ "d862a88c-c003-588c-8d98-68df8cb5dc86": {
+  "line": "Context: Can I move my unit during my main phase if it is not currently in combat or a closed state?",
+  "section": "144. Units"
+ },
+ "d8e70520-ea03-5eae-9751-9f17f84712ea": {
+  "line": "Context: Can I pay an extra cost when I play a spell to make its effect happen a second time?",
+  "section": "820. Repeat"
+ },
+ "d8f0bd8e-5e57-573c-8a98-158245da7cf9": {
+  "line": "Context: Does the italicized text at the bottom of my card actually do anything during the game?",
+  "section": "138. Flavor Text"
+ },
+ "d9122687-bab9-5fd4-b26f-527417f8bf8d": {
+  "line": "Context: Can I shuffle my battlefield into my deck or destroy it during a game?",
+  "section": "169. Battlefields"
+ },
+ "d92ad093-3e43-52a3-a6f7-c08ae8b84d87": {
+  "line": "Context: How do I resolve a Predict effect when I need to look at the top cards of my deck and decide which ones to put into the Recycle pile?",
+  "section": "436. Predict"
+ },
+ "d937726e-9966-5139-888c-3c4a7a9758a6": {
+  "line": "Context: If I play multiple copies of a card that lets me banish and later play the top card of my deck, can I use one effect to play a card that was banished by a previous copy of the same spell?",
+  "section": "427. Banish"
+ },
+ "d95df212-c863-5752-85b1-f7defd802071": {
+  "line": "Context: If I have both a Showdown and Combat staged at the same battlefield, how do I decide which one happens first?",
+  "section": "318. Cleanups"
+ },
+ "da01ae7b-d1e0-5e1f-bd2b-07544f180096": {
+  "line": "Context: Can I start a combat or a showdown if I am playing a game with more than two players?",
+  "section": "316. Main Phase"
+ },
+ "da138466-42a4-5cd0-99b7-9fd3144d2b41": {
+  "line": "Context: What can I do when it is my turn to act during a Showdown?",
+  "section": "341. Showdowns"
+ },
+ "da144866-489b-5922-8fcb-92a017a81606": {
+  "line": "Context: How do I track how much damage a unit has taken and can I remove that damage later?",
+  "section": "142. Damage"
+ },
+ "da2aff8f-002b-539a-931f-97c5b6b35b1d": {
+  "line": "Context: How do I stun a unit on the board and what does it mean for that unit to be in a stunned state?",
+  "section": "423. Stun"
+ },
+ "daa18cb6-ba4b-54c2-9c8c-49d05776f0f1": {
+  "line": "Context: What happens if both my opponent and I decide not to play any more cards or effects during the current turn?",
+  "section": "339. Step 3: Pass"
+ },
+ "dadc1ab8-db6e-5be4-8dbc-219b21785fc8": {
+  "line": "Context: Can I play a card with the Reaction keyword even when it is not my turn or during a closed state?",
+  "section": "813. Reaction"
+ },
+ "db17d974-bc99-53df-90a7-3cef2d09c05a": {
+  "line": "Context: What happens if multiple cards are waiting on the chain or if my opponent wants to play a reaction before my spell resolves?",
+  "section": "353. The Process of Play"
+ },
+ "db8501db-790d-50b7-9d51-a854b4c580c3": {
+  "line": "Context: How do I determine the starting and ending points when I move a permanent from one zone to another?",
+  "section": "442. Moving"
+ },
+ "dba0e736-947e-553c-b2b2-bf1b3e7f13e9": {
+  "line": "Context: How do I assign combat damage when multiple units have conflicting priority abilities like Tank and must be assigned damage at the same time?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "dc016123-4b53-5d61-9c67-ee4b6fc0dcb6": {
+  "line": "Context: My opponent used an effect to remove a keyword from my creature, so how long does that keyword stay gone?",
+  "section": "800. Keywords"
+ },
+ "dc04eb50-bfab-5aa0-8430-dd9a968321af": {
+  "line": "Context: When can I use the activated ability on my gear card during my turn?",
+  "section": "150. Gear"
+ },
+ "dc3e07eb-d56c-5b73-a2d4-8f562c8feca6": {
+  "line": "Context: How do I know if my unit counts as Mighty, and does it trigger an effect if it was already Mighty before I gave it a buff?",
+  "section": "707. Mighty"
+ },
+ "dc791c6c-ef90-597d-80e6-c927ec2e676f": {
+  "line": "Context: Can I play a token I created just like a normal card, and does it have a Might value?",
+  "section": "177. Tokens"
+ },
+ "dd763b1c-d414-59ee-827e-fe6706231a90": {
+  "line": "Context: What happens to the spells currently on the chain if my opponent concedes while we are both passing priority?",
+  "section": "649. Conceding"
+ },
+ "de11536b-bf34-50c0-94e5-8772f58dacea": {
+  "line": "Context: When can I use the activated ability on my unit during my turn?",
+  "section": "145. Units"
+ },
+ "deab640a-6f60-5d31-a851-08923c998383": {
+  "line": "Context: Am I allowed to look at the order of the cards in my deck or my opponent's rune deck during the game?",
+  "section": "108. Non-Board Zones."
+ },
+ "dee8584f-8f56-5d83-98f7-79d6cdb6155b": {
+  "line": "Context: If my opponent plays a spell that damages my units and then a cleanup phase kills them, who is considered responsible for the kill?",
+  "section": "428. Kill"
+ },
+ "df2a557c-4dd7-52a7-b1f9-1541757f2645": {
+  "line": "Context: Can I pay the Accelerate cost for a unit that doesn't have a specific domain or has multiple domains, and can I use this ability after the unit is already on the board?",
+  "section": "805. Accelerate"
+ },
+ "df528e27-5f20-52d7-8580-71301434c139": {
+  "line": "Context: Can I still use the abilities or keywords on a card if it is currently attached to another card?",
+  "section": "135. Rules Text"
+ },
+ "df8e3a18-76fa-52bc-bacd-4299a2b985bb": {
+  "line": "Context: If I play a card that copies another card, which of its stats and abilities actually change and which ones stay the same?",
+  "section": "468. Layers"
+ },
+ "dfd861e5-14bc-5189-95cb-8dda923a2a4f": {
+  "line": "Context: Am I allowed to look through my own deck or my opponent's deck during the game?",
+  "section": "101. Deck Construction"
+ },
+ "e00e70d8-6669-5890-b5e6-e6b7b48688ba": {
+  "line": "Context: Can my spell still see the stats or properties of a card if it moved to a different zone or left the battlefield while the effect was resolving?",
+  "section": "353. The Process of Play"
+ },
+ "e029276d-90db-54b8-a121-8470e0929a83": {
+  "line": "Context: Does my card trigger if it says it activates when I use an ability, or does it wait until that ability actually finishes resolving?",
+  "section": "377. Activated Abilities"
+ },
+ "e0f29a81-a661-5bf4-b933-f8d5fcd3d98c": {
+  "line": "Context: How do I know if a battlefield is considered occupied, uncontrolled, or open when I am checking if I can play a unit there?",
+  "section": "169. Battlefields"
+ },
+ "e1117147-4d79-5fc2-b3ac-9c7866f466e1": {
+  "line": "Context: How do I choose and set up my battlefields at the start of the game?",
+  "section": "476. Modes of Play"
+ },
+ "e1ddcceb-a71a-5a70-a31e-f5a4f1e3668a": {
+  "line": "Context: How do I link two cards together so that one is attached to the other to combine their effects?",
+  "section": "717. Attaching"
+ },
+ "e24794d8-ea3c-54b6-aca2-9c7d07b72412": {
+  "line": "Context: How do I know if I won or lost a combat if my units or my opponent's units are all gone from the battlefield?",
+  "section": "461. Step 3: The Resolution Step"
+ },
+ "e2b4d1f9-5664-5e73-b456-0b9fc5dd9002": {
+  "line": "Context: Can I choose to draw a card or perform a game action whenever I want, or do I have to wait for a specific turn phase or card effect?",
+  "section": "408. Game Actions"
+ },
+ "e2efa906-726a-55e5-a177-687044ad396e": {
+  "line": "Context: What happens to my units that have attacker or defender status if they are no longer at the battlefield when the turn ends?",
+  "section": "318. Cleanups"
+ },
+ "e2f1b7bf-d1f6-55e0-ae79-efe831200e32": {
+  "line": "Context: If I gain a new keyword ability at the exact same time its trigger condition happens, does the ability still trigger?",
+  "section": "727. Keywords"
+ },
+ "e325fd1e-c65a-5b67-9a27-7ac71510d05b": {
+  "line": "Context: Do I have to pay the extra cost for Deflect if I want to play a card with that keyword?",
+  "section": "353. The Process of Play"
+ },
+ "e3619995-b558-5759-a083-c9e79c3f92f5": {
+  "line": "Context: Do my teammates and I share the experience points we earn during a multiplayer game?",
+  "section": "732. XP"
+ },
+ "e3712416-56ea-5715-930c-520c7d82be8b": {
+  "line": "Context: Can I activate a card's ability if its condition for being an Action is only met while it is currently sitting on the chain?",
+  "section": "806. Action"
+ },
+ "e3819bbc-9123-5dc0-bc90-2c5d57bf8ce3": {
+  "line": "Context: Can I play as many cards and use as many abilities as I want during my main phase?",
+  "section": "316. Main Phase"
+ },
+ "e4c5e7b6-fb38-5836-b615-0dc110441aee": {
+  "line": "Context: How do I know if I am allowed to use the Hide action on my card?",
+  "section": "811. Hidden"
+ },
+ "e4d01c55-c853-5b01-9729-f9046118d94d": {
+  "line": "Context: If I gain control of a creature after its ability has already been activated, do I get to make the choices for that ability or does the original owner still control it?",
+  "section": "188. Everything Else"
+ },
+ "e502aa94-700b-5323-af53-cc2b17e3ddd8": {
+  "line": "Context: Who gets to make the choices for a card's effects or abilities when I play it?",
+  "section": "188. Everything Else"
+ },
+ "e5c62b3f-8912-5e95-bc61-339729050eca": {
+  "line": "Context: Can I play a card that resolves before the other spells already waiting on the chain?",
+  "section": "152. Spells"
+ },
+ "e615009e-a013-592d-b13f-35acad91ded0": {
+  "line": "Context: How do I assign combat damage when I have to attack units that have conflicting requirements like Tank or must be attacked last?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "e6165282-0e9a-59a7-8fb0-6aeeb9aa7efb": {
+  "line": "Context: What happens if my unit gains and loses the Defender keyword multiple times during a single combat, do all of my triggered abilities still go on the chain?",
+  "section": "383. Triggered Abilities"
+ },
+ "e6364972-1270-531a-a25b-ead8a135b8f7": {
+  "line": "Context: Can I split my unit's attack damage across multiple enemy units, or do I have to finish off one unit before moving to the next?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "e6d93031-881c-56e7-b711-04456ad79702": {
+  "line": "Context: Can I move my teammate's units, can I target their units with friendly effects, and am I allowed to show my hand to them?",
+  "section": "476. Modes of Play"
+ },
+ "e714b0c8-55f0-5267-b201-c08680f99e47": {
+  "line": "Context: What happens if I try to play a card while another effect or ability is already currently resolving on the chain?",
+  "section": "325. Chains and Showdowns"
+ },
+ "e78b1f3d-d956-5f51-8671-78bcaeea661f": {
+  "line": "Context: How do I tell if a card effect is a passive ability that is always active versus an effect I have to manually activate?",
+  "section": "360. Abilities"
+ },
+ "e903e253-9418-5136-9a92-5b8d83a07d9d": {
+  "line": "Context: What happens if I start a Showdown at the same Battlefield where a Combat is already taking place?",
+  "section": "456. Combat"
+ },
+ "e91799e1-25eb-585d-a355-b8d6538123e4": {
+  "line": "Context: What counts as a game object that I can target with my card effects?",
+  "section": "124. Game Objects"
+ },
+ "e939d8cd-6d89-5b89-a67c-67227dfec482": {
+  "line": "Context: Can my teammate and I use the same Champion Legend or Battlefield card in our decks during a team game?",
+  "section": "476. Modes of Play"
+ },
+ "e9a4ce43-ceca-5e28-95e6-8df80a1037d4": {
+  "line": "Context: Where does my card go when it gets killed, and can I choose to kill my own units whenever I want?",
+  "section": "428. Kill"
+ },
+ "ea3504cd-66ce-5d55-8427-920007a04d27": {
+  "line": "Context: Can I target a Legend with a card that destroys permanents?",
+  "section": "174. Legends"
+ },
+ "ea66095a-5756-5f11-96d7-adf3a1273da1": {
+  "line": "Context: What do the colored highlights behind certain words on my cards actually mean for the game?",
+  "section": "800. Keywords"
+ },
+ "ea688fb8-170a-5702-9385-322ee4abad28": {
+  "line": "Context: How many runes do I get to channel at the start of my turn if my deck is almost empty?",
+  "section": "315. Start of Turn"
+ },
+ "ea92c470-1711-54b3-9a40-8662a44e7246": {
+  "line": "Context: Can I reduce the energy or power cost of a card to zero or less, and how do I pay for multiple costs at the same time?",
+  "section": "353. The Process of Play"
+ },
+ "eaa65676-2e7b-5d6c-9d84-60e8098bfded": {
+  "line": "Context: How do I determine which ability takes priority when my card gains, loses, or copies text from another card?",
+  "section": "468. Layers"
+ },
+ "ebbb0c25-c42c-5548-a257-4b8ac83994fb": {
+  "line": "Context: How does a prevent effect work if I have multiple sources of damage coming at my unit and I only have a limited amount of prevention?",
+  "section": "437. Prevent"
+ },
+ "ebdbedec-3994-5e3b-b654-706ba63bb5a7": {
+  "line": "Context: Can I use multiple replacement effects on the same event, and how many times can each one trigger?",
+  "section": "369. Replacement Effects"
+ },
+ "ec04d22f-d975-5997-aabc-8805533e82c6": {
+  "line": "Context: Can I choose to detach a card from my stack whenever I want, and what happens to the stats and abilities of the card that was underneath it?",
+  "section": "435. Detach"
+ },
+ "ecbb61f5-0b57-5c13-8fbb-6d1b42ed8e76": {
+  "line": "Context: If I play a card that adds resources, do I still have to go through the execution step or does it resolve immediately?",
+  "section": "337. Step 1: Finalize"
+ },
+ "ed6949a0-8445-59fd-a047-f1781786fab4": {
+  "line": "Context: If I have multiple effects giving bonus damage to the same attack, do I add them all together or apply them one by one?",
+  "section": "713. Bonus Damage"
+ },
+ "edcb5904-e70d-577a-99f6-adf0a3560ae9": {
+  "line": "Context: How do I tell if a specific spell or ability counts as an Action for the purpose of triggering other card effects?",
+  "section": "806. Action"
+ },
+ "edea3822-3eb1-53e4-9a84-add0e0048f2e": {
+  "line": "Context: Do the abilities and might bonuses from cards attached to my unit count as part of that unit's own stats and text?",
+  "section": "718. Attached"
+ },
+ "ee6fecf2-5b2b-5731-9514-3e6f71090be3": {
+  "line": "Context: If my card has multiple Deathknell abilities, how do I resolve them when it goes to the trash?",
+  "section": "808. Deathknell"
+ },
+ "ee7cf30a-a472-584a-aaef-1969760bf702": {
+  "line": "Context: Can I assign extra damage to a unit if I still have other enemy units left to attack?",
+  "section": "460. Step 2: The Combat Damage Step"
+ },
+ "ef2c5a52-f5b7-5935-ad0f-d34ead589170": {
+  "line": "Context: Can my opponent use a reaction or an ability to stop me while I am moving a card from one zone to another?",
+  "section": "441. Moving"
+ },
+ "ef454d71-ba9b-54c6-892b-9977326e4fea": {
+  "line": "Context: Can I still activate an ability that requires me to recycle a card if my trash pile is currently empty?",
+  "section": "416. Recycle"
+ },
+ "ef7117ee-3942-573e-bb6e-dfb652869f4d": {
+  "line": "Context: What happens if I have to draw more cards than I have left in my deck?",
+  "section": "431. Burn Out"
+ },
+ "f00c2c7c-1946-5d66-80ca-6f5a022e22a7": {
+  "line": "Context: How do I know if a keyword on a card is an ability I can trigger or a passive effect?",
+  "section": "135. Rules Text"
+ },
+ "f0dc11f6-1468-5ca3-a80e-fa25cd370c87": {
+  "line": "Context: How do I know if a card effect is supposed to change or swap what happens when I perform an action?",
+  "section": "369. Replacement Effects"
+ },
+ "f0eb40b1-731e-5aad-b2d8-f815589c4d88": {
+  "line": "Context: Do I get an extra Rune if I go second, and how many Battlefields and victory points do we need for a three-player free-for-all game?",
+  "section": "476. Modes of Play"
+ },
+ "f10f41fa-d9be-5afa-a6c1-361852a705aa": {
+  "line": "Context: Who is considered the owner of a token I create, and can an effect change whether a token enters the board ready or exhausted?",
+  "section": "177. Tokens"
+ },
+ "f1190b57-261a-5f62-92ba-d97c2d700fbf": {
+  "line": "Context: If I pay the repeat cost for a card that lets me choose between different effects or targets, can I pick different options or targets for the second activation?",
+  "section": "820. Repeat"
+ },
+ "f167a03a-a0fa-5be4-85f7-15021aa9b821": {
+  "line": "Context: Does my spell count as killing a unit if I control the effect that triggers the destruction?",
+  "section": "428. Kill"
+ },
+ "f1c14f8a-e5f6-5428-bbc9-d32b34cf4f16": {
+  "line": "Context: Does my unit keep its damage, buffs, or keywords if I return it to my hand or move it to my deck?",
+  "section": "108. Non-Board Zones."
+ },
+ "f1f02360-6573-5fa8-9c57-1a6025419c42": {
+  "line": "Context: Can my card's ability only affect the specific targets chosen by another ability it is linked to?",
+  "section": "396. Linked Abilities"
+ },
+ "f20ee3fa-685e-58b7-913f-8eb8710b8c1b": {
+  "line": "Context: When multiple triggered abilities happen at the same time during the combat showdown, who gets to put their effects on the chain first?",
+  "section": "459. Step 1: The Combat Showdown Step"
+ },
+ "f22ce313-4531-5328-919d-a9251645a25f": {
+  "line": "Context: How do I tell the difference between a card's actual game instructions and the reminder text that explains its keywords?",
+  "section": "135. Rules Text"
+ },
+ "f2763c7c-1aca-5aab-8318-7955aeee07bf": {
+  "line": "Context: If my unit loses and regains the attacker status during the same combat, does its attack ability trigger again or only once?",
+  "section": "383. Triggered Abilities"
+ },
+ "f2f52316-4c41-5681-88a5-92a24b1f311b": {
+  "line": "Context: Does a card with the Action keyword let me ignore the normal rules for where I can play a unit?",
+  "section": "806. Action"
+ },
+ "f40b3261-afc8-5809-be60-830d18620522": {
+  "line": "Context: When exactly do I get priority to play cards or activate abilities during my turn?",
+  "section": "301. The Turn"
+ },
+ "f43daeba-d9e8-5b78-b2a5-7521f077010a": {
+  "line": "Context: Can I activate a card ability that has a specific requirement if I am not currently meeting that condition?",
+  "section": "377. Activated Abilities"
+ },
+ "f4adc470-742c-5e45-8987-ba2dbc6002be": {
+  "line": "Context: Can I perform an action if I have Focus but my opponent currently has Priority?",
+  "section": "301. The Turn"
+ },
+ "f4b9dc2c-37b8-51a3-bd58-c6800dffc38c": {
+  "line": "Context: How many copies of a specific character can I put in my deck if they have different names or if one is my Chosen Champion?",
+  "section": "101. Deck Construction"
+ },
+ "f557efe5-2881-5fde-95ee-1dfa468e87de": {
+  "line": "Context: How do I calculate the new values when a card effect tells me to swap the attack and defense stats of two creatures?",
+  "section": "433. Swap"
+ },
+ "f5817a3a-fcc7-5c35-a5c4-f89d1566d019": {
+  "line": "Context: How do I tell which part of a card's text is the cost I have to pay versus the effect that happens after?",
+  "section": "353. The Process of Play"
+ },
+ "f5fa6c5a-2a16-57b7-b9ac-cbf8dbe337c4": {
+  "line": "Context: Can I start a combat if I move my unit onto an empty battlefield to trigger a showdown?",
+  "section": "316. Main Phase"
+ },
+ "f6ac6edf-54ec-5237-897e-21f03dc54c44": {
+  "line": "Context: If my card with attachments leaves the board, in what order do the attached cards detach and trigger their effects?",
+  "section": "718. Attached"
+ },
+ "f6ac86ba-5c71-5bb1-8a21-c3b4f57b83bf": {
+  "line": "Context: Can I target or exhaust my XP tokens during a turn?",
+  "section": "731. XP"
+ },
+ "f6dd8e42-b82d-595d-8880-440231771bfb": {
+  "line": "Context: Does the game allow me to play more cards or use abilities after the combat chain has already closed?",
+  "section": "459. Step 1: The Combat Showdown Step"
+ },
+ "f724fb97-4f1f-58ba-b71e-1cbcd5fbcdb8": {
+  "line": "Context: What happens to the rest of my spell or ability if it gets removed from the chain while it is still resolving?",
+  "section": "353. The Process of Play"
+ },
+ "f74fb93c-a0a7-518d-a63e-05e05cc4d187": {
+  "line": "Context: Can a unit or an ability be considered the source of damage when I use a card that deals damage to a target?",
+  "section": "417. Deal"
+ },
+ "f7e3dbc2-b0df-5da1-8829-d4ca3a66148b": {
+  "line": "Context: Can I choose to Predict cards whenever I want, and what happens if I try to Predict more cards than I have left in my deck?",
+  "section": "436. Predict"
+ },
+ "f854b40a-ade5-531b-9290-059859b5c3c5": {
+  "line": "Context: What happens to a battlefield when I play a unit into a location that my opponent currently controls?",
+  "section": "187. Battlefields"
+ },
+ "f89a88cc-f921-52d8-9f83-43bd7b1ac1dd": {
+  "line": "Context: Can I choose to exhaust my units to move them whenever I want during my turn?",
+  "section": "420. Move"
+ },
+ "f8c8ee15-ee0f-5b65-8384-ade05eda06b6": {
+  "line": "Context: Can I move my units onto a battlefield controlled by my teammate during a team game?",
+  "section": "442. Moving"
+ },
+ "f92597bb-0268-5d5f-84b7-5a3f08378671": {
+  "line": "Context: Can I score the Final Point from Conquer if I only capture some of the battlefields instead of all of them in the same turn?",
+  "section": "476. Modes of Play"
+ },
+ "f92e5adc-94b6-5d79-b9cd-cabfd59884fa": {
+  "line": "Context: My unit has enough damage to be destroyed and a Deathknell ability, so when does that ability actually trigger?",
+  "section": "318. Cleanups"
+ },
+ "f933b2c9-1901-5772-8e15-c70fdad89173": {
+  "line": "Context: What happens if my gear ability triggers another effect while I am in the middle of paying the equip cost?",
+  "section": "818. Equip"
+ },
+ "faa40372-334f-563c-9053-c198f394d652": {
+  "line": "Context: How much damage do I need to assign to an opponent's unit to make it lethal if they have abilities that prevent some of the damage?",
+  "section": "437. Prevent"
+ },
+ "fba564fa-3d8f-54db-9650-f0a6e25da16e": {
+  "line": "Context: How do I know if a spell or ability counts as targeting a specific card or just affects everything automatically?",
+  "section": "353. The Process of Play"
+ },
+ "fba6913b-484b-5d82-85a9-8258de291396": {
+  "line": "Context: When I play a unit or gear card with a When you play me effect, when exactly does that ability go on the chain?",
+  "section": "383. Triggered Abilities"
+ },
+ "fd442368-11c2-5b90-b259-46209d4b2b86": {
+  "line": "Context: How do I determine who currently controls a card if it changes sides or moves to a different zone?",
+  "section": "188. Everything Else"
+ },
+ "fdb51cea-bd03-5475-bdd1-c754ba18865a": {
+  "line": "Context: Does playing a card count as finished the moment I put it on the table, and does this apply to tokens too?",
+  "section": "349. Playing Cards"
+ },
+ "fdc67b97-eb24-52db-9742-61b039b7d595": {
+  "line": "Context: What happens if I realize halfway through playing a card that the move is illegal and I need to take it back?",
+  "section": "353. The Process of Play"
+ },
+ "fe1205df-8c29-5a8b-a784-e8a8538752fc": {
+  "line": "Context: Can my stunned unit still be destroyed if my opponent deals enough damage to it, and does it still deal damage back during combat?",
+  "section": "423. Stun"
+ },
+ "fe287cbb-ccb8-5353-bb65-c54f237bbd87": {
+  "line": "Context: Can I still play a unit with Ambush if an effect says I cannot, or does the Ambush keyword override that restriction?",
+  "section": "822. Ambush"
+ },
+ "fe695d08-553a-5fec-959b-bf8d08d7f897": {
+  "line": "Context: How do I know when my card's ability actually happens and what part of the text tells me what to do?",
+  "section": "383. Triggered Abilities"
+ },
+ "fe81b79a-cccb-5434-9e76-e076dc7d57db": {
+  "line": "Context: How do I determine if a card effect that changes a unit's type or gives it a new tag applies before or after other stat-modifying effects?",
+  "section": "468. Layers"
+ },
+ "ff425593-8563-5101-a703-1ad859e5d9c2": {
+  "line": "Context: How do I know if a card counts as Gear when it is in my hand, deck, or discard pile?",
+  "section": "148. Gear"
+ },
+ "ff4f7004-a219-5f2f-b6e4-06079906cd6f": {
+  "line": "Context: Can my opponent use a card effect to check if my creature has Deflect?",
+  "section": "809. Deflect"
+ },
+ "ff927501-915d-5706-b15c-df0706607627": {
+  "line": "Context: If multiple replacement effects try to change what happens to me or a card on the board at the same time, who gets to choose the order they happen in?",
+  "section": "369. Replacement Effects"
+ },
+ "ffad3048-4b50-54d1-90db-1b3d7fe6ec09": {
+  "line": "Context: How do I pick my starting battlefield and what do I do with the ones I didn't choose for the next game in the match?",
+  "section": "476. Modes of Play"
+ },
+ "ffc2029a-0ac4-5305-b255-372d17912fc4": {
+  "line": "Context: What happens first when my turn begins and I need to ready my cards?",
+  "section": "315. Start of Turn"
+ },
+ "ffdc61b5-6f9a-54eb-8aaa-f77560e1038d": {
+  "line": "Context: If I have multiple Vision triggers go off at once and I choose not to recycle the top card, do they all reveal the same card?",
+  "section": "817. Vision"
+ }
+}
