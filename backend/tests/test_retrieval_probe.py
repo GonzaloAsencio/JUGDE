@@ -27,9 +27,10 @@ def test_covers_exact_rule_code():
     assert chunk_covers_refs(["103.2"], {"103.2"}, "rulebook") is True
 
 
-def test_covers_when_chunk_lists_parent_rule():
-    # ref 103.2.b is covered by a chunk that lists the parent 103.2
-    assert chunk_covers_refs(["103.2.b"], {"103.2"}, "rulebook") is True
+def test_parent_rule_does_not_cover_child_ref():
+    # A chunk listing only the parent 103.2 is not evidence the child clause
+    # 103.2.b was retrieved — parent coverage was the recall paper hit.
+    assert chunk_covers_refs(["103.2.b"], {"103.2"}, "rulebook") is False
 
 
 def test_covers_when_chunk_lists_child_rule():

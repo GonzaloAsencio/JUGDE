@@ -45,7 +45,8 @@ def chunk_covers_refs(refs: list[str], rule_codes, source_type: str) -> bool:
 
     Errata refs (``errata/...``) are covered only by an errata-source chunk —
     they have no numeric lineage. Numeric refs are covered via rule-code lineage
-    (a chunk listing ``103`` covers ``103.2`` and vice versa).
+    (a chunk listing ``103.2`` covers ``103``; the parent does NOT cover the
+    child — that would paper-hit via the family header code).
     """
     for ref in refs:
         if ref.startswith("errata/"):

@@ -257,10 +257,12 @@ def test_match_null_ref_returns_false():
     assert match_rule_reference(None, [_citation("103. Responsibility:")]) is False
 
 
-def test_match_numeric_prefix_hit():
-    # 103.2.b → top-level prefix 103 → section '103.' matches
+def test_match_section_prefix_alone_is_not_evidence():
+    # A same-family section header ('103.') says nothing about whether the
+    # specific rule 103.2.b is inside the chunk — counting it inflated recall
+    # for every family with ANY retrieved chunk (the eval-014 paper hit).
     citations = [_citation("103. Responsibility:")]
-    assert match_rule_reference("103.2.b", citations) is True
+    assert match_rule_reference("103.2.b", citations) is False
 
 
 def test_match_numeric_prefix_miss():
@@ -274,10 +276,11 @@ def test_match_content_preview_hit():
     assert match_rule_reference("103.2.b", citations) is True
 
 
-def test_match_content_sub_prefix_hit():
-    # Sub-prefix (103.2) without terminal letter appears in content_preview
+def test_match_parent_ref_in_preview_is_not_evidence():
+    # The parent (103.2) appearing in the preview does not prove the child
+    # clause 103.2.b is in the chunk.
     citations = [_citation("200.", content_preview="Rule 103.2 limits copies to 3.")]
-    assert match_rule_reference("103.2.b", citations) is True
+    assert match_rule_reference("103.2.b", citations) is False
 
 
 def test_match_errata_path_hit():
@@ -291,8 +294,8 @@ def test_match_errata_path_miss_no_errata_citation():
 
 
 def test_match_multi_ref_one_hits():
-    # '383.4.e, 459.2.d' — only 383 is present in citations
-    citations = [_citation("383.")]
+    # '383.4.e, 459.2.d' — only the first ref is evidenced in citations
+    citations = [_citation("383.", rule_codes=["383", "383.4.e"])]
     assert match_rule_reference("383.4.e, 459.2.d", citations) is True
 
 
@@ -302,8 +305,9 @@ def test_match_multi_ref_none_hit():
 
 
 def test_match_short_numeric_ref():
-    # refs like '002', '166' — check section prefix
-    citations = [_citation("166.")]
+    # refs like '002', '166' — a family-level ref is evidenced by the family
+    # code every chunk of that family carries in rule_codes
+    citations = [_citation("166.", rule_codes=["166"])]
     assert match_rule_reference("166", citations) is True
 
 
@@ -325,10 +329,29 @@ def test_match_via_rule_codes_when_section_and_preview_miss():
     assert match_rule_reference("143.4", [cit]) is True
 
 
-def test_match_via_rule_codes_parent_covers_subrule():
-    # ref is more specific than what the chunk lists: chunk has 103.2, ref is 103.2.b
+def test_match_parent_code_does_not_cover_child():
+    # Chunk lists 103.2 but not 103.2.b — the child clause may live in a
+    # sibling chunk. Parent codes are not evidence for children.
     cit = _citation(section="101. Deck Construction", rule_codes=["101", "103", "103.2"])
-    assert match_rule_reference("103.2.b", [cit]) is True
+    assert match_rule_reference("103.2.b", [cit]) is False
+
+
+def test_match_family_code_does_not_cover_deeper_ref():
+    # Every family chunk carries the bare header code ('383'), which used to
+    # cover ANY 383.x.y — the exact paper hit that faked eval-014's recall.
+    cit = _citation(section="383. Triggered Abilities", rule_codes=["383", "383.2.c"])
+    assert match_rule_reference("383.3.d.1", [cit]) is False
+
+
+def test_match_exact_deep_code_hits():
+    cit = _citation(section="383. Triggered Abilities", rule_codes=["383", "383.3.d.1"])
+    assert match_rule_reference("383.3.d.1", [cit]) is True
+
+
+def test_match_deeper_code_covers_parent_ref():
+    # A chunk listing 383.3.d.1 necessarily contains text of 383.3.d
+    cit = _citation(section="383. Triggered Abilities", rule_codes=["383.3.d.1"])
+    assert match_rule_reference("383.3.d", [cit]) is True
 
 
 def test_match_rule_codes_unrelated_lineage_miss():
