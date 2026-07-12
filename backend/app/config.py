@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     enable_reranker: bool = True
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     rerank_pool_size: int = 15
+    # 3.5 keyword family completion: max sibling chunks of a detected keyword's
+    # rule family appended BEYOND top_k (families are 2-9 chunks, ~200-950
+    # tokens). 0 = off, byte-identical to pre-3.5 assembly. Flip only via a
+    # paired eval gate (KEYWORD_FAMILY_EXTRA per env).
+    keyword_family_extra: int = 0
 
     # LLM provider: "gemini" (default) | "openai_compat" (Groq, LM Studio, Ollama, etc.)
     llm_provider: str = "gemini"

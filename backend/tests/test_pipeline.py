@@ -81,6 +81,7 @@ def _fake_settings(corpus_version: str = "v1"):
     s.enable_reranker = False
     s.reranker_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     s.rerank_pool_size = 15
+    s.keyword_family_extra = 0
     return s
 
 
@@ -608,6 +609,61 @@ def test_assemble_context_dedups_across_sources():
     semantic = [_ctx_chunk("shared"), _ctx_chunk("s2")]
     out = _assemble_context(explicit, semantic, [], top_k=5)
     assert [c.id for c in out] == ["shared", "s2"]
+
+
+# ---------------------------------------------------------------------------
+# _complete_keyword_families tests (3.5 — keyword family completion)
+# ---------------------------------------------------------------------------
+
+def test_family_completion_appends_missing_siblings_beyond_top_k():
+    """A detected keyword's rule family rides ALONG the top_k context, never
+    inside it: family siblings append at the end without evicting anything.
+    (eval-030: the '809. Deflect' slot chunk entered but 809.1 stayed in a
+    sibling chunk the budget dropped.)"""
+    from app.rag.pipeline import _complete_keyword_families
+    context = [_ctx_chunk("s1"), _rule_chunk("kw1", "809. Deflect")]
+    family = [_rule_chunk("kw1", "809. Deflect"), _rule_chunk("kw2", "809. Deflect"),
+              _rule_chunk("kw3", "809. Deflect")]
+    out = _complete_keyword_families(context, family, extra_cap=8)
+    assert [c.id for c in out] == ["s1", "kw1", "kw2", "kw3"]
+
+
+def test_family_completion_dedupes_chunks_already_in_context():
+    from app.rag.pipeline import _complete_keyword_families
+    context = [_rule_chunk("kw1", "809. Deflect"), _rule_chunk("kw2", "809. Deflect")]
+    family = [_rule_chunk("kw1", "809. Deflect"), _rule_chunk("kw2", "809. Deflect")]
+    out = _complete_keyword_families(context, family, extra_cap=8)
+    assert [c.id for c in out] == ["kw1", "kw2"]
+
+
+def test_family_completion_respects_extra_cap():
+    """The completion tail is bounded: at most extra_cap siblings append even
+    when the family (or several families) is larger."""
+    from app.rag.pipeline import _complete_keyword_families
+    context = [_rule_chunk("kw1", "811. Hidden")]
+    family = [_rule_chunk(f"f{i}", "811. Hidden") for i in range(10)]
+    out = _complete_keyword_families(context, family, extra_cap=3)
+    assert len(out) == 4  # context + cap
+
+
+def test_family_completion_zero_cap_is_identity():
+    """extra_cap=0 (the default setting) must be byte-identical to today's
+    behaviour — the regression guarantee for the flag-off path."""
+    from app.rag.pipeline import _complete_keyword_families
+    context = [_ctx_chunk("s1"), _rule_chunk("kw1", "809. Deflect")]
+    family = [_rule_chunk("kw2", "809. Deflect")]
+    out = _complete_keyword_families(context, family, extra_cap=0)
+    assert [c.id for c in out] == ["s1", "kw1"]
+
+
+def test_family_completion_never_evicts_context():
+    """Family chunks are similarity-0.0 lexical matches — they must only ever
+    APPEND. The assembled top_k context comes back untouched, in order."""
+    from app.rag.pipeline import _complete_keyword_families
+    context = [_ctx_chunk("s1"), _ctx_chunk("s2"), _rule_chunk("kw1", "809. Deflect")]
+    family = [_rule_chunk("kw2", "809. Deflect")]
+    out = _complete_keyword_families(context, family, extra_cap=8)
+    assert [c.id for c in out][:3] == ["s1", "s2", "kw1"]
 
 
 # ---------------------------------------------------------------------------

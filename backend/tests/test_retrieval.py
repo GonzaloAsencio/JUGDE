@@ -512,3 +512,31 @@ def test_tagged_lookup_multiple_tags_merges_distinct_chunks(monkeypatch):
     from app.rag.retrieval import tagged_lookup
     result = tagged_lookup(MagicMock(), ["accelerate", "action"], "v1")
     assert {c.id for c in result} == {"id1", "id2"}
+
+
+# ---------------------------------------------------------------------------
+# family_lookup tests (3.5 keyword family completion)
+# ---------------------------------------------------------------------------
+
+def test_family_lookup_empty_sections_returns_empty():
+    from app.rag.retrieval import family_lookup
+    assert family_lookup(MagicMock(), [], "v1") == []
+
+
+def test_family_lookup_returns_zero_similarity_chunks(monkeypatch):
+    """Family lookup is a lexical section-label match (no cosine) — similarity
+    must stay 0.0 so it never inflates downstream confidence."""
+    rows = [
+        ("id1", "### 809. Deflect\n809.1 ...", "809. Deflect",
+         "Level 3 — 800. Keywords", "rulebook", None),
+        ("id2", "### 809. Deflect\n809.4 ...", "809. Deflect",
+         "Level 3 — 800. Keywords", "rulebook", None),
+    ]
+    fake_conn, _ = _make_conn_ctx(rows)
+    monkeypatch.setattr("app.rag.retrieval.get_conn", fake_conn)
+
+    from app.rag.retrieval import family_lookup
+    result = family_lookup(MagicMock(), ["809. Deflect"], "v1")
+
+    assert [c.id for c in result] == ["id1", "id2"]
+    assert all(c.similarity == 0.0 for c in result)
