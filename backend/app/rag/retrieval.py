@@ -303,3 +303,44 @@ def tagged_lookup(
                             similarity=0.0,
                         ))
     return results
+
+
+_FAMILY_SQL = """
+SELECT id, content, section, parent_section, source_type, metadata
+FROM corpus_chunks
+WHERE corpus_version = %s
+  AND section = ANY(%s)
+ORDER BY section, content
+"""
+
+
+def family_lookup(
+    pool: ThreadedConnectionPool,
+    sections: list[str],
+    corpus_version: str,
+) -> list[Chunk]:
+    """Fetch every chunk of the given rule families (EXACT section labels,
+    e.g. '809. Deflect' — the fine chunker splits one family across chunks).
+
+    Like tagged_lookup this is a lexical match with no cosine: similarity
+    stays 0.0 so completing a keyword's family never inflates confidence.
+    ORDER BY content approximates rule order within a family (chunks start
+    with '### <label>\\n<first rule code>').
+    """
+    if not sections:
+        return []
+    results: list[Chunk] = []
+    with get_conn(pool) as conn:
+        with conn.cursor() as cur:
+            cur.execute(_FAMILY_SQL, (corpus_version, list(sections)))
+            for row in cur.fetchall():
+                results.append(Chunk(
+                    id=str(row[0]),
+                    content=row[1],
+                    section=row[2],
+                    parent_section=row[3],
+                    source_type=row[4],
+                    metadata=row[5],
+                    similarity=0.0,
+                ))
+    return results

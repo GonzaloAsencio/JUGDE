@@ -29,6 +29,7 @@ def _fake_settings():
     s.gemini_timeout_s = 10.0
     s.prompt_version = "v5"
     s.cache_ttl_s = 86400
+    s.keyword_family_extra = 0
     return s
 
 

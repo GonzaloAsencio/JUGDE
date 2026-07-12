@@ -174,9 +174,25 @@ por carta/keyword, trigger 2+ entidades) y medida con gate A/B pareado mismo dí
 contexto de sobra.
 - [ ] Probar top_k 8-10 (con reranker para sostener precisión). Cambio de Settings.
 
-### 3.5 Expansión padre/vecinos (small-to-big)
-`parent_section` ya se guarda y no se usa.
-- [ ] Recuperar el chunk chico, mandar al LLM la sección padre completa.
+### 3.5 Expansión padre/vecinos (small-to-big) ✅ GANÓ EN VARIANTE FAMILIA (2026-07-12, flag off por default)
+Probes primero (cero código): la variante del plan original — expandir a la
+sección padre markdown vía `parent_section` — quedó **falsificada**: rescata
+solo eval-030 a +7-25K tokens/query, y 014/015/017/019 no se rescatan con
+NINGUNA expansión (su gold no está en nada adyacente a lo recuperado).
+La variante que SÍ ganó: **completar la familia de regla del keyword detectado**
+(mismo `section` label, p.ej. '809. Deflect' = 4 chunks ~344 tok). El slot
+reservado de #48 metía solo el primer chunk de la familia (`_TAGGED_SQL LIMIT 2`
++ presupuesto de 1 slot); la regla que la pregunta necesitaba (809.1) vivía en
+un hermano descartado.
+- [x] `family_lookup` + `_complete_keyword_families`: los hermanos van DESPUÉS
+      de top_k (nunca desalojan semánticos — el mecanismo que mató a 3.2),
+      capeados por `keyword_family_extra` (familias de keyword: 2-9 chunks,
+      ~200-950 tok; costo solo en queries con keyword).
+- [x] Gate pareado flag 0 vs 8 (matcher estricto, HyDE memoizado): **WIN
+      eval-030, cero pérdidas** → recall estricto 12/17 → 13/17.
+- [ ] Flip en prod: `KEYWORD_FAMILY_EXTRA=8` por env (default 0 en código =
+      byte-idéntico); flip del default en código después de validar en prod
+      (mismo camino two-step que el reranker #42→#46).
 
 ### 3.6 FTS quirúrgico — ❌ MUERTO POR PROBE (2026-07-11, cero código)
 El experimento se corrió contra sus dos preguntas objetivo (014/019, matcher
@@ -316,14 +332,14 @@ Fase 0 ✅ ── split: 6 retrieval / 4 reasoning (0 unknowns)
 Fase 1 ✅ ── 1.1 (#49), 1.2 (#51), 1.3+1.4 (#52) mergeados y deployados
 Fase 4.1 ✅ ── few-shot v6 (#50) mergeado; validado en prod: Deflect-in-trash
           contesta correcto (2026-07-11)
-Fase 3 ── 3.0 ✅ (#48), 3.3 ✅ (#42/#46); 3.1 ❌ 3.2 ❌ 3.6 ❌ 3.7 ❌ 3.8 ❌
-          muertas por evidencia (probes y gates pareados, matcher estricto)
+Fase 3 ── 3.0 ✅ (#48), 3.3 ✅ (#42/#46), 3.5 ✅ (variante familia, flag);
+          3.1 ❌ 3.2 ❌ 3.6 ❌ 3.7 ❌ 3.8 ❌ muertas por evidencia
+          (probes y gates pareados, matcher estricto)
 SIGUIENTE RECOMENDADO:
-Fase 3.5 (small-to-big) ── única palanca de retrieval barata que queda para
-          eval-014/015 (383.3.d.1: regla-cuerpo sin título propio — el chunk
-          fino no la contiene pero la sección padre sí); parent_section ya
-          está en la DB y no se usa. Si también muere, el perfil 014/019 pasa
-          a Fase 4 (razonamiento/routing) o 3.9 (fine-tune, última bala)
+Flip de 3.5 en prod (KEYWORD_FAMILY_EXTRA=8) y validar; después el perfil
+          restante (014/015/017/019 — puente de vocabulario que ninguna
+          expansión alcanza) pasa a Fase 4 (razonamiento/routing, con
+          majority-voting primero) o 3.9 (fine-tune, última bala)
 Fase 2 / Fase 5 ── sin cambios, cuando toquen
 ```
 
@@ -341,9 +357,9 @@ Fase 2 / Fase 5 ── sin cambios, cuando toquen
 
 ## Deuda operativa anotada (no bloquea, no olvidar)
 
-- [ ] Limpiar filas muertas de corpus viejos en la DB: v1.1.0/v1.3.0/v2.0.0/v2.1.0
-      (~1391) + v2.2.0 (husk de 189 por el chunk-theft) + v2.3.0/v2.3.1 (4256,
-      experimentos 3.8 descartados). Solo v2.2.1 está viva.
+- [x] Limpiar filas muertas de corpus viejos en la DB — HECHO 2026-07-12: 5836
+      filas borradas (v1.x, v2.0.0, v2.1.0, husk v2.2.0, experimentos v2.3.x);
+      `corpus_chunks` = solo v2.2.1 (2128).
 - [ ] Log `query.complete` engañoso: reporta `llm_model or gemini_model` — dice
       gpt-oss-120b aunque genere Gemini.
 - [ ] `_hyde_gemini`/`_hyde_openai_compat` tragan excepciones sin loguear — un

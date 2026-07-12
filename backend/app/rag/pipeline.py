@@ -18,7 +18,7 @@ from app.rag.generation import (
 from app.rag.provider import LLMProvider
 from app.rag.card_detect import detect_card_mentions, load_card_names
 from app.rag.reranker import rerank
-from app.rag.retrieval import fuse_results, hybrid_search, tagged_lookup
+from app.rag.retrieval import family_lookup, fuse_results, hybrid_search, tagged_lookup
 from app.rag.rules import extract_rule_codes
 from app.rag.schemas import Citation, QueryResponse
 
@@ -158,6 +158,31 @@ def _assemble_context(
     return result
 
 
+def _complete_keyword_families(context: list, family_chunks: list, extra_cap: int) -> list:
+    """Append the missing siblings of keyword rule families AFTER the top_k
+    context (3.5 small-to-big at rule-family granularity).
+
+    The fine chunker deliberately splits a rule family ('809. Deflect') across
+    chunks so each embeds sharply — but the keyword reserved slot then admits
+    only the first chunk, and the rule the question needs may live in a sibling
+    (eval-030: 809.1 was in a dropped chunk). Completion re-unites the family
+    for the LLM without touching what retrieval chose: siblings only ever
+    APPEND beyond top_k, capped at *extra_cap*, so no semantic hit is ever
+    evicted (the eviction mechanism that killed query decomposition in 3.2).
+    """
+    if extra_cap <= 0 or not family_chunks:
+        return context
+    seen = {c.id for c in context}
+    tail = []
+    for c in family_chunks:
+        if len(tail) >= extra_cap:
+            break
+        if c.id not in seen:
+            seen.add(c.id)
+            tail.append(c)
+    return list(context) + tail
+
+
 def _try_cached_response(cache_key: str, settings: Settings, query_id: str, t0: float) -> QueryResponse | None:
     """Return a cached QueryResponse for *cache_key*, or None on miss/corruption.
 
@@ -284,6 +309,18 @@ def _retrieve(
     semantic_confidence = max((c.similarity for c in chunks), default=0.0)
 
     chunks = _assemble_context(explicit_chunks, chunks, auto_chunks, settings.top_k)
+
+    # 3.5 keyword family completion (flag off by default): when a detected
+    # keyword's rule chunk made it into context, fetch its complete family and
+    # append the missing siblings beyond top_k. Only families whose slot chunk
+    # actually survived assembly are completed — a keyword whose rule never
+    # entered the context gets no free ride.
+    if settings.keyword_family_extra > 0:
+        kw_sections = {c.section for c in auto_chunks if _RULE_SECTION.match(c.section or "")}
+        fam_sections = sorted(kw_sections & {c.section for c in chunks})
+        if fam_sections:
+            family = family_lookup(db_pool, fam_sections, corpus_version)
+            chunks = _complete_keyword_families(chunks, family, settings.keyword_family_extra)
 
     # Exact card detection (auto-detected names + user @mentions) is the most
     # precise retrieval we have — a deterministic entity match, not a fuzzy cosine.
