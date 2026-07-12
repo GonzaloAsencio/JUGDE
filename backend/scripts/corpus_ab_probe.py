@@ -1,4 +1,4 @@
-"""Retrieval-only A/B: corpus v2.2.0 vs v2.2.1, per-question, paired HyDE.
+"""Retrieval-only A/B: two corpus versions (OLD vs NEW), per-question, paired HyDE.
 
 Same 20-question stratified subset (seed 42) the eval harness uses. Zero
 generation, zero judge — the only LLM calls are HyDE, memoized per question so
@@ -22,7 +22,7 @@ from app.rag.provider import create_provider
 from scripts.eval import _load_eval_set, stratified_subset
 from scripts.eval_judge import match_rule_reference
 
-OLD, NEW = "v2.2.0", "v2.2.1"
+OLD, NEW = "v2.2.1", "v2.3.1"
 
 
 class HydeMemo:
