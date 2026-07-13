@@ -19,6 +19,7 @@ from app.rag.provider import LLMProvider
 from app.rag.card_detect import detect_card_mentions, load_card_names
 from app.rag.reranker import rerank
 from app.rag.retrieval import family_lookup, fuse_results, hybrid_search, tagged_lookup
+from app.rag.routing import RULEBOOK_CHUNK_ID, build_stuffed_chunks, is_hard_query
 from app.rag.rules import extract_rule_codes
 from app.rag.schemas import Citation, QueryResponse
 
@@ -350,7 +351,11 @@ def _build_citations(chunks: list) -> list[Citation]:
             similarity=chunk.similarity,
             chunk_id=chunk.id,
             set=(chunk.metadata or {}).get("set"),
-            rule_codes=sorted(extract_rule_codes(chunk.content)),
+            # The stuffed rulebook chunk is the WHOLE rulebook: deriving
+            # rule_codes from it would list every code in the game (response
+            # bloat, and a guaranteed paper hit for the eval recall matcher).
+            rule_codes=[] if chunk.id == RULEBOOK_CHUNK_ID
+            else sorted(extract_rule_codes(chunk.content)),
         )
         for chunk in chunks
     ]
@@ -433,6 +438,7 @@ def answer_question(
     settings: Settings,
     card_mentions: list[str] | None = None,
     corpus_version: str | None = None,
+    hard_provider: LLMProvider | None = None,
 ) -> QueryResponse:
     """Orchestrate embed -> retrieve -> generate with cache, tracing, and post-gen validation.
 
@@ -448,7 +454,18 @@ def answer_question(
     # endpoint. Falling back to settings keeps existing callers/tests working
     # without mutating the cached Settings singleton (see main.py).
     corpus_version = corpus_version or settings.corpus_version or "latest"
-    cache_key = make_cache_key(question, corpus_version, card_mentions, settings.prompt_version)
+    # Routed answers come from a different model AND context, but the routing
+    # decision needs retrieval (card_count) and thus happens after the cache
+    # lookup — so the ROUTED bit can't be in the key. Keying the namespace on
+    # the FLAG instead keeps the cache coherent across the two-step flip: a
+    # flip (either direction) starts cold rather than serving up to
+    # cache_ttl_s of answers produced by the other mode. Flag off ->
+    # byte-identical key to pre-routing behaviour.
+    cache_prompt_version = (
+        settings.prompt_version + "+hard-routing"
+        if settings.hard_query_routing else settings.prompt_version
+    )
+    cache_key = make_cache_key(question, corpus_version, card_mentions, cache_prompt_version)
 
     cached = _try_cached_response(cache_key, settings, query_id, t0)
     if cached is not None:
@@ -458,7 +475,37 @@ def answer_question(
         question, embedder, db_pool, provider, settings, card_mentions, corpus_version, query_id
     )
 
-    model = settings.llm_model or settings.gemini_model
+    resolved_question = clean_question or question
+
+    # 4.2+4.3 hard-query routing (flag off by default): multi-entity questions
+    # fail on reasoning, not retrieval — probes showed their gold rules are out
+    # of reach of every retrieval expansion, but a thinking model over the FULL
+    # rulebook answers them. Hard queries swap the retrieved context for the
+    # stuffed one and generate on the hard provider; the retrieval above still
+    # ran and keeps supplying the confidence signals (semantic cosine + exact
+    # card match), whose meaning doesn't change with the routed context.
+    # hard_provider is None whenever the flag is off (see main.py), so the
+    # normal path stays byte-identical.
+    routed = False
+    if hard_provider is not None and settings.hard_query_routing and is_hard_query(
+        card_count=card_count, keyword_count=len(_detect_keywords(resolved_question))
+    ):
+        stuffed = build_stuffed_chunks(
+            resolved_question,
+            known_keywords=_KNOWN_KEYWORDS,
+            extra_card_names=tuple(card_mentions or ()),
+        )
+        if stuffed is not None:
+            chunks = stuffed
+            routed = True
+            logger.info(
+                "query.routed_hard",
+                query_id=query_id,
+                card_count=card_count,
+                stuffed_chunks=len(stuffed),
+            )
+
+    model = settings.hard_gemini_model if routed else (settings.llm_model or settings.gemini_model)
 
     if not chunks:
         latency_ms = round((time.time() - t0) * 1000)
@@ -478,9 +525,11 @@ def answer_question(
             confidence=0.0,
         )
 
-    resolved_question = clean_question or question
     extra_system = _MULTI_CARD_SCAFFOLD if needs_scaffold(resolved_question, card_count) else ""
-    answer = _generate_guarded(provider, resolved_question, chunks, query_id, extra_system=extra_system)
+    answer = _generate_guarded(
+        hard_provider if routed else provider,
+        resolved_question, chunks, query_id, extra_system=extra_system,
+    )
     citations = _build_citations(chunks)
     answer = _postprocess_answer(answer, citations, chunks, query_id)
 

@@ -21,6 +21,12 @@ backend/data/raw/*
 !backend/data/raw/.gitkeep
 backend/data/processed/*
 !backend/data/processed/.gitkeep
+# rulebook.md and cards.md stopped being intermediate build artifacts when
+# hard-query routing (4.2+4.3) started reading them at RUNTIME: the stuffed
+# context is built from these files, so they must ship with the git checkout
+# (the Dockerfile COPYs the checkout — ignored files never reach prod or CI).
+!backend/data/processed/rulebook.md
+!backend/data/processed/cards.md
 backend/data/cards/cards.json
 backend/data/cards/keywords_dictionary.json
 backend/data/eval_runs/*

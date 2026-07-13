@@ -1,0 +1,329 @@
+"""Tests for hard-query routing (improvement plan 4.2 + 4.3).
+
+Hard multi-entity questions fail on reasoning, not retrieval (probe
+2026-07-12: with the FULL rulebook in context, flash-lite still misses
+eval-014/017; gemini-3.5-flash with thinking answers all 4 residual misses
+3/3). The routing lever: a deterministic classifier (zero LLM calls) sends
+hard queries to a thinking model with a stuffed context — every detected
+card's section plus the entire rulebook — while easy queries keep the
+existing RAG path untouched. Flag off by default: the pipeline must be
+byte-identical to pre-routing behaviour until an eval gate flips it.
+"""
+from unittest.mock import MagicMock, patch
+
+from app.rag.pipeline import _KNOWN_KEYWORDS
+from app.rag.retrieval import Chunk
+
+
+# ---------------------------------------------------------------------------
+# is_hard_query — deterministic classifier
+#
+# Thresholds calibrated on the annotated eval set (2026-07-12): cards >= 2 OR
+# (a card plus >= 2 keywords) catches all 4 residual misses (eval-014/015/017/
+# 019) plus 10 more hard/medium questions and ZERO easy ones. Question length
+# was evaluated as a third signal and rejected: it adds only marginal routes.
+# ---------------------------------------------------------------------------
+
+def test_two_cards_is_hard():
+    from app.rag.routing import is_hard_query
+
+    assert is_hard_query(card_count=2, keyword_count=0) is True
+
+
+def test_card_plus_two_keywords_is_hard():
+    from app.rag.routing import is_hard_query
+
+    # eval-015 shape: one card (Vex Apathetic) + two keywords (stun, ambush).
+    assert is_hard_query(card_count=1, keyword_count=2) is True
+
+
+def test_keywords_without_a_card_are_not_hard():
+    from app.rag.routing import is_hard_query
+
+    # The keyword vocabulary contains everyday words (draw, discard, token):
+    # "when do I draw and when do I discard?" is an easy question that must
+    # NOT pay the thinking-model latency. On the eval set every 0-card
+    # question has at most 1 keyword, so this costs no target coverage.
+    assert is_hard_query(card_count=0, keyword_count=2) is False
+
+
+def test_one_card_one_keyword_is_not_hard():
+    from app.rag.routing import is_hard_query
+
+    # eval-030 shape: answered correctly today by keyword family completion —
+    # routing it would spend thinking-model quota for nothing.
+    assert is_hard_query(card_count=1, keyword_count=1) is False
+
+
+def test_no_signals_is_not_hard():
+    from app.rag.routing import is_hard_query
+
+    assert is_hard_query(card_count=0, keyword_count=0) is False
+
+
+# ---------------------------------------------------------------------------
+# build_stuffed_chunks — card sections + full rulebook
+# ---------------------------------------------------------------------------
+
+def test_stuffed_chunks_end_with_the_full_rulebook():
+    from app.rag.routing import RULEBOOK_CHUNK_ID, build_stuffed_chunks
+
+    chunks = build_stuffed_chunks("Can I attack twice?", known_keywords=_KNOWN_KEYWORDS)
+
+    assert chunks is not None
+    last = chunks[-1]
+    assert last.id == RULEBOOK_CHUNK_ID
+    assert last.source_type == "rulebook"
+    # The whole rulebook, not a chunk of it.
+    assert len(last.content) > 100_000
+
+
+def test_stuffed_chunks_include_detected_card_sections_first():
+    from app.rag.routing import build_stuffed_chunks
+
+    question = (
+        "My opponent controls Vex Apathetic. I play Tideturner on my own turn. "
+        "Can Tideturner move before Vex's stun resolves?"
+    )
+    chunks = build_stuffed_chunks(question, known_keywords=_KNOWN_KEYWORDS)
+
+    assert chunks is not None
+    card_sections = [c.section for c in chunks if c.source_type == "card"]
+    assert "Vex Apathetic" in card_sections
+    assert "Tideturner" in card_sections
+    # Cards prepend (mirrors production's explicit-chunk ordering); rulebook closes.
+    assert chunks[-1].source_type == "rulebook"
+    assert all(c.source_type == "card" for c in chunks[:-1])
+
+
+def test_stuffed_chunks_returns_none_when_rulebook_file_missing():
+    """Never-raise: a missing data file degrades to the normal RAG path."""
+    from app.rag import routing
+
+    with patch.object(routing, "_load_rulebook", side_effect=OSError("gone")):
+        assert routing.build_stuffed_chunks("Any question?", known_keywords=frozenset()) is None
+
+
+def test_stuffed_chunks_include_extra_card_names_absent_from_the_prose():
+    """A terse question plus explicit card_mentions can classify as hard; the
+    mentioned cards must reach the stuffed context even when the prose never
+    names them (case-insensitive, deduped against prose detections)."""
+    from app.rag.routing import build_stuffed_chunks
+
+    chunks = build_stuffed_chunks(
+        "Can these two interact during combat?",
+        known_keywords=_KNOWN_KEYWORDS,
+        extra_card_names=("vex apathetic", "Tideturner"),
+    )
+
+    assert chunks is not None
+    card_sections = [c.section for c in chunks if c.source_type == "card"]
+    assert card_sections == ["Vex Apathetic", "Tideturner"]
+
+
+def test_stuffed_chunks_dedupe_extra_names_already_detected_in_prose():
+    from app.rag.routing import build_stuffed_chunks
+
+    question = "Does Vex Apathetic stun my unit?"
+    chunks = build_stuffed_chunks(
+        question, known_keywords=_KNOWN_KEYWORDS, extra_card_names=("VEX APATHETIC",)
+    )
+
+    assert chunks is not None
+    card_sections = [c.section for c in chunks if c.source_type == "card"]
+    assert card_sections.count("Vex Apathetic") == 1
+
+
+# ---------------------------------------------------------------------------
+# Settings — flag off by default, two-step flip like the reranker
+# ---------------------------------------------------------------------------
+
+def test_settings_default_routing_off(monkeypatch):
+    from app.config import Settings
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake:fake@localhost/fake")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake")
+    monkeypatch.delenv("HARD_QUERY_ROUTING", raising=False)
+    s = Settings(_env_file=None, database_url="postgresql://fake:fake@localhost/fake", gemini_api_key="fake")
+
+    assert s.hard_query_routing is False
+    assert s.hard_gemini_model == "gemini-3.5-flash"
+    assert s.hard_timeout_s == 60.0
+    assert s.hard_max_output_tokens == 8192
+
+
+# ---------------------------------------------------------------------------
+# Pipeline integration
+# ---------------------------------------------------------------------------
+
+def _make_chunk(section: str = "Some Rule", similarity: float = 0.9) -> Chunk:
+    return Chunk(
+        id="retrieved-1",
+        content="380. Some rule text.",
+        section=section,
+        parent_section=None,
+        source_type="rulebook",
+        similarity=similarity,
+    )
+
+
+class _RecordingProvider:
+    """LLM provider double that records what it was asked to generate from."""
+
+    def __init__(self, answer: str = "Reasoning:\n- r\nAnswer:\nRecorded answer.") -> None:
+        self.calls: list[dict] = []
+        self._answer = answer
+
+    def generate(self, question, chunks, *, extra_system=""):
+        self.calls.append({"question": question, "chunks": chunks, "extra_system": extra_system})
+        return self._answer
+
+    def hyde(self, question):
+        return ""
+
+
+def _fake_settings(routing_on: bool):
+    s = MagicMock()
+    s.corpus_version = "v1"
+    s.top_k = 5
+    s.top_k_fetch = 15
+    s.rrf_k = 60
+    s.gemini_temperature = 0.1
+    s.gemini_timeout_s = 10.0
+    s.prompt_version = "v6"
+    s.cache_ttl_s = 86400
+    s.enable_reranker = False
+    s.reranker_model = "x"
+    s.rerank_pool_size = 15
+    s.keyword_family_extra = 0
+    s.hard_query_routing = routing_on
+    s.llm_model = None
+    s.gemini_model = "gemini-flash-lite-latest"
+    return s
+
+
+# The classifier needs cards: the DB card vocabulary is unavailable under the
+# fake pool, so hardness comes from explicit card_mentions (card_count=2).
+_HARD_QUESTION = "Can Vex Apathetic stun Tideturner before its trigger resolves?"
+_HARD_MENTIONS = ["Vex Apathetic", "Tideturner"]
+_EASY_QUESTION = "How many cards do I draw at the start?"
+
+
+def _run_pipeline(question, settings, provider, hard_provider, card_mentions=None):
+    from tests.conftest import FakeEmbedder
+
+    with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+        with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+            with patch("app.rag.pipeline.get_cached", return_value=None):
+                with patch("app.rag.pipeline.set_cached"):
+                    from app.rag.pipeline import answer_question
+                    return answer_question(
+                        question, FakeEmbedder(), MagicMock(), provider, settings,
+                        card_mentions=card_mentions, hard_provider=hard_provider,
+                    )
+
+
+def test_flag_off_never_touches_the_hard_provider():
+    provider = _RecordingProvider()
+    hard = _RecordingProvider()
+
+    _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=False), provider, hard, card_mentions=_HARD_MENTIONS)
+
+    assert hard.calls == []
+    assert len(provider.calls) == 1
+    # Retrieved context, not stuffed.
+    assert [c.id for c in provider.calls[0]["chunks"]] == ["retrieved-1"]
+
+
+def test_flag_on_routes_hard_query_to_hard_provider_with_stuffed_context():
+    from app.rag.routing import RULEBOOK_CHUNK_ID
+
+    provider = _RecordingProvider()
+    hard = _RecordingProvider()
+
+    result = _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, hard, card_mentions=_HARD_MENTIONS)
+
+    assert len(hard.calls) == 1
+    assert provider.calls == []  # generation went to the hard provider only
+    stuffed = hard.calls[0]["chunks"]
+    assert stuffed[-1].id == RULEBOOK_CHUNK_ID
+    assert result.answer.strip().endswith("Recorded answer.")
+
+
+def test_flag_on_easy_query_stays_on_the_normal_path():
+    provider = _RecordingProvider()
+    hard = _RecordingProvider()
+
+    _run_pipeline(_EASY_QUESTION, _fake_settings(routing_on=True), provider, hard)
+
+    assert hard.calls == []
+    assert len(provider.calls) == 1
+
+
+def test_flag_on_without_hard_provider_falls_back_to_normal_path():
+    provider = _RecordingProvider()
+
+    _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, None, card_mentions=_HARD_MENTIONS)
+
+    assert len(provider.calls) == 1
+    assert [c.id for c in provider.calls[0]["chunks"]] == ["retrieved-1"]
+
+
+def test_flag_on_stuffing_unavailable_falls_back_to_normal_path():
+    provider = _RecordingProvider()
+    hard = _RecordingProvider()
+
+    with patch("app.rag.pipeline.build_stuffed_chunks", return_value=None):
+        _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, hard, card_mentions=_HARD_MENTIONS)
+
+    assert hard.calls == []
+    assert len(provider.calls) == 1
+
+
+def test_cache_namespace_is_keyed_on_the_routing_flag():
+    """A flag flip (either direction) must start cold instead of serving up to
+    cache_ttl_s of answers produced by the other model/context. The routed bit
+    itself can't be in the key (the cache lookup precedes retrieval, which the
+    classifier needs), so the whole namespace is keyed on the FLAG — and with
+    the flag off the key is byte-identical to pre-routing behaviour."""
+    from tests.conftest import FakeEmbedder
+
+    captured = {}
+
+    def _capture(question, cv, mentions, pv):
+        captured.setdefault("pvs", []).append(pv)
+        return f"key-{pv}"
+
+    provider = _RecordingProvider()
+    for routing_on in (False, True):
+        with patch("app.rag.pipeline.make_cache_key", side_effect=_capture):
+            with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+                with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+                    with patch("app.rag.pipeline.get_cached", return_value=None):
+                        with patch("app.rag.pipeline.set_cached"):
+                            from app.rag.pipeline import answer_question
+                            answer_question(
+                                _EASY_QUESTION, FakeEmbedder(), MagicMock(), provider,
+                                _fake_settings(routing_on=routing_on),
+                            )
+
+    pv_off, pv_on = captured["pvs"]
+    assert pv_off == "v6"          # flag off: pre-routing key, byte-identical
+    assert pv_on == "v6+hard-routing"
+    assert pv_off != pv_on
+
+
+def test_routed_rulebook_citation_carries_no_rule_codes():
+    """extract_rule_codes over the WHOLE rulebook would put thousands of codes
+    in one citation (response bloat + paper-hit recall in the eval harness)."""
+    from app.rag.routing import RULEBOOK_CHUNK_ID
+
+    provider = _RecordingProvider()
+    hard = _RecordingProvider()
+
+    result = _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, hard, card_mentions=_HARD_MENTIONS)
+
+    rulebook_cites = [c for c in result.citations if c.chunk_id == RULEBOOK_CHUNK_ID]
+    assert rulebook_cites, "routed response must cite the stuffed rulebook chunk"
+    assert rulebook_cites[0].rule_codes == []
+    assert len(rulebook_cites[0].content_preview) <= 200

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "eval-014",
+    "kind": "MISS",
+    "model": "gemini-2.5-flash",
+    "question": "My opponent controls Vex Apathetic. I play Tideturner on my own turn. Can Tideturner move before Vex's stun resolves?",
+    "rule_reference": "383.3.d.1",
+    "canonical_answer": "No. Playing Tideturner on your own turn results in Vex resolving first, which prevents Tideturner from moving before it is stunned. The turn player orders triggers first, so Vex's trigger resolves before Tideturner's ability.",
+    "card_mentions": [
+      "Vex Apathetic",
+      "Tideturner"
+    ],
+    "prompt_chars": 282406,
+    "majority_gold_covered": {
+      "383.3.d.1": false
+    },
+    "samples": [
+      {
+        "answer": "[ERROR] 404 NOT_FOUND. {'error': {'code': 404, 'message': 'This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use a newer model for the latest features and improvements.', 'status': 'NOT_FOUND'}}",
+        "latency_s": 1.8,
+        "usage": null,
+        "gold_covered": {
+          "383.3.d.1": false
+        },
+        "refused": false
+      }
+    ]
+  }
+]

@@ -1,0 +1,349 @@
+[
+  {
+    "id": "eval-014",
+    "kind": "MISS",
+    "question": "My opponent controls Vex Apathetic. I play Tideturner on my own turn. Can Tideturner move before Vex's stun resolves?",
+    "rule_reference": "383.3.d.1",
+    "canonical_answer": "No. Playing Tideturner on your own turn results in Vex resolving first, which prevents Tideturner from moving before it is stunned. The turn player orders triggers first, so Vex's trigger resolves before Tideturner's ability.",
+    "card_mentions": [
+      "Vex Apathetic",
+      "Tideturner"
+    ],
+    "prompt_chars": 282406,
+    "majority_gold_covered": {
+      "383.3.d.1": false
+    },
+    "samples": [
+      {
+        "answer": "Reasoning:\n- [Vex Apathetic, Rule #1]: Vex Apathetic has the ability: \"When an opponent plays a unit while I'm at a battlefield, [Stun] it. They can't move it this turn.\"\n- [Tideturner, Rule #2]: Tideturner has the ability: \"When you play me, you may choose a unit you control at another location. Move me to its location and it to my original location.\"\n- [Rule 383.4.a.2]: Play effects (triggered abilities that trigger when a permanent is played) are put on the chain as pending items after the permanent is finalized and enters the board.\n- [Rule 359.3]: When a unit is played, it enters the board.\n- [Rule 335.2]: When all outstanding tasks are completed, pending chain items are processed by the FEPR (Finalize, Execute, Pass, Resolve) process.\n- [Rule 340.1]: The newest item on the chain resolves first.\n- Chain resolution: Both Tideturner's \"When you play me\" ability and Vex Apathetic's \"When an opponent plays a unit\" ability are triggered by the same event (playing Tideturner). Per rule 383.3.d, the turn player (the player playing Tideturner) orders their triggers first, followed by the opponent. If the opponent's Vex trigger is placed on the chain, it must resolve before Tideturner can move, as the stun effect (\"They can't move it this turn\") would apply upon resolution of Vex's ability.\n\nAnswer:\nNo. When you play Tideturner, both its ability and Vex Apathetic's ability trigger. These abilities are placed on the chain. Because Vex's ability resolves as part of the chain, its effect—which includes the stun and the restriction that the unit cannot be moved—will resolve before Tideturner's ability can be executed, preventing Tideturner from moving.",
+        "latency_s": 4.3,
+        "usage": {
+          "prompt_tokens": 79571,
+          "output_tokens": 447,
+          "total_tokens": 80018
+        },
+        "gold_covered": {
+          "383.3.d.1": false
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- [Vex Apathetic, #1]: Vex has a triggered ability: \"When an opponent plays a unit while I'm at a battlefield, [Stun] it. They can't move it this turn.\"\n- [Tideturner, #2]: Tideturner has a triggered ability: \"When you play me, you may choose a unit you control at another location. Move me to its location and it to my original location.\"\n- [Rule 383.3.d]: If multiple triggered abilities are triggered simultaneously, the turn player orders their triggers on the chain first, followed by other players in turn order.\n- [Rule 359.3.b]: When a permanent is played, its \"When you play me\" triggered abilities are placed on the chain as pending items after the permanent is finalized and enters the board.\n- [Rule 337.1.b]: Chain items are finalized in the order they were appended to the chain.\n- [Rule 340.1]: The newest item on the chain resolves first.\n- Chain resolution: When Tideturner is played, both Tideturner's \"When you play me\" ability and Vex's \"When an opponent plays a unit\" ability trigger. Since it is the opponent's turn (the player playing Tideturner), the turn player (Tideturner's controller) orders their trigger, then the opponent (Vex's controller) orders theirs.\n- If Vex's ability is placed on the chain after Tideturner's, Vex's ability resolves first. If Tideturner's ability is placed on the chain after Vex's, Tideturner's ability resolves first.\n- However, the question asks if Tideturner can move *before* the stun resolves. Because both are triggered abilities, they are placed on the chain and resolve one by one. If Tideturner's ability is ordered to resolve first, it will move before the stun resolves. If Vex's ability is ordered to resolve first, the stun will resolve before Tideturner moves.\n\nAnswer:\nIt depends on the order in which the triggered abilities are placed on the chain. When you play Tideturner, both Tideturner's ability and Vex Apathetic's ability trigger. Per rule 383.3.d, the turn player (you) and the opponent (Vex's controller) will order these triggers on the chain. If you order Tideturner's ability to be on top of the chain, it will resolve first, allowing Tideturner to move before the stun resolves. If the opponent orders Vex's ability to be on top of the chain, the stun will resolve first, preventing Tideturner from moving.",
+        "latency_s": 4.1,
+        "usage": {
+          "prompt_tokens": 79571,
+          "output_tokens": 611,
+          "total_tokens": 80182
+        },
+        "gold_covered": {
+          "383.3.d.1": false
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- [Vex Apathetic, #1]: Vex has a triggered ability: \"When an opponent plays a unit while I'm at a battlefield, [Stun] it. They can't move it this turn.\"\n- [Tideturner, #2]: Tideturner has a triggered ability: \"When you play me, you may choose a unit you control at another location. Move me to its location and it to my original location.\"\n- [Rule 383.3.d]: If multiple triggered abilities are triggered simultaneously, the turn player orders their triggers on the chain first, followed by other players in turn order.\n- [Rule 359.3.b]: When a permanent is played, its \"When you play me\" triggered abilities are placed on the chain as pending items after the permanent is finalized and enters the board.\n- [Rule 337.1.b]: Chain items are finalized in the order they were appended to the chain.\n- [Rule 340.1]: The newest item on the chain resolves first.\n- Chain resolution: When Tideturner is played, both Tideturner's \"When you play me\" ability and Vex's \"When an opponent plays a unit\" ability trigger. Since it is the opponent's turn (the player playing Tideturner), the turn player (Tideturner's controller) orders their trigger, then the opponent (Vex's controller) orders theirs.\n- If Vex's ability is placed on the chain after Tideturner's, Vex's ability resolves first. If Tideturner's ability is placed on the chain after Vex's, Tideturner's ability resolves first.\n- However, Tideturner's ability involves a move. Rule 441.3 states movement is instantaneous. If Tideturner's ability resolves first, the move occurs. If Vex's ability resolves first, Tideturner is stunned and cannot move.\n- Because the turn player (Tideturner's controller) chooses the order of triggers if they are simultaneous, they can place their own trigger on the chain *after* the opponent's trigger, or vice versa. If the opponent's trigger is placed on the chain last, it resolves first.\n\nAnswer:\nIt depends on the order in which the triggered abilities are placed on the chain. When you play Tideturner, both Tideturner's ability and Vex Apathetic's ability trigger. Per rule 383.3.d, the turn player (you) and the opponent (Vex's controller) order their triggers on the chain. If you order your trigger to resolve after Vex's, Vex's stun will resolve first, preventing Tideturner from moving. If you order your trigger to resolve before Vex's, Tideturner's move will resolve first.",
+        "latency_s": 3.7,
+        "usage": {
+          "prompt_tokens": 79571,
+          "output_tokens": 639,
+          "total_tokens": 80210
+        },
+        "gold_covered": {
+          "383.3.d.1": false
+        },
+        "refused": false
+      }
+    ]
+  },
+  {
+    "id": "eval-015",
+    "kind": "MISS",
+    "question": "My opponent controls Vex Apathetic. I play an Ambush unit to the battlefield on my turn. Can I flash the unit back before Vex's stun trigger resolves?",
+    "rule_reference": "383.3.d.1",
+    "canonical_answer": "Yes. You can react to the Vex trigger on the chain and flash the ambush unit back, as long as you do so in response to the Vex trigger before it resolves.",
+    "card_mentions": [
+      "Vex Apathetic"
+    ],
+    "prompt_chars": 281463,
+    "majority_gold_covered": {
+      "383.3.d.1": false
+    },
+    "samples": [
+      {
+        "answer": "Reasoning:\n- [Rule 383.4.a.2]: Play effects (triggered abilities that trigger when a unit is played) are put on the chain as pending items after the permanent is finalized and enters the board.\n- [Rule 359.3.c]: Other players have an opportunity to play Reactions before the resolution of spells (and abilities on the chain).\n- [Rule 327/331]: Playing a card creates a chain, which puts the game into a Closed State.\n- [Rule 309.1.a]: Only cards and abilities with the Reaction keyword can be played or activated in a Closed State.\n- [Rule 822.1.b]: Ambush grants the unit the Reaction keyword while it is being played to a battlefield where you control units.\n- [Rule 335/336]: The FEPR process (Finalize, Execute, Pass, Resolve) governs the chain. After a card is finalized, the controller of the newest item on the chain gains priority to play Reactions.\n- [Rule 359.3.e.10]: Triggered abilities (like Vex's) are added to the chain.\n- Chain interaction: When you play the Ambush unit, it is finalized and enters the board. Vex's ability triggers. Because the game is in a Closed State (due to the chain), you may only play cards or abilities with the Reaction keyword.\n\nAnswer:\nYes, you can. When you play the Ambush unit, it is finalized and enters the board, which triggers Vex Apathetic's ability. This creates a chain, putting the game into a Closed State. Because your unit has the Ambush keyword, it possesses the Reaction keyword while being played. This allows you to play other cards or activate abilities with the Reaction keyword in response to Vex's trigger before it resolves.",
+        "latency_s": 4.5,
+        "usage": {
+          "prompt_tokens": 79319,
+          "output_tokens": 406,
+          "total_tokens": 79725
+        },
+        "gold_covered": {
+          "383.3.d.1": false
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- [Rule 383.4.a.2]: Play effects (triggered abilities that trigger when a permanent is played) are put on the chain as pending items after the permanent is finalized and enters the board.\n- [Rule 359.3.c]: Other players have an opportunity to play Reactions before the resolution of spells (and abilities on the chain).\n- [Rule 327/331]: Playing a card creates a chain, which puts the game into a Closed State.\n- [Rule 309.1.a]: Only cards and abilities with the Reaction keyword can be played or activated in a Closed State.\n- [Rule 822.1.b]: Ambush grants the unit the Reaction keyword while it is being played to a battlefield where you control units.\n- [Rule 383.3.d.1]: If multiple triggered abilities are triggered simultaneously, the turn player orders their triggers on the chain first, followed by other players.\n- [Rule 359.3.c]: Because the unit is played, the chain is created. The Vex Apathetic trigger (triggered by the unit being played) and any potential triggers from the Ambush unit (if it has any) are added to the chain.\n- [Rule 338.1.a.2]: Players may play cards with the Reaction keyword during a Closed State.\n\nAnswer:\nYes. When you play the Ambush unit, it is placed on the chain, creating a Closed State. Because the unit has the Ambush keyword, it gains the Reaction keyword while being played. After the unit is finalized and enters the board, the Vex Apathetic trigger is added to the chain. Before that trigger resolves, you have the opportunity to play any cards or activate any abilities with the Reaction keyword, as the game is in a Closed State.",
+        "latency_s": 3.9,
+        "usage": {
+          "prompt_tokens": 79319,
+          "output_tokens": 399,
+          "total_tokens": 79718
+        },
+        "gold_covered": {
+          "383.3.d.1": true
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- [Rule 383.4.a.2]: Play effects (triggered abilities that trigger when a permanent is played) are put on the chain as pending items after the permanent is finalized and enters the board.\n- [Card text \"Vex - Apathetic\"]: \"When an opponent plays a unit while I'm at a battlefield, [Stun] it.\" This is a triggered ability.\n- [Rule 333.1]: Whenever a triggered ability is added to the chain, a chain is created.\n- [Rule 309.1]: If a chain exists, the turn is in a \"Closed State.\"\n- [Rule 309.1.a]: Only cards and abilities with the \"Reaction\" keyword can be played or activated in a Closed State.\n- [Rule 822.1.b]: The \"Ambush\" keyword grants a unit the \"Reaction\" keyword while it is being played to a battlefield where the controller has units.\n- [Rule 359.3.c]: Other players have an opportunity to play Reactions before the resolution of spells (or chain items).\n- Chain: The unit is played (Ambush grants Reaction) -> Vex's trigger is added to the chain -> The state becomes Closed -> Players may play Reactions.\n\nAnswer:\nYes. When you play an Ambush unit, it is played with the \"Reaction\" keyword. After the unit enters the board, Vex Apathetic's triggered ability is added to the chain, which creates a \"Closed State.\" Because your unit has the \"Reaction\" keyword, you are permitted to play or activate other cards or abilities with \"Reaction\" in response to Vex's trigger before it resolves.",
+        "latency_s": 3.7,
+        "usage": {
+          "prompt_tokens": 79319,
+          "output_tokens": 369,
+          "total_tokens": 79688
+        },
+        "gold_covered": {
+          "383.3.d.1": false
+        },
+        "refused": false
+      }
+    ]
+  },
+  {
+    "id": "eval-017",
+    "kind": "MISS",
+    "question": "My opponent defends with Fiora Peerless. I move a unit into the battlefield, then immediately try to play Rengar Trophy Hunter as a reaction to add another attacker. Does Fiora's triggered ability still resolve and grant double might?",
+    "rule_reference": "383.4.e, 459.2.d",
+    "canonical_answer": "Yes. Fiora Peerless has a 'when I attack or defend' trigger that goes on the chain as soon as she is assigned defender designation. This happens before there is a chance to play Rengar Trophy Hunter as a reaction. Once the ability is on the chain, it resolves even if Rengar is played afterward. The same applies to Kha'Zix.",
+    "card_mentions": [
+      "Fiora Peerless",
+      "Rengar Trophy Hunter"
+    ],
+    "prompt_chars": 282438,
+    "majority_gold_covered": {
+      "383.4.e": false,
+      "459.2.d": false
+    },
+    "samples": [
+      {
+        "answer": "Reasoning:\n- [Fiora Peerless]: \"When I attack or defend one on one, double my Might this combat.\"\n- [Rengar Trophy Hunter]: \"[Ambush] (You may play me as a [Reaction] to a battlefield where you have units.) I can be played to a battlefield where there are enemy units (even if you don't have units there).\"\n- [Rule 359.3.f.2]: Information referenced in an instruction is checked on execution.\n- [Rule 741.2]: A unit is \"one on one\" when it and the enemy unit at the same location are both \"alone.\"\n- [Rule 741.1]: A unit is \"alone\" when there are no other friendly units at the same location.\n- Chain: Fiora's ability triggers when she defends \"one on one.\" If Rengar is played as a reaction to the move, Rengar enters the battlefield before Fiora's ability resolves. Once Rengar is present, Fiora is no longer \"one on one\" because there is now another friendly unit (Rengar) at the battlefield, meaning Fiora is no longer \"alone.\" Since the condition \"one on one\" is checked upon the resolution of the ability, and the condition is no longer met, the ability will not grant the Might bonus.\n\nAnswer:\nNo. Fiora Peerless's ability triggers when she defends \"one on one,\" which requires her to be \"alone\" (no other friendly units at the same location). By playing Rengar Trophy Hunter as a reaction to the move, Rengar enters the battlefield before Fiora's ability resolves. Because Fiora is no longer \"alone\" once Rengar is present, she is no longer \"one on one.\" Since the condition is checked upon resolution, the ability will fail to grant the Might bonus.",
+        "latency_s": 3.7,
+        "usage": {
+          "prompt_tokens": 79558,
+          "output_tokens": 393,
+          "total_tokens": 79951
+        },
+        "gold_covered": {
+          "383.4.e": false,
+          "459.2.d": false
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- Fiora Peerless text: \"When I attack or defend one on one, double my Might this combat.\"\n- Rule 741.2: A unit is \"one on one\" when it and the enemy unit at the same location are both \"alone.\"\n- Rule 741.1: A unit is \"alone\" when there are no other friendly units at the same location.\n- Rengar Trophy Hunter text: \"[Ambush] (You may play me as a [Reaction] to a battlefield where you have units.) I can be played to a battlefield where there are enemy units (even if you don't have units there).\"\n- Rule 349.3: When a unit is played, it enters the board at the chosen location.\n- Rule 359.3.c: Other players have an opportunity to play Reactions before the resolution of spells or abilities on the chain.\n- Chain/Timing: When you play Rengar as a Reaction, it enters the battlefield. If Fiora is defending alone, and you move a unit there, Fiora is no longer \"one on one\" because there is now another unit (the one you moved) at the battlefield. If you then play Rengar, there are now two units at the battlefield.\n- Fiora's ability condition: The ability triggers \"When I attack or defend one on one.\" This condition is checked at the time of the event. If the unit is no longer \"one on one\" when the combat or the specific trigger event occurs, the condition is not met.\n\nAnswer:\nNo. Fiora Peerless's ability requires her to be \"one on one,\" which means both she and the enemy unit must be \"alone\" (no other friendly units at the same location). By moving a unit into the battlefield and then playing Rengar Trophy Hunter, there are now multiple units present at the battlefield. Because Fiora is no longer \"one on one,\" her triggered ability condition is not met, and she will not double her Might.",
+        "latency_s": 3.6,
+        "usage": {
+          "prompt_tokens": 79558,
+          "output_tokens": 430,
+          "total_tokens": 79988
+        },
+        "gold_covered": {
+          "383.4.e": false,
+          "459.2.d": false
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- [Fiora Peerless]: \"When I attack or defend one on one, double my Might this combat.\"\n- [Rengar Trophy Hunter]: \"[Ambush] (You may play me as a [Reaction] to a battlefield where you have units.) I can be played to a battlefield where there are enemy units (even if you don't have units there).\"\n- [Rule 359.3.f.2]: Information referenced in an instruction is checked on execution.\n- [Rule 741.2]: A unit is \"one on one\" when it and the enemy unit at the same location are both \"alone.\"\n- [Rule 741.1]: A unit is \"alone\" when there are no other friendly units at the same location.\n- Chain: Fiora's ability triggers when she defends \"one on one.\" If Rengar is played as a reaction to the move, Rengar enters the battlefield before Fiora's ability resolves. Once Rengar is present, Fiora is no longer \"one on one\" because there is now another friendly unit (Rengar) at the battlefield, meaning Fiora is no longer \"alone.\" Since the condition \"one on one\" is no longer met at the time of resolution, the ability fails to resolve as intended.\n\nAnswer:\nNo. Fiora's ability triggers when she defends \"one on one,\" which requires her to be \"alone\" (no other friendly units at the same location). By playing Rengar Trophy Hunter as a reaction to the move, Rengar enters the battlefield before Fiora's ability resolves. Because Fiora is no longer \"alone\" once Rengar is present, she is no longer \"one on one,\" and her ability will not grant the double Might bonus. [#1, #2, #741.1, #741.2, #359.3.f.2]",
+        "latency_s": 3.3,
+        "usage": {
+          "prompt_tokens": 79558,
+          "output_tokens": 407,
+          "total_tokens": 79965
+        },
+        "gold_covered": {
+          "383.4.e": false,
+          "459.2.d": false
+        },
+        "refused": false
+      }
+    ]
+  },
+  {
+    "id": "eval-019",
+    "kind": "MISS",
+    "question": "Does Jhin Murderous Artist grant players priority before resolving? What about Hunt and other XP gain triggers, like Herald of Spring's Play effect?",
+    "rule_reference": "429.2, 429.2.a",
+    "canonical_answer": "Jhin Murderous Artist's ability cannot be reacted to: spells and abilities that Add resources finalize immediately, and priority does not pass from them. Although XP is considered a resource, that rule only covers Add as adding Energy or Power to the Rune Pool, so Hunt and other XP gain triggers (like Herald of Spring's Play effect) resolve normally and can be reacted to.",
+    "card_mentions": [
+      "Jhin Murderous Artist",
+      "Herald of Spring"
+    ],
+    "prompt_chars": 282461,
+    "majority_gold_covered": {
+      "429.2": true,
+      "429.2.a": true
+    },
+    "samples": [
+      {
+        "answer": "Reasoning:\n- [Rule 337.1.c]: \"Units, Gear, and abilities that Add resources resolve immediately when Finalized and do not progress to Step 2: Execute.\"\n- [Rule 167]: \"All Abilities that include the action 'Add' are abilities that are adding Energy or Power to the Rune Pool.\"\n- [Card #1: Jhin - Murderous Artist]: \"When I move, [Add] :rb_energy_1::rb_rune_rainbow:. (Abilities that add resources can't be reacted to.)\"\n- [Rule 429.2]: \"Spells, triggered abilities, and activated abilities that Add resources finalize immediately.\"\n- [Rule 429.2.a]: \"Priority and Focus will not pass from Add abilities being finalized or resolving...\"\n- [Card #2: Herald of Spring]: \"When you play me, gain 2 XP.\"\n- [Rule 383.4.a]: \"Play Effects are Triggered Abilities with the Condition that the Permanent that has the Play Effect being played to the board.\"\n- [Rule 383.4.a.2]: \"These Triggered Abilities are put on the Chain as Pending Items after the Permanent these effects correspond to is finalized and enters the board.\"\n- [Rule 337.1.c.3]: \"If the Chain is not empty and there are no Pending Items, the controller of the newest item on the chain gains Priority and becomes the Active Player. Proceed to Step 2: Execute.\"\n\nAnswer:\n- **Jhin Murderous Artist**: No. Jhin's ability adds resources to the Rune Pool. Per rule 429.2, abilities that add resources finalize immediately and do not pass priority. Furthermore, the card text explicitly states that abilities adding resources cannot be reacted to.\n- **Herald of Spring (Play effect)**: Yes. Herald of Spring's \"When you play me\" effect is a Triggered Ability (specifically a Play Effect per rule 383.4.a). Unlike resource-adding abilities, this trigger is placed on the chain as a Pending Item. Once finalized, if it is the newest item on the chain and there are no other pending items, the controller of that ability gains priority to proceed to the Execute step (rule 337.1.c.3).\n- **Hunt**: Hunt is a Triggered Ability that triggers when a unit conquers or holds. Like other triggered abilities, it is placed on the chain. Once finalized, it follows the standard FEPR process, which involves passing priority to players to allow for reactions or further actions before the ability resolves.",
+        "latency_s": 3.6,
+        "usage": {
+          "prompt_tokens": 79581,
+          "output_tokens": 568,
+          "total_tokens": 80149
+        },
+        "gold_covered": {
+          "429.2": true,
+          "429.2.a": true
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- [Rule 337.1.c]: \"Units, Gear, and abilities that Add resources resolve immediately when Finalized and do not progress to Step 2: Execute.\"\n- [Rule 337.1.c.1]: \"If the Chain is empty, play proceeds in an Open State.\"\n- [Rule 337.1.c.1.a]: \"If this occurs during a Showdown, the next player in turn order gains Focus.\"\n- [Rule 346.1]: \"Focus will not pass in this way if the chain opened as a result of a triggered ability being added to the chain, nor if it opened as a result of an Add ability being added to the chain.\"\n- [Rule 383.4.a.2]: \"These [Play Effects] are put on the Chain as Pending Items after the Permanent these effects correspond to is finalized and enters the board.\"\n- [Rule 429.2]: \"Spells, triggered abilities, and activated abilities that Add resources finalize immediately.\"\n- [Rule 429.2.a]: \"Priority and Focus will not pass from Add abilities being finalized or resolving...\"\n- [Rule 823.1.c.1]: \"Hunt is functionally short for: 'When I Conquer or Hold, my controller gains X XP.'\"\n- [Jhin Murderous Artist text]: \"When I move, [Add] 1 Energy, 1 Power. (Abilities that add resources can't be reacted to.)\"\n- [Herald of Spring text]: \"When you play me, gain 2 XP.\"\n\n- Jhin's ability is a triggered ability that uses the [Add] action. Per rule 429.2, abilities that [Add] resources finalize immediately and do not pass priority or focus.\n- Herald of Spring's \"When you play me\" ability is a Play Effect (Triggered Ability). Per rule 383.4.a.2, it is added to the chain as a Pending Item after the unit enters the board. It is not an [Add] ability, so it follows standard chain resolution (FEPR).\n- Hunt is a triggered ability (Conquer/Hold). It is not an [Add] ability, so it follows standard chain resolution.\n\nAnswer:\nNo, Jhin Murderous Artist does not grant players priority before resolving. Because Jhin's ability uses the [Add] action, it finalizes and resolves immediately, and rule 429.2 explicitly states that priority and focus do not pass from [Add] abilities.\n\nRegarding Hunt and Herald of Spring's play effect, these are triggered abilities that do not use the [Add] action. They are added to the chain as pending items and follow the standard FEPR (Finalize, Execute, Pass, Resolve) process. Players will receive priority or focus according to the standard rules for resolving chain items once these abilities are finalized.",
+        "latency_s": 4.3,
+        "usage": {
+          "prompt_tokens": 79581,
+          "output_tokens": 632,
+          "total_tokens": 80213
+        },
+        "gold_covered": {
+          "429.2": true,
+          "429.2.a": true
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- [Rule 337.1.c]: \"Units, Gear, and abilities that Add resources resolve immediately when Finalized and do not progress to Step 2: Execute.\"\n- [Card #1: Jhin Murderous Artist]: \"When I move, [Add] :rb_energy_1::rb_rune_rainbow:. (Abilities that add resources can't be reacted to.)\"\n- [Rule 429.2]: \"Spells, triggered abilities, and activated abilities that Add resources finalize immediately.\"\n- [Rule 429.2.a]: \"Priority and Focus will not pass from Add abilities being finalized or resolving, and will resolve before any other outstanding items on the chain are finalized.\"\n- [Card #2: Herald of Spring]: \"When you play me, gain 2 XP.\"\n- [Rule 383.4.a]: \"Play Effects are Triggered Abilities with the Condition that the Permanent that has the Play Effect being played to the board.\"\n- [Rule 383.4.a.2]: \"These Triggered Abilities are put on the Chain as Pending Items after the Permanent these effects correspond to is finalized and enters the board.\"\n- [Rule 335.2]: \"When all Outstanding Tasks are completed, all pending Chain Items will subsequently be processed by the FEPR process.\"\n- [Rule 337.1]: \"If one or more Items are Pending, their controllers must complete the steps of Playing those Pending Items until they are Finalized Items or leave the Chain.\"\n- [Rule 337.1.a]: \"This process does not pass Priority.\"\n\nAnswer:\nNo, Jhin Murderous Artist does not grant players priority before resolving. Per rule 429.2 and 429.2.a, abilities that \"Add\" resources (like Jhin's ability) finalize immediately and resolve without passing priority.\n\nRegarding Herald of Spring's \"When you play me\" trigger (a Play Effect), it is added to the chain as a pending item after the unit enters the board. During the FEPR process (specifically the Finalize step), pending items are finalized. Rule 337.1.a explicitly states that the finalization process does not pass priority. Therefore, neither Jhin's resource-adding ability nor Herald of Spring's XP gain trigger grants priority to players before they resolve.",
+        "latency_s": 3.6,
+        "usage": {
+          "prompt_tokens": 79581,
+          "output_tokens": 517,
+          "total_tokens": 80098
+        },
+        "gold_covered": {
+          "429.2": true,
+          "429.2.a": true
+        },
+        "refused": false
+      }
+    ]
+  },
+  {
+    "id": "eval-001",
+    "kind": "CONTROL",
+    "question": "How many copies of the same card can I include in my main deck?",
+    "rule_reference": "103.2.b",
+    "canonical_answer": "You may include up to 3 copies of the same named card in your main deck. This limit includes your Chosen Champion.",
+    "card_mentions": [],
+    "prompt_chars": 280810,
+    "majority_gold_covered": {
+      "103.2.b": true
+    },
+    "samples": [
+      {
+        "answer": "Reasoning:\n- Rule 103.2.b: Your Main Deck can include up to 3 copies of the same named card.\n- Rule 103.2.b.1: This limit includes your Chosen Champion.\n- Rule 103.2.b.2: Cards have different names even if they represent the same character (e.g., Yasuo, Remorseful and Yasuo, Windrider are different names).\n\nAnswer:\nYou can include up to 3 copies of the same named card in your Main Deck. This limit includes your Chosen Champion. Note that cards are considered to have different names if they have different subtitles, allowing you to include up to 3 copies of each unique named card. [#103]",
+        "latency_s": 2.8,
+        "usage": {
+          "prompt_tokens": 79112,
+          "output_tokens": 162,
+          "total_tokens": 79274
+        },
+        "gold_covered": {
+          "103.2.b": true
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- Rule 103.2.b: Your Main Deck can include up to 3 copies of the same named card.\n- Rule 103.2.b.1: This limit includes your Chosen Champion.\n- Rule 103.2.b.2: Cards have different names even if they represent the same character (e.g., Yasuo, Remorseful and Yasuo, Windrider are different names).\n\nAnswer:\nYou can include up to 3 copies of the same named card in your Main Deck. This limit includes your Chosen Champion. Note that cards are considered to have different names if they have different subtitles, allowing you to include up to 3 copies of each unique named card. [#103.2.b]",
+        "latency_s": 2.6,
+        "usage": {
+          "prompt_tokens": 79112,
+          "output_tokens": 166,
+          "total_tokens": 79278
+        },
+        "gold_covered": {
+          "103.2.b": true
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- Rule 103.2.b: Your Main Deck can include up to 3 copies of the same named card.\n- Rule 103.2.b.1: This limit includes your Chosen Champion.\n- Rule 103.2.b.2: Cards have different names even if they represent the same character (e.g., Yasuo, Remorseful and Yasuo, Windrider are different names).\n\nAnswer:\nYou can include up to 3 copies of the same named card in your Main Deck. This limit includes your Chosen Champion. Note that cards are considered to have different names if they have different subtitles, allowing you to include up to 3 copies of each unique named card. [#103.2.b]",
+        "latency_s": 2.6,
+        "usage": {
+          "prompt_tokens": 79112,
+          "output_tokens": 166,
+          "total_tokens": 79278
+        },
+        "gold_covered": {
+          "103.2.b": true
+        },
+        "refused": false
+      }
+    ]
+  },
+  {
+    "id": "eval-030",
+    "kind": "CONTROL",
+    "question": "I play Disposal Order and choose 3 Deflect units in my enemy's trash. Do I have to pay 3[A] in order to finalize Disposal Order?",
+    "rule_reference": "365.1, 809.1, 809.1.a",
+    "canonical_answer": "No. Deflect is a keyword only present on Permanents, and a game object is only a Permanent if it is a Main Deck game object that remains on the Board after being played. The trash is a non-board zone, so units in the trash do not have Deflect and Disposal Order finalizes without any additional cost.",
+    "card_mentions": [
+      "Disposal Order"
+    ],
+    "prompt_chars": 281300,
+    "majority_gold_covered": {
+      "365.1": true,
+      "809.1": true,
+      "809.1.a": false
+    },
+    "samples": [
+      {
+        "answer": "Reasoning:\n- Rule 355.9.a: \"Unit,\" \"gear,\" and \"rune\" refer to objects on the Board unless specified otherwise.\n- Rule 141.1.b.2: Units in the trash are not on the Board and cannot be affected by spells that target units on the Board.\n- Rule 141.1.b.3: Units can be affected by spells that target units in the Trash.\n- Rule 809.1: Deflect is a Passive Ability keyword present on Permanents.\n- Rule 365.1: Passive Abilities of Permanents are typically only active while on the Board.\n- Rule 809.1.c: Deflect imposes a cost on spells and abilities that choose the permanent that has this ability.\n- Chain: Deflect is a passive ability => a card in the trash is not on the Board => Deflect is not active there => no additional cost is imposed.\n\nAnswer:\nNo. Deflect is a passive ability that is only active while a permanent is on the Board. Because the units are in the trash, their Deflect abilities are inactive, and therefore they do not impose any additional cost to be chosen by Disposal Order.",
+        "latency_s": 3.4,
+        "usage": {
+          "prompt_tokens": 79258,
+          "output_tokens": 264,
+          "total_tokens": 79522
+        },
+        "gold_covered": {
+          "365.1": true,
+          "809.1": true,
+          "809.1.a": false
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- [Rule 108.2.c]: Cards in a player's Trash are unordered.\n- [Rule 141.1.b.2]: Units in the Trash retain the properties of being a Unit, but are not on the Board.\n- [Rule 365.1]: Passive Abilities of Permanents (such as Deflect) are typically only active while on the Board.\n- [Rule 809.1]: Deflect is a Passive Ability keyword present on Permanents.\n- [Rule 809.1.c]: Deflect imposes a mandatory additional cost on spells and abilities that choose the permanent that has this ability.\n- Chain: Deflect is a passive ability => Passive abilities are only active on the Board => Units in the Trash are not on the Board => Deflect is inactive in the Trash => No additional cost is imposed.\n\nAnswer:\nNo. Deflect is a passive ability, and according to rule 365.1, passive abilities of permanents are only active while on the Board. Since the units are in the trash, their Deflect abilities are inactive, and you do not have to pay any additional cost to finalize Disposal Order.",
+        "latency_s": 3.1,
+        "usage": {
+          "prompt_tokens": 79258,
+          "output_tokens": 258,
+          "total_tokens": 79516
+        },
+        "gold_covered": {
+          "365.1": true,
+          "809.1": true,
+          "809.1.a": false
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- Rule 355.9.a: \"Unit,\" \"gear,\" and \"rune\" refer to objects on the Board unless specified otherwise.\n- Rule 141.1.b.2: Units in the trash are not on the Board and cannot be affected by spells that target units on the Board.\n- Rule 141.1.b.3: Units can be affected by spells that target units in the Trash.\n- Rule 809.1: Deflect is a Passive Ability keyword present on Permanents.\n- Rule 365.1: Passive Abilities of Permanents are typically only active while on the Board.\n- Chain: Deflect is a passive ability => a unit in the trash is not on the Board => Deflect is not active there => no additional cost is imposed.\n- Disposal Order text: \"[Reaction] (Play any time, even before spells and abilities resolve.) Choose one — Choose up to 3 cards from opponents' trashes. Their owners recycle them. Draw 1.\"\n- The card Disposal Order does not target units on the Board; it targets cards in the trash. Since Deflect is a passive ability that is only active on the Board, it is inactive while the unit is in the trash. Therefore, the Deflect cost does not apply.\n\nAnswer:\nNo. Deflect is a passive ability that is only active while a permanent is on the Board. Because the units are in the trash, their Deflect abilities are inactive, and you do not have to pay any additional cost to finalize Disposal Order.",
+        "latency_s": 5.5,
+        "usage": {
+          "prompt_tokens": 79258,
+          "output_tokens": 335,
+          "total_tokens": 79593
+        },
+        "gold_covered": {
+          "365.1": true,
+          "809.1": true,
+          "809.1.a": false
+        },
+        "refused": false
+      }
+    ]
+  }
+]

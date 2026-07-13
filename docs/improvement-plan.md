@@ -250,19 +250,49 @@ El system prompt DESCRIBE cómo encadenar (regla 6) pero no lo MUESTRA.
 - [ ] MEDIR: la query Deflect-in-trash en prod + eval con majority voting del
       judge (ver criterio de Fase 4 — el correct% simple no sirve como gate).
 
-### 4.2 Routing a modelo con thinking para queries hard ⭐
-Señales para clasificar hard SIN llamada LLM: ≥2 cartas detectadas, múltiples
-keywords, longitud de la pregunta.
-- [ ] Clasificador determinístico en el pipeline.
-- [ ] Queries hard → Gemini 2.5 con thinking (free tier con límites más bajos —
-      verificar RPD vigentes en AI Studio); fáciles → Flash actual.
+### 4.2 + 4.3 Routing a thinking + full-rulebook stuffing — ✅ IMPLEMENTADO COMBINADO (2026-07-12, flag off, rama `feat/hard-query-routing`)
+Los probes del 2026-07-12 (`scripts/rulebook_stuffing_probe.py`, 3 samples,
+leídos a mano contra las canónicas) demostraron que las palancas SE COMBINAN:
+- **Stuffing solo (flash-lite)**: rescata eval-019 (3/3 citando 429.2/429.2.a)
+  y eval-015 en sustancia (3/3); eval-014 1/3 (cita 383.3.d pero nunca aplica
+  383.3.d.1 — termina en "it depends"); eval-017 0/3 (concluye al revés).
+  Controles 001/030 intactos. **Retrieval formalmente exculpado**: con los
+  gold verificados presentes en el contexto, el fallo restante es razonamiento.
+- **Stuffing + thinking (gemini-3.5-flash, max_out 8192)**: eval-014 3/3 con el
+  mecanismo exacto de la canónica (turn player ordena primero → LIFO → Vex
+  resuelve → can't-beats-can) y eval-017 3/3 ("el trigger ya está en el chain,
+  no se rechequea"). **Los 4 misses residuales quedan cubiertos.**
+- Factibilidad: ~79.5K tokens de prompt, 3-5s en flash-lite / 18-32s en
+  3.5-flash, cero 429s con pace 25s. `gemini-2.5-flash` está CERRADO para la
+  key (404 "no longer available to new users"); 3.5-flash disponible.
 
-### 4.3 Full-rulebook stuffing para queries hard
-El corpus es UN reglamento + errata (<~100K tokens estimados); Flash tiene 1M de
-contexto. Para queries hard, meter el reglamento entero + texto de cartas
-detectadas elimina el fallo de retrieval por definición.
-- [ ] Solo para queries ruteadas como hard (costo TPM + latencia).
-- [ ] Medir contra 4.2: puede que compitan o se combinen.
+Implementación (una variable de prod: el flag):
+- [x] Clasificador determinístico `is_hard_query` (cero LLM): **≥2 cartas O
+      ≥2 keywords** — calibrado sobre el eval set anotado: rutea los 4 misses
+      + 10 hard/medium más, cero easy. La señal de longitud se evaluó y
+      descartó (no suma cobertura de targets).
+- [x] `build_stuffed_chunks`: secciones de cartas detectadas (de `cards.md`,
+      misma vocab que el probe) + rulebook entero como último chunk. Never-raise:
+      sin archivos → camino RAG normal.
+- [x] `HARD_QUERY_ROUTING` (default False), `hard_gemini_model=gemini-3.5-flash`,
+      `hard_timeout_s=60` (probe pisó 32.3s; el timeout normal de 30s corta),
+      `hard_max_output_tokens=8192` (el thinking gasta presupuesto de salida).
+- [x] Citation del chunk rulebook con `rule_codes=[]` (si no, TODOS los códigos
+      del juego entrarían en una citation: bloat + paper-hit del matcher).
+- [x] Gate e2e local (pipeline real, DB + Gemini reales, flag forzado):
+      **3 wins / 0 losses / 1 push**. eval-014/017/019 correctas con el
+      mecanismo canónico (014 cita 383.3.d.1 textual); eval-001 (easy) NO
+      rutea. El push: **eval-015 refusa 3/3 en 3.5-flash** — "flash the unit
+      back" es slang sin anclaje en el reglamento y el thinking aplica la
+      regla 1 del prompt (refusar lo no derivable) donde flash-lite
+      improvisaba. Prod hoy la contesta MAL (miss de retrieval): incorrecto →
+      refusal honesto es lateral, no regresión. Queda abierta como problema
+      de VOCABULARIO de la pregunta, no de retrieval ni de razonamiento.
+- [ ] Flip two-step: PR mergeada flag off → `HARD_QUERY_ROUTING=true` en Space
+      env → validar en prod (eval-014 vía proxy Vercel) → flip default en código.
+- ⚠️ Límites free-tier de gemini-3.5-flash (RPD/TPM) sin verificar bajo carga.
+- ⚠️ Con el flag ON, el recall del eval pierde sentido en preguntas ruteadas
+      (el contexto ya no viene del retrieval); gates de retrieval corren flag OFF.
 
 ### 4.4 Extracción de quotes antes de razonar
 - [ ] Scaffold: paso 1 citar VERBATIM del contexto, paso 2 razonar solo sobre lo
@@ -335,11 +365,14 @@ Fase 4.1 ✅ ── few-shot v6 (#50) mergeado; validado en prod: Deflect-in-tra
 Fase 3 ── 3.0 ✅ (#48), 3.3 ✅ (#42/#46), 3.5 ✅ (variante familia, flag);
           3.1 ❌ 3.2 ❌ 3.6 ❌ 3.7 ❌ 3.8 ❌ muertas por evidencia
           (probes y gates pareados, matcher estricto)
+Fase 4.2+4.3 ── IMPLEMENTADO COMBINADO (2026-07-12, rama feat/hard-query-routing,
+          flag off): probes probaron que stuffing+thinking cubre los 4 misses
+          residuales (014/015/017/019). 3.5 ya flippeado en prod vía env
+          (KEYWORD_FAMILY_EXTRA=8, validado con eval-030).
 SIGUIENTE RECOMENDADO:
-Flip de 3.5 en prod (KEYWORD_FAMILY_EXTRA=8) y validar; después el perfil
-          restante (014/015/017/019 — puente de vocabulario que ninguna
-          expansión alcanza) pasa a Fase 4 (razonamiento/routing, con
-          majority-voting primero) o 3.9 (fine-tune, última bala)
+PR de 4.2+4.3 → gate targeted por pregunta → flip HARD_QUERY_ROUTING en prod
+          (two-step). Pendientes menores: flip default keyword_family_extra
+          0→8 tras soak; 3.9 (fine-tune) queda como última bala si algo se cae.
 Fase 2 / Fase 5 ── sin cambios, cuando toquen
 ```
 
