@@ -79,6 +79,14 @@ describe('AnswerDisplay', () => {
     expect(document.querySelector('[data-slot="hover-card-trigger"]')).not.toBeNull();
   });
 
+  it('renders a card chip for a backticked card name (inline code)', () => {
+    render(
+      <AnswerDisplay answer="You play `Jhin Virtuoso` on your turn" loading={false} error={null} />
+    );
+    expect(screen.getByText('JHIN VIRTUOSO')).toBeInTheDocument();
+    expect(document.querySelector('[data-slot="hover-card-trigger"]')).not.toBeNull();
+  });
+
   it('does not chip single-word card names in the answer', () => {
     render(
       <AnswerDisplay answer="A solar eclipse occurs at night" loading={false} error={null} />
