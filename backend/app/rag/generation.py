@@ -392,8 +392,8 @@ def _hyde_openai_compat(question: str, *, base_url: str, api_key: str, model: st
         out = response.choices[0].message.content
         if out:
             return out.strip()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("hyde.openai_compat_failed — falling back to raw-only retrieval: %s", e)
     return ""
 
 
@@ -433,8 +433,8 @@ def _hyde_gemini(
         text = _safe_response_text(response)
         if text:
             return text.strip()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("hyde.gemini_failed — falling back to raw-only retrieval: %s", e)
     return ""
 
 

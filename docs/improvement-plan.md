@@ -394,8 +394,9 @@ Fase 2 / Fase 5 ── sin cambios, cuando toquen
 - [x] Limpiar filas muertas de corpus viejos en la DB — HECHO 2026-07-12: 5836
       filas borradas (v1.x, v2.0.0, v2.1.0, husk v2.2.0, experimentos v2.3.x);
       `corpus_chunks` = solo v2.2.1 (2128).
-- [ ] Log `query.complete` engañoso: reporta `llm_model or gemini_model` — dice
-      gpt-oss-120b aunque genere Gemini.
-- [ ] `_hyde_gemini`/`_hyde_openai_compat` tragan excepciones sin loguear — un
-      `logger.warning` habría delatado el bug del timeout días antes.
+- [x] Log `query.complete` engañoso: YA ARREGLADO por el routing (#58/#59) —
+      `model = settings.hard_gemini_model if routed else (settings.llm_model or
+      settings.gemini_model)`. Este ítem estaba desactualizado.
+- [x] `_hyde_gemini`/`_hyde_openai_compat` tragan excepciones sin loguear —
+      HECHO 2026-07-13: `logger.warning` en ambas, never-raise contract intacto.
 - [x] Commitear este archivo (entró con la PR de la maquinaria 3.8).
