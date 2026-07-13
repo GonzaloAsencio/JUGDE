@@ -152,6 +152,97 @@ def test_settings_default_routing_off(monkeypatch):
     assert s.hard_max_output_tokens == 8192
 
 
+def test_routing_flag_without_gemini_key_refuses_to_start():
+    """Fail-closed: the hard provider is Gemini-only. An operator who flips
+    HARD_QUERY_ROUTING without a GEMINI_API_KEY must get a loud startup error,
+    not a pipeline that silently never routes (prod runs openai_compat/Groq as
+    the MAIN provider — the gemini key is exactly the thing that can be absent)."""
+    import pytest
+
+    from app.config import Settings
+
+    with pytest.raises(ValueError, match="hard_query_routing requires gemini_api_key"):
+        Settings(
+            _env_file=None,
+            database_url="postgresql://fake:fake@localhost/fake",
+            llm_provider="openai_compat",
+            llm_base_url="http://x", llm_api_key="k", llm_model="m",
+            gemini_api_key=None,
+            hard_query_routing=True,
+        )
+
+
+def test_routing_flag_with_openai_compat_main_provider_is_valid():
+    """The main provider being openai_compat must NOT block routing: prod runs
+    Groq as main, and the hard provider only needs the gemini key."""
+    from app.config import Settings
+
+    s = Settings(
+        _env_file=None,
+        database_url="postgresql://fake:fake@localhost/fake",
+        llm_provider="openai_compat",
+        llm_base_url="http://x", llm_api_key="k", llm_model="m",
+        gemini_api_key="gk",
+        hard_query_routing=True,
+    )
+    assert s.hard_query_routing is True
+
+
+def test_create_hard_provider_builds_its_own_client_for_openai_compat_main():
+    """create_hard_provider must not depend on the main provider being Gemini:
+    with llm_client=None (openai_compat main) it constructs its own genai
+    client from the gemini key."""
+    from unittest.mock import MagicMock, patch
+
+    from app.rag.provider import GeminiProvider, create_hard_provider
+
+    s = MagicMock()
+    s.hard_query_routing = True
+    s.gemini_api_key = "gk"
+    s.hard_gemini_model = "gemini-3.5-flash"
+    s.gemini_temperature = 0.1
+    s.hard_timeout_s = 60.0
+    s.hard_max_output_tokens = 8192
+
+    fake_client = MagicMock()
+    with patch("google.genai.Client", return_value=fake_client) as ctor:
+        provider = create_hard_provider(s, llm_client=None)
+
+    assert isinstance(provider, GeminiProvider)
+    ctor.assert_called_once_with(api_key="gk")
+    assert provider._client is fake_client
+
+
+def test_create_hard_provider_reuses_the_main_gemini_client():
+    from unittest.mock import MagicMock
+
+    from app.rag.provider import GeminiProvider, create_hard_provider
+
+    s = MagicMock()
+    s.hard_query_routing = True
+    s.gemini_api_key = "gk"
+    s.hard_gemini_model = "gemini-3.5-flash"
+    s.gemini_temperature = 0.1
+    s.hard_timeout_s = 60.0
+    s.hard_max_output_tokens = 8192
+
+    main_client = MagicMock()
+    provider = create_hard_provider(s, llm_client=main_client)
+
+    assert isinstance(provider, GeminiProvider)
+    assert provider._client is main_client
+
+
+def test_create_hard_provider_returns_none_when_flag_off():
+    from unittest.mock import MagicMock
+
+    from app.rag.provider import create_hard_provider
+
+    s = MagicMock()
+    s.hard_query_routing = False
+    assert create_hard_provider(s, llm_client=MagicMock()) is None
+
+
 # ---------------------------------------------------------------------------
 # Pipeline integration
 # ---------------------------------------------------------------------------

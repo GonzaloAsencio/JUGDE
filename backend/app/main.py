@@ -15,7 +15,7 @@ from app.observability import get_logger, init_observability
 from google import genai
 
 from app.rag.embedder import Embedder
-from app.rag.provider import create_provider
+from app.rag.provider import create_hard_provider, create_provider
 
 _settings = get_settings()
 
@@ -95,20 +95,13 @@ async def lifespan(app: FastAPI):
     app.state.embedder = embedder
     app.state.db_pool = pool
     app.state.llm_provider = create_provider(settings, llm_client)
-    # 4.2+4.3 hard-query routing: a second Gemini provider on the thinking
-    # model with a routed-sized timeout/output budget. Only constructed when
-    # the flag is on AND the main provider is Gemini — None keeps the pipeline
-    # byte-identical to pre-routing behaviour.
-    app.state.hard_provider = None
-    if settings.hard_query_routing and settings.llm_provider == "gemini":
-        from app.rag.provider import GeminiProvider
-        app.state.hard_provider = GeminiProvider(
-            client=llm_client,
-            model=settings.hard_gemini_model,
-            temperature=settings.gemini_temperature,
-            timeout_s=settings.hard_timeout_s,
-            max_output_tokens=settings.hard_max_output_tokens,
-        )
+    # 4.2+4.3 hard-query routing: a second, Gemini-only provider on the
+    # thinking model. Independent of the MAIN provider (prod runs Groq/
+    # openai_compat as main) — create_hard_provider builds its own Gemini
+    # client from gemini_api_key when needed. None (flag off) keeps the
+    # pipeline byte-identical to pre-routing behaviour.
+    app.state.hard_provider = create_hard_provider(settings, llm_client)
+    if app.state.hard_provider is not None:
         logger.info("Hard-query routing enabled.", hard_model=settings.hard_gemini_model)
     app.state.corpus_version = corpus_version
     app.state.settings = settings

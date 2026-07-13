@@ -115,6 +115,29 @@ class OpenAICompatProvider(LLMProvider):
         )
 
 
+def create_hard_provider(settings, llm_client=None) -> LLMProvider | None:
+    """Provider for routed hard queries (thinking model + routed-sized
+    timeout/output budget), or None when the flag is off.
+
+    Independent of the MAIN provider on purpose: prod runs openai_compat
+    (Groq) as main, so the hard path builds its own Gemini client from
+    gemini_api_key when the main one isn't Gemini. Settings validation
+    guarantees the key exists whenever the flag is on (fail-closed).
+    """
+    if not settings.hard_query_routing:
+        return None
+    if llm_client is None:
+        from google import genai
+        llm_client = genai.Client(api_key=settings.gemini_api_key)
+    return GeminiProvider(
+        client=llm_client,
+        model=settings.hard_gemini_model,
+        temperature=settings.gemini_temperature,
+        timeout_s=settings.hard_timeout_s,
+        max_output_tokens=settings.hard_max_output_tokens,
+    )
+
+
 def create_provider(settings, llm_client=None) -> LLMProvider:
     if settings.llm_provider == "openai_compat":
         return OpenAICompatProvider(
