@@ -34,6 +34,11 @@ def get_llm_provider(request: Request) -> LLMProvider:
     return request.app.state.llm_provider
 
 
+def get_hard_provider(request: Request) -> LLMProvider | None:
+    # None unless hard-query routing is enabled at startup (see main.py).
+    return getattr(request.app.state, "hard_provider", None)
+
+
 @router.post("/query", response_model=QueryResponse)
 @limiter.limit(_query_limits)
 def query(
@@ -42,6 +47,7 @@ def query(
     embedder=Depends(get_embedder),
     pool=Depends(get_db_pool),
     provider: LLMProvider = Depends(get_llm_provider),
+    hard_provider: LLMProvider | None = Depends(get_hard_provider),
     settings=Depends(get_settings),
 ) -> QueryResponse:
     """POST /query — embed -> retrieve -> generate.
@@ -62,7 +68,7 @@ def query(
     try:
         return answer_question(
             body.question, embedder, pool, provider, settings, body.card_mentions,
-            corpus_version=corpus_version,
+            corpus_version=corpus_version, hard_provider=hard_provider,
         )
     except GenerationTimeout as e:
         logger.warning("LLM timeout", error=str(e))

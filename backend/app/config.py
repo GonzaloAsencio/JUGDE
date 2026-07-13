@@ -36,6 +36,19 @@ class Settings(BaseSettings):
     # paired eval gate (KEYWORD_FAMILY_EXTRA per env).
     keyword_family_extra: int = 0
 
+    # 4.2+4.3 hard-query routing: deterministic classifier (>=2 cards or >=2
+    # keywords) sends hard queries to a thinking model with the FULL rulebook
+    # stuffed into the context. Off by default — byte-identical pipeline until
+    # a per-question eval gate flips it (two-step, like the reranker and
+    # keyword_family_extra). Gemini-only: requires llm_provider=gemini.
+    hard_query_routing: bool = False
+    hard_gemini_model: str = "gemini-3.5-flash"
+    # Routed calls carry ~80K prompt tokens and think before answering: probe
+    # latency was 18-32s, so prod's gemini_timeout_s (30s) would cut them off.
+    hard_timeout_s: float = 60.0
+    # Thinking models spend the output budget on thoughts; 1024 strangles them.
+    hard_max_output_tokens: int = 8192
+
     # LLM provider: "gemini" (default) | "openai_compat" (Groq, LM Studio, Ollama, etc.)
     llm_provider: str = "gemini"
     llm_base_url: str | None = None
