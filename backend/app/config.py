@@ -32,16 +32,16 @@ class Settings(BaseSettings):
     rerank_pool_size: int = 15
     # 3.5 keyword family completion: max sibling chunks of a detected keyword's
     # rule family appended BEYOND top_k (families are 2-9 chunks, ~200-950
-    # tokens). 0 = off, byte-identical to pre-3.5 assembly. Flip only via a
-    # paired eval gate (KEYWORD_FAMILY_EXTRA per env).
-    keyword_family_extra: int = 0
+    # tokens). Flipped to 8 after prod validation 2026-07-13 (eval-030: 8
+    # citations, LLM reasons over 809.1.c/d). 0 = off, byte-identical assembly.
+    keyword_family_extra: int = 8
 
     # 4.2+4.3 hard-query routing: deterministic classifier (>=2 cards or >=2
     # keywords) sends hard queries to a thinking model with the FULL rulebook
-    # stuffed into the context. Off by default — byte-identical pipeline until
-    # a per-question eval gate flips it (two-step, like the reranker and
-    # keyword_family_extra). Gemini-only: requires llm_provider=gemini.
-    hard_query_routing: bool = False
+    # stuffed into the context. Flipped to True after prod validation
+    # 2026-07-13 (eval-014 cites 383.3.d.1, 23.6s, zero Gemini 429s in soak).
+    # Gemini-only: requires llm_provider=gemini.
+    hard_query_routing: bool = True
     hard_gemini_model: str = "gemini-3.5-flash"
     # Routed calls carry ~80K prompt tokens and think before answering: probe
     # latency was 18-32s, so prod's gemini_timeout_s (30s) would cut them off.
