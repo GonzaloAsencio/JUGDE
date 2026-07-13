@@ -279,8 +279,17 @@ Implementación (una variable de prod: el flag):
       `hard_max_output_tokens=8192` (el thinking gasta presupuesto de salida).
 - [x] Citation del chunk rulebook con `rule_codes=[]` (si no, TODOS los códigos
       del juego entrarían en una citation: bloat + paper-hit del matcher).
-- [ ] Gate targeted por pregunta (formato probe, NO correct% del judge) y flip
-      two-step como reranker/keyword_family_extra.
+- [x] Gate e2e local (pipeline real, DB + Gemini reales, flag forzado):
+      **3 wins / 0 losses / 1 push**. eval-014/017/019 correctas con el
+      mecanismo canónico (014 cita 383.3.d.1 textual); eval-001 (easy) NO
+      rutea. El push: **eval-015 refusa 3/3 en 3.5-flash** — "flash the unit
+      back" es slang sin anclaje en el reglamento y el thinking aplica la
+      regla 1 del prompt (refusar lo no derivable) donde flash-lite
+      improvisaba. Prod hoy la contesta MAL (miss de retrieval): incorrecto →
+      refusal honesto es lateral, no regresión. Queda abierta como problema
+      de VOCABULARIO de la pregunta, no de retrieval ni de razonamiento.
+- [ ] Flip two-step: PR mergeada flag off → `HARD_QUERY_ROUTING=true` en Space
+      env → validar en prod (eval-014 vía proxy Vercel) → flip default en código.
 - ⚠️ Límites free-tier de gemini-3.5-flash (RPD/TPM) sin verificar bajo carga.
 - ⚠️ Con el flag ON, el recall del eval pierde sentido en preguntas ruteadas
       (el contexto ya no viene del retrieval); gates de retrieval corren flag OFF.

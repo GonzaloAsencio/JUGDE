@@ -1,0 +1,58 @@
+[
+  {
+    "id": "eval-015",
+    "kind": "MISS",
+    "model": "gemini-3.5-flash",
+    "question": "My opponent controls Vex Apathetic. I play an Ambush unit to the battlefield on my turn. Can I flash the unit back before Vex's stun trigger resolves?",
+    "rule_reference": "383.3.d.1",
+    "canonical_answer": "Yes. You can react to the Vex trigger on the chain and flash the ambush unit back, as long as you do so in response to the Vex trigger before it resolves.",
+    "card_mentions": [
+      "Vex Apathetic"
+    ],
+    "prompt_chars": 281463,
+    "majority_gold_covered": {
+      "383.3.d.1": false
+    },
+    "samples": [
+      {
+        "answer": "I don't have enough information to answer that question with the available rules.",
+        "latency_s": 11.2,
+        "usage": {
+          "prompt_tokens": 79319,
+          "output_tokens": 16,
+          "total_tokens": 80977
+        },
+        "gold_covered": {
+          "383.3.d.1": false
+        },
+        "refused": true
+      },
+      {
+        "answer": "I don't have enough information to answer that question with the available rules.",
+        "latency_s": 18.9,
+        "usage": {
+          "prompt_tokens": 79319,
+          "output_tokens": 16,
+          "total_tokens": 82097
+        },
+        "gold_covered": {
+          "383.3.d.1": false
+        },
+        "refused": true
+      },
+      {
+        "answer": "I don't have enough information to answer that question with the available rules.",
+        "latency_s": 18.5,
+        "usage": {
+          "prompt_tokens": 79319,
+          "output_tokens": 16,
+          "total_tokens": 82169
+        },
+        "gold_covered": {
+          "383.3.d.1": false
+        },
+        "refused": true
+      }
+    ]
+  }
+]
