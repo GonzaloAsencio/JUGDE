@@ -25,7 +25,7 @@ from app.config import Settings
 from app.db import close_pool, get_conn, init_pool
 from app.rag.embedder import Embedder
 from app.rag.pipeline import answer_question
-from app.rag.provider import create_provider
+from app.rag.provider import create_hard_provider, create_provider
 from scripts.eval_judge import (
     _get_judge_config,
     aggregate_by_difficulty,
@@ -132,10 +132,12 @@ def _resolve_corpus_version(pool, settings: Settings) -> str:
     return row[0]
 
 
-async def _pipeline_run(question: str, embedder, pool, provider, settings):
+async def _pipeline_run(question: str, embedder, pool, provider, settings, hard_provider=None):
     t0 = time.time()
     try:
-        response = answer_question(question, embedder, pool, provider, settings)
+        response = answer_question(
+            question, embedder, pool, provider, settings, hard_provider=hard_provider,
+        )
         return {
             "ok": True,
             "answer": response.answer,
@@ -183,7 +185,7 @@ def _build_question_result(
     }
 
 
-async def run_eval(questions: list[dict], embedder, pool, provider, settings) -> list[dict]:
+async def run_eval(questions: list[dict], embedder, pool, provider, settings, hard_provider=None) -> list[dict]:
     results = []
     total = len(questions)
 
@@ -191,7 +193,7 @@ async def run_eval(questions: list[dict], embedder, pool, provider, settings) ->
         label = q["question"][:55] + ("..." if len(q["question"]) > 55 else "")
         print(f"[{i:2}/{total}] {label}", end=" ", flush=True)
 
-        pipeline_result = await _pipeline_run(q["question"], embedder, pool, provider, settings)
+        pipeline_result = await _pipeline_run(q["question"], embedder, pool, provider, settings, hard_provider)
 
         if not pipeline_result["ok"]:
             print(f"  [pipeline error] {pipeline_result.get('error', '')[:120]}")
@@ -427,12 +429,16 @@ def main() -> None:
     provider = create_provider(settings, llm_client)
     print(f"  Provider: {settings.llm_provider}")
 
+    hard_provider = create_hard_provider(settings, llm_client)
+    if hard_provider is not None:
+        print(f"  Hard-query routing: enabled ({settings.hard_gemini_model})")
+
     print(f"  Judge: {_judge_mode_label()}")
 
     print("\nRunning eval (no Redis cache — fresh generation per question):\n")
 
     try:
-        results = asyncio.run(run_eval(questions, embedder, pool, provider, settings))
+        results = asyncio.run(run_eval(questions, embedder, pool, provider, settings, hard_provider))
     finally:
         close_pool(pool)
 
