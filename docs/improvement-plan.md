@@ -13,7 +13,8 @@
 |---|---|
 | Recall determinístico (eval anotado, 17/20 evaluables) | **12/17 estricto** (matcher honesto post-#55); 14/17 con el matcher viejo que contaba hits de familia |
 | Correct rate (judge) | ⚠️ NO usable como métrica de PR: varianza ±10pp medida (runs idénticos dieron 25–45%) |
-| Modelo | `gemini-flash-lite-latest` (Google retiró el free tier de 2.0-flash: limit 0) |
+| Modelo (main, prod) | **Groq `llama-3.3-70b-versatile`** vía `openai_compat` (verificado en logs del Space 2026-07-13; el doc decía gemini-flash-lite y estaba desactualizado — Google retiró el free tier de 2.0-flash y prod migró a Groq) |
+| Modelo (hard routing) | `gemini-3.5-flash` (thinking), provider Gemini propio e independiente del main — requiere `GEMINI_API_KEY` (fail-closed al arrancar si falta con el flag on) |
 | Corpus | **v2.2.1** activo en prod (secciones finas + fix de títulos familia-oración, #54) |
 | Reranker | **ON por default** (+3 hits de recall, 0 pérdidas, cero tokens LLM) |
 | Costo | $0 (sin cambios) |

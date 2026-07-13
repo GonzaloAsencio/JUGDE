@@ -66,6 +66,15 @@ class Settings(BaseSettings):
     def _check_provider_fields(self):
         if self.llm_provider == "gemini" and not self.gemini_api_key:
             raise ValueError("gemini_api_key is required when llm_provider=gemini")
+        # Fail-closed, like proxy_shared_secret: the hard provider is
+        # Gemini-only regardless of the MAIN provider (prod runs Groq/
+        # openai_compat as main). An operator flipping the flag without the
+        # key must get a loud startup error — the pipeline's never-raise
+        # fallbacks would otherwise hide a routing path that never routes.
+        if self.hard_query_routing and not self.gemini_api_key:
+            raise ValueError(
+                "hard_query_routing requires gemini_api_key (the hard provider is Gemini-only)"
+            )
         if self.llm_provider == "openai_compat":
             missing = [name for name, val in [
                 ("llm_base_url", self.llm_base_url),
