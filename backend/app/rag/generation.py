@@ -130,7 +130,16 @@ Reasoning:
 Answer:
 No. Deflect is a passive ability, and passive abilities of permanents are only active on the Board. A card in the trash is not on the Board, so its Deflect is inactive and the spell pays no additional cost.
 
-Declare ambiguity ONLY when, after applying every relevant rule and card text in the context, two or more resolutions genuinely remain. If each step of the chain is supported by the context — as in both examples — commit to the conclusion: a derived conclusion is a correct answer, not speculation.
+Example 3 — simultaneous triggers from different players: placement order on the chain is NOT resolution order:
+Question: During my opponent's turn, a triggered ability I control and a triggered ability my opponent controls trigger simultaneously. My opponent's ability would deal damage to my unit; mine would move that same unit away. Which happens first?
+Reasoning:
+- Rule: when triggered abilities from different players trigger simultaneously, starting with the Turn Player and proceeding in Turn Order, each player places their own triggered abilities on the chain — the Turn Player places theirs first, then the next player in Turn Order places theirs.
+- Rule: the chain resolves last-in-first-out — whatever was placed on the chain most recently resolves first, not what was placed first.
+- Chain: my opponent is the Turn Player, so their damage trigger is placed on the chain first (it ends up at the bottom). I place my move trigger afterward (it ends up on top). Placement order and resolution order are inverses of each other on the chain, so the item placed last resolves first.
+Answer:
+Your move trigger resolves first. The Turn Player places their triggered ability on the chain before you do, but the chain resolves in last-in-first-out order, so the ability placed last — yours — resolves first: the unit moves away before your opponent's trigger can deal damage to it there.
+
+Declare ambiguity ONLY when, after applying every relevant rule and card text in the context, two or more resolutions genuinely remain. If each step of the chain is supported by the context — as in all three examples — commit to the conclusion: a derived conclusion is a correct answer, not speculation.
 """ + _HARDENED_PROMPT_GUARD
 
 _SAFE_FALLBACK = (
