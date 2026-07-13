@@ -135,10 +135,11 @@ def test_stuffed_chunks_dedupe_extra_names_already_detected_in_prose():
 
 
 # ---------------------------------------------------------------------------
-# Settings — flag off by default, two-step flip like the reranker
+# Settings — flag on by default after the 2026-07-13 prod gate, same pattern
+# as the reranker flip
 # ---------------------------------------------------------------------------
 
-def test_settings_default_routing_off(monkeypatch):
+def test_settings_default_routing_on(monkeypatch):
     from app.config import Settings
 
     monkeypatch.setenv("DATABASE_URL", "postgresql://fake:fake@localhost/fake")
@@ -146,7 +147,7 @@ def test_settings_default_routing_off(monkeypatch):
     monkeypatch.delenv("HARD_QUERY_ROUTING", raising=False)
     s = Settings(_env_file=None, database_url="postgresql://fake:fake@localhost/fake", gemini_api_key="fake")
 
-    assert s.hard_query_routing is False
+    assert s.hard_query_routing is True
     assert s.hard_gemini_model == "gemini-3.5-flash"
     assert s.hard_timeout_s == 60.0
     assert s.hard_max_output_tokens == 8192
