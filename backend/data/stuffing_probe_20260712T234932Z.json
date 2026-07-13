@@ -1,0 +1,120 @@
+[
+  {
+    "id": "eval-014",
+    "kind": "MISS",
+    "model": "gemini-3.5-flash",
+    "question": "My opponent controls Vex Apathetic. I play Tideturner on my own turn. Can Tideturner move before Vex's stun resolves?",
+    "rule_reference": "383.3.d.1",
+    "canonical_answer": "No. Playing Tideturner on your own turn results in Vex resolving first, which prevents Tideturner from moving before it is stunned. The turn player orders triggers first, so Vex's trigger resolves before Tideturner's ability.",
+    "card_mentions": [
+      "Vex Apathetic",
+      "Tideturner"
+    ],
+    "prompt_chars": 282406,
+    "majority_gold_covered": {
+      "383.3.d.1": true
+    },
+    "samples": [
+      {
+        "answer": "Reasoning:\n- **Vex Apathetic's Triggered Ability**: \"When an opponent plays a unit while I'm at a battlefield, [Stun] it. They can't move it this turn.\" This triggers when an opponent plays a unit (in this case, Tideturner) while Vex is at a battlefield [#1].\n- **Tideturner's Triggered Ability**: \"When you play me, you may choose a unit you control at another location. Move me to its location and it to my original location.\" This is a Play Effect that triggers when Tideturner is played [#2] [#3].\n- **Rule 383.4.a (Play Effects)**: Play effects are triggered abilities that are put on the Chain as pending items after the permanent enters the board [#3].\n- **Rule 383.3.d.1 (Simultaneous Triggers)**: When multiple players control triggered abilities that trigger simultaneously, the Turn Player places their triggered abilities on the Chain first, followed by the other players in Turn Order [#3]. Since it is your turn, you are the Turn Player. Therefore, Tideturner's trigger is placed on the Chain first, and your opponent's Vex Apathetic trigger is placed on the Chain second (on top of Tideturner's trigger).\n- **Rule 340.1 (Resolution of Chain Items)**: The newest item on the Chain resolves first. Because Vex's trigger is the newest item on the Chain, it resolves before Tideturner's trigger [#3].\n- **Rule 054.1 (\"Can't beats Can\")**: Vex's resolved ability dictates that \"They can't move it this turn.\" This forbidding effect supersedes Tideturner's ability to move [#3].\n- **Rule 055 (Impossible Instructions)**: When Tideturner's trigger subsequently resolves, the instruction to move Tideturner is impossible due to Vex's restriction, so the movement instruction is ignored [#3].\n\nAnswer:\nNo, Tideturner cannot move before Vex's stun resolves. Because it is your turn, your Tideturner trigger is placed on the Chain first, and your opponent's Vex trigger is placed on top of it. Vex's trigger resolves first, stunning Tideturner and preventing it from being moved this turn. When Tideturner's trigger subsequently resolves, the \"Can't beats Can\" rule prevents it from moving, and the movement instruction is ignored.\n\n[#1] [#2] [#3]",
+        "latency_s": 17.7,
+        "usage": {
+          "prompt_tokens": 79571,
+          "output_tokens": 562,
+          "total_tokens": 82525
+        },
+        "gold_covered": {
+          "383.3.d.1": true
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n* **Relevant Card Abilities and Triggers:**\n  * **Vex Apathetic:** \"When an opponent plays a unit while I'm at a battlefield, [Stun] it. They can't move it this turn.\" [#1]\n  * **Tideturner:** \"When you play me, you may choose a unit you control at another location. Move me to its location and it to my original location.\" [#2]\n* **Trigger Conditions and Simultaneous Timing:**\n  * Playing Tideturner triggers both Tideturner's \"When you play me\" ability and Vex's \"When an opponent plays a unit\" ability simultaneously.\n  * You are playing Tideturner on your own turn, meaning you are the Turn Player [#3, section 304].\n  * According to Rule 383.3.d.1, when multiple players control triggered abilities that trigger simultaneously, the Turn Player places their triggered abilities on the Chain first, followed by the other players in Turn Order [#3].\n* **Resolution Order:**\n  * Your Tideturner trigger is placed on the Chain first (at the bottom).\n  * Your opponent's Vex Apathetic trigger is placed on the Chain second (on top of Tideturner's trigger).\n  * Under Rule 340.1, the newest item on the Chain resolves first (Last In, First Out) [#3]. Therefore, Vex's trigger resolves first.\n* **Applying Rules and Restrictions:**\n  * When Vex's trigger resolves, Tideturner is stunned and the restriction \"They can't move it this turn\" is applied to it [#1].\n  * When Tideturner's trigger subsequently resolves, it attempts to move Tideturner [#2].\n  * Under Rule 054.1 (\"Can't beats Can\"), cards that forbid actions supersede cards that permit those same actions [#3]. The restriction preventing Tideturner from moving takes priority.\n  * Under Rule 055, players must do as much as they can when executing card text, ignoring impossible instructions [#3]. Since Tideturner cannot be moved, the movement instruction is ignored.\n\nAnswer:\nNo, Tideturner cannot move before Vex's stun resolves. \n\nBecause you played Tideturner on your own turn, you are the Turn Player. When both \"when played\" abilities trigger simultaneously, your Tideturner trigger must be placed on the Chain first, and your opponent's Vex trigger is placed on top of it. \n\nBecause the Chain resolves from newest to oldest, Vex's trigger resolves first, stunning Tideturner and applying a restriction that it cannot be moved this turn. When Tideturner's trigger subsequently resolves, the \"Can't beats Can\" rule prevents Tideturner from moving, and the movement effect is ignored.\n\n[#1] [#2] [#3]",
+        "latency_s": 18.9,
+        "usage": {
+          "prompt_tokens": 79571,
+          "output_tokens": 639,
+          "total_tokens": 82786
+        },
+        "gold_covered": {
+          "383.3.d.1": true
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- **Vex - Apathetic Trigger**: \"When an opponent plays a unit while I'm at a battlefield, [Stun] it. They can't move it this turn.\" This triggers when the opponent plays a unit (Tideturner) while Vex is at a battlefield [#1].\n- **Tideturner Trigger**: \"When you play me, you may choose a unit you control at another location. Move me to its location and it to my original location.\" This triggers when Tideturner is played [#2].\n- **Rule 383.3.d.1 (Simultaneous Triggers)**: \"If multiple players separately control Triggered Abilities that are Triggered simultaneously, then starting with the Turn Player and proceeding in Turn Order, each player orders their Triggered Abilities on the Chain.\" [#3]\n- **Rule 340.1 (Chain Resolution)**: \"The newest item on the Chain resolves. Execute its game effects in their entirety.\" [#3]\n- **Rule 054.1 (\"Can't beats Can\")**: \"Cards that forbid actions or effects, as a broad method of determination, supersede cards that allow or permit that same action or effect.\" [#3]\n- **Rule 055**: \"When executing card text, do as much as you can, ignoring impossible instructions.\" [#3]\n\n**Resolution Order of Triggers**:\n1. Since Tideturner is played on its owner's turn, its owner is the Turn Player [#3].\n2. Both Vex's trigger and Tideturner's trigger are met simultaneously when Tideturner is played.\n3. Per Rule 383.3.d.1, the Turn Player must place their trigger (Tideturner's move effect) on the Chain first [#3].\n4. The opponent (Vex's controller) then places their trigger (Vex's stun and movement restriction effect) on the Chain second, making it the newest item on the Chain [#3].\n5. Per Rule 340.1, the Chain resolves from newest to oldest. Therefore, Vex's trigger resolves first, stunning Tideturner and applying the restriction \"They can't move it this turn.\" [#1, #3]\n6. When Tideturner's trigger subsequently attempts to resolve, the movement restriction is already active. Under Rule 054.1, the \"can't move\" restriction supersedes the instruction to move, making the move impossible and causing it to be ignored under Rule 055 [#3].\n\nAnswer:\nNo. Because you played Tideturner on your own turn, you are the Turn Player. When both triggers occur simultaneously, your Tideturner trigger is placed on the Chain first, and your opponent's Vex trigger is placed on top of it. Since the Chain resolves from newest to oldest, Vex's trigger resolves first, stunning Tideturner and preventing it from moving this turn. By the time Tideturner's trigger resolves, it cannot be moved. [#1, #2, #3]",
+        "latency_s": 21.9,
+        "usage": {
+          "prompt_tokens": 79571,
+          "output_tokens": 671,
+          "total_tokens": 83124
+        },
+        "gold_covered": {
+          "383.3.d.1": true
+        },
+        "refused": false
+      }
+    ]
+  },
+  {
+    "id": "eval-017",
+    "kind": "MISS",
+    "model": "gemini-3.5-flash",
+    "question": "My opponent defends with Fiora Peerless. I move a unit into the battlefield, then immediately try to play Rengar Trophy Hunter as a reaction to add another attacker. Does Fiora's triggered ability still resolve and grant double might?",
+    "rule_reference": "383.4.e, 459.2.d",
+    "canonical_answer": "Yes. Fiora Peerless has a 'when I attack or defend' trigger that goes on the chain as soon as she is assigned defender designation. This happens before there is a chance to play Rengar Trophy Hunter as a reaction. Once the ability is on the chain, it resolves even if Rengar is played afterward. The same applies to Kha'Zix.",
+    "card_mentions": [
+      "Fiora Peerless",
+      "Rengar Trophy Hunter"
+    ],
+    "prompt_chars": 282438,
+    "majority_gold_covered": {
+      "383.4.e": false,
+      "459.2.d": true
+    },
+    "samples": [
+      {
+        "answer": "Reasoning:\n- **Fiora Peerless Ability**: \"When I attack or defend one on one, double my Might this combat.\" [#1] This is a triggered ability (specifically a Defend Trigger) that triggers when Fiora gains the Defender designation during combat [#3, 383.1, 383.4.f].\n- **Rengar Trophy Hunter Ability**: \"[Ambush] (You may play me as a [Reaction] to a battlefield where you have units.)I can be played to a battlefield where there are enemy units (even if you don't have units there).\" [#2] Ambush allows Rengar to be played as a Reaction to a battlefield where the player controls units [#3, 822.1.b].\n- **One on One and Alone Definitions**: A unit is \"one on one\" when it and the enemy unit at the same location are both \"alone\" [#3, 741.2]. A unit is \"alone\" when there are no other friendly units at the same location [#3, 741.1].\n- **Sequence of Play and Resolution Order**:\n  1. The player moves a unit into the battlefield where Fiora is. At this moment, Fiora is alone, and the player's unit is alone.\n  2. The move completes, triggering a Cleanup, and Combat is staged because opposing units are present [#3, 323.9, 448].\n  3. Combat begins, and Attacker/Defender designations are established [#3, 459.2.b]. Fiora gains the Defender designation [#3, 459.2.b.4].\n  4. Fiora gaining the Defender designation checks her Defend Trigger condition [#3, 383.4.f.2]. Since she and the attacking unit are both alone, they are \"one on one\" [#3, 741.1, 741.2]. Fiora's trigger condition is met, and her ability is placed on the Combat Chain as a Pending Item [#3, 383.3, 459.2.d]. This closes the state (Closed State) [#3, 309.1, 459.2.e].\n  5. The Attacker (the player) gains Focus and Priority [#3, 312.2.b, 313.2, 459.2.c].\n  6. During this Closed State, the player plays Rengar Trophy Hunter as a Reaction (permitted by Ambush since the player controls a unit at that battlefield) [#3, 813.1.c.1, 822.1.b].\n  7. Rengar is finalized and immediately enters the board exhausted [#3, 337.1.c, 359.2.c].\n  8. Now, the player controls two units at the battlefield, meaning the units are no longer \"one on one\" [#3, 741.1, 741.2].\n  9. Fiora's trigger, which is already on the chain, resolves [#3, 340.1].\n- **Resolution of Fiora's Trigger**: Once a triggered ability's condition is met and it is placed on the chain, it does not re-evaluate its trigger condition upon resolution unless specified by an \"if\" clause checked on resolution [#3, 383.3]. Fiora's instruction is \"double my Might this combat\" [#1]. \"My\" refers to Fiora, who is still on the board, so her Might is doubled [#3, 359.3.f.1, 359.3.f.2, 432.1].\n\nAnswer:\nYes, Fiora's triggered ability still resolves and doubles her Might. \n\nFiora's trigger condition (\"one on one\") was met at the moment she gained the Defender designation, successfully placing her ability on the Combat Chain. Playing Rengar Trophy Hunter as a Reaction afterwards changes the board state so that the units are no longer one on one, but this does not remove Fiora's already-triggered ability from the chain or prevent it from resolving. When the ability resolves, it successfully doubles Fiora's Might.\n\n[#1] [#2] [#3]",
+        "latency_s": 32.3,
+        "usage": {
+          "prompt_tokens": 79558,
+          "output_tokens": 948,
+          "total_tokens": 86112
+        },
+        "gold_covered": {
+          "383.4.e": false,
+          "459.2.d": true
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- **Fiora - Peerless Card Text**: Fiora has the ability: \"When I attack or defend one on one, double my Might this combat.\" [#1]\n- **Rengar - Trophy Hunter Card Text**: Rengar has the ability: \"[Ambush] (You may play me as a [Reaction] to a battlefield where you have units.) I can be played to a battlefield where there are enemy units (even if you don't have units there).\" [#2]\n- **Rule 447.1 (Combat Opening)**: Moving a unit into a battlefield with an opposing unit contests the battlefield and opens Combat. [#3]\n- **Rule 459.2.b (Attacker and Defender Designation)**: During Step 1 of Combat, the player whose unit moved in gains the Attacker designation, and the opponent gains the Defender designation. Units at the battlefield gain their controller's respective designation. [#3]\n- **Rule 741.1 & 741.2 (Alone and One on One)**: A unit is \"alone\" when there are no other friendly units at its location. A unit is \"one on one\" when it and the enemy unit at the same location are both alone. [#3]\n- **Rule 383.4.f (Defend Triggers)**: \"When I defend...\" is a Defend Trigger that checks its condition when the unit gains the Defender designation. If other requirements (like \"one on one\") are fulfilled at the moment the unit gains the Defender designation, the ability triggers. [#3]\n- **Rule 459.2.d (Combat Chain Triggers)**: Triggered abilities that occur from establishing designations are placed on the Combat Chain. [#3]\n- **Rule 822.1.b (Ambush Keyword)**: Ambush grants a unit [Reaction] timing as long as it is being played to a battlefield where its owner controls units. [#3]\n- **Rule 359.2.c (Unit Finalization)**: When played, a unit leaves the chain and enters the board exhausted. [#3]\n- **Rule 359.3.f.3 (Triggered Ability Evaluation)**: Information and conditions for triggered abilities are evaluated and checked when the trigger condition is fulfilled, not on resolution (unless a separate conditional \"if\" statement exists in the effect). [#3]\n- **Rule 432.1 (Doubling)**: Doubling increases a numeric attribute by an amount equal to its current value. [#3]\n\n**Resolution Order**:\n1. Your move contests the battlefield, opening Combat. [#3, 447.1]\n2. In Step 1 of Combat, Fiora Peerless gains the Defender designation. [#3, 459.2.b]\n3. At the exact moment Fiora gains the Defender designation, she is \"one on one\" because she is alone (no other friendly units for your opponent) and your moved unit is alone (no other friendly units for you). [#3, 741.1, 741.2]\n4. Because she is defending one on one, Fiora's Defend Trigger condition is met, and her ability is placed on the Combat Chain as a pending item. [#3, 383.4.f, 459.2.d]\n5. The Combat Chain closes the state, allowing Reactions. [#3, 459.2.e]\n6. You play Rengar Trophy Hunter as a Reaction using his Ambush keyword (since you control your moved unit at that battlefield). [#3, 822.1.b]\n7. Rengar resolves and enters the battlefield. Fiora is no longer \"one on one\" because you now control two units at the battlefield. [#3, 359.2.c, 741.1]\n8. Fiora's triggered ability on the chain resolves. Because the trigger condition was already met and checked when she defended, it does not re-evaluate \"one on one\" on resolution. [#3, 359.3.f.3]\n9. Fiora's ability resolves successfully, doubling her Might for the combat. [#3, 432.1]\n\nAnswer:\nYes. Fiora's triggered ability still resolves and doubles her Might. The \"one on one\" requirement is part of her trigger condition, which is evaluated and met at the exact moment she gains the Defender designation. Once the ability is triggered and placed on the chain, playing Rengar as a reaction does not retroactively undo the trigger, so her Might is successfully doubled when the ability resolves. [#1] [#2] [#3]",
+        "latency_s": 26.6,
+        "usage": {
+          "prompt_tokens": 79558,
+          "output_tokens": 1018,
+          "total_tokens": 84727
+        },
+        "gold_covered": {
+          "383.4.e": false,
+          "459.2.d": true
+        },
+        "refused": false
+      },
+      {
+        "answer": "Reasoning:\n- **Fiora Peerless's Ability**: \"When I attack or defend one on one, double my Might this combat.\" [#1] This is a Defend Trigger that triggers when Fiora gains the Defender designation for the first time during combat, provided she is \"one on one\" [#3 - 383.4.f].\n- **Rengar Trophy Hunter's Ability**: \"[Ambush] (You may play me as a [Reaction] to a battlefield where you have units.) I can be played to a battlefield where there are enemy units (even if you don't have units there).\" [#2] This allows Rengar to be played as a Reaction to a battlefield with enemy units.\n- **Rule 741.2 (One on One)**: \"A unit is one on one when it and the enemy unit at the same location are both alone.\" [#3]\n- **Rule 741.1 (Alone)**: \"A unit is alone when there are no other friendly units at the same location.\" [#3]\n- **Rule 459.2.b (Combat Showdown Step)**: When combat opens, the attacker and defender designations are established. Fiora gains the Defender designation, and the player's moved unit gains the Attacker designation [#3].\n- **Rule 459.2.d (Combat Chain Triggers)**: Triggered abilities caused by establishing designations are placed on the Combat Chain [#3]. Since Fiora and the moved unit are both alone, Fiora is defending \"one on one\" and her trigger is placed on the chain as a Pending Item [#3 - 383.4.f.2].\n- **Rule 337.1.c (Finalizing Units)**: Units played onto the chain resolve immediately when finalized and do not progress to the Execute step [#3]. Thus, when Rengar is played as a Reaction, he resolves and enters the board immediately [#3].\n- **Rule 459.2.b.3.a (Post-designation Entry)**: A unit controlled by the attacker that becomes present after designations are established gains the Attacker designation during the next cleanup [#3]. Rengar's entry triggers a cleanup [#3 - 319.6], during which he gains the Attacker designation [#3].\n- **Trigger Resolution**: Once a triggered ability is successfully placed on the chain, it does not require its trigger condition to remain true at the time of resolution [#3 - 383.3, 406.5].\n\n**Resolution Order**:\n1. Combat is staged and opened. Fiora gains the Defender designation, and the moved unit gains the Attacker designation.\n2. Fiora's trigger condition is met (she is defending one on one) and her ability is placed on the Combat Chain.\n3. The player plays Rengar Trophy Hunter as a Reaction. Rengar is placed on the chain, finalized, and immediately enters the board.\n4. A cleanup occurs, and Rengar gains the Attacker designation. Fiora is no longer defending one on one.\n5. Fiora's triggered ability resolves from the chain.\n\nAnswer:\nYes. Fiora's triggered ability still resolves and doubles her Might.\n\nWhen combat begins, Fiora gains the Defender designation while only she and your single moved unit are present, meaning she is defending \"one on one\" [#3 - 741.2, 459.2.b]. This satisfies her trigger condition, placing her ability on the Combat Chain [#3 - 459.2.d].\n\nWhen you play Rengar Trophy Hunter as a Reaction, he resolves immediately upon finalization and enters the board [#3 - 337.1.c]. During the subsequent cleanup, Rengar gains the Attacker designation [#3 - 459.2.b.3.a], which means Fiora is no longer defending one on one. \n\nHowever, because Fiora's ability was already successfully triggered and placed on the chain, it does not need the \"one on one\" condition to remain true at the time of resolution [#3 - 383.3, 406.5]. Thus, her ability resolves normally and doubles her Might for the combat [#3 - 432.1].",
+        "latency_s": 27.7,
+        "usage": {
+          "prompt_tokens": 79558,
+          "output_tokens": 922,
+          "total_tokens": 85257
+        },
+        "gold_covered": {
+          "383.4.e": false,
+          "459.2.d": true
+        },
+        "refused": false
+      }
+    ]
+  }
+]

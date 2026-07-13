@@ -1,0 +1,35 @@
+[
+  {
+    "id": "eval-030",
+    "kind": "CONTROL",
+    "question": "I play Disposal Order and choose 3 Deflect units in my enemy's trash. Do I have to pay 3[A] in order to finalize Disposal Order?",
+    "rule_reference": "365.1, 809.1, 809.1.a",
+    "canonical_answer": "No. Deflect is a keyword only present on Permanents, and a game object is only a Permanent if it is a Main Deck game object that remains on the Board after being played. The trash is a non-board zone, so units in the trash do not have Deflect and Disposal Order finalizes without any additional cost.",
+    "card_mentions": [
+      "Disposal Order"
+    ],
+    "prompt_chars": 281300,
+    "majority_gold_covered": {
+      "365.1": true,
+      "809.1": true,
+      "809.1.a": false
+    },
+    "samples": [
+      {
+        "answer": "Reasoning:\n- [Rule 108.2.c]: Cards in a player's Trash are unordered.\n- [Rule 141.1.b.2]: Units in the Trash retain the properties of being a Unit, but are not on the Board.\n- [Rule 365.1]: Passive Abilities of Permanents (such as Deflect) are typically only active while on the Board.\n- [Rule 809.1]: Deflect is a Passive Ability keyword present on Permanents.\n- [Rule 809.1.c]: Deflect imposes a mandatory additional cost on spells and abilities that choose the permanent with Deflect.\n- Chain: Deflect is a passive ability => passive abilities of permanents are only active on the Board => a unit in the trash is not on the Board => Deflect is not active while the unit is in the trash => no additional cost is imposed.\n\nAnswer:\nNo. Deflect is a passive ability, and according to the rules, passive abilities of permanents are only active while the permanent is on the Board. Since the units are in the trash, their Deflect abilities are inactive, and you do not have to pay any additional cost to finalize Disposal Order.",
+        "latency_s": 3.4,
+        "usage": {
+          "prompt_tokens": 79258,
+          "output_tokens": 264,
+          "total_tokens": 79522
+        },
+        "gold_covered": {
+          "365.1": true,
+          "809.1": true,
+          "809.1.a": false
+        },
+        "refused": false
+      }
+    ]
+  }
+]
