@@ -90,6 +90,10 @@ async def lifespan(app: FastAPI):
     # 7. Init Redis cache (optional -- skipped if env vars absent)
     if settings.upstash_redis_url and settings.upstash_redis_token:
         init_redis(settings.upstash_redis_url, settings.upstash_redis_token)
+    else:
+        # Loud on purpose: with the client unset, get/set_cached no-op silently,
+        # so a missing env var looks identical to a cache bug from the outside.
+        logger.warning("Cache disabled — UPSTASH_REDIS_URL/UPSTASH_REDIS_TOKEN not set.")
 
     # 8-9. Store everything on app.state
     app.state.embedder = embedder
