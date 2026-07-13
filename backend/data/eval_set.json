@@ -132,11 +132,11 @@
     },
     {
       "id": "eval-015",
-      "question": "My opponent controls Vex Apathetic. I play an Ambush unit to the battlefield on my turn. Can I flash the unit back before Vex's stun trigger resolves?",
-      "canonical_answer": "Yes. You can react to the Vex trigger on the chain and flash the ambush unit back, as long as you do so in response to the Vex trigger before it resolves.",
+      "question": "My opponent controls Vex Apathetic. I play an Ambush unit to the battlefield on my turn. Can I play Flash to move the unit back to base before Vex's stun trigger resolves?",
+      "canonical_answer": "Yes. Flash is a Reaction, so you can play it in response to the Vex trigger on the chain and move the ambush unit back to base, as long as you do so before the trigger resolves.",
       "source": "rulebook",
       "rule_reference": "383.3.d.1",
-      "tags": ["ambush", "triggered-ability", "chain", "vex", "stun", "reaction", "specific-card"],
+      "tags": ["ambush", "triggered-ability", "chain", "vex", "stun", "flash", "reaction", "specific-card"],
       "difficulty": "hard"
     },
     {
@@ -339,11 +339,11 @@
     },
     {
       "id": "eval-038",
-      "question": "My opponent sacrifices Ruined Rex to Baited Hook and grabs Ash. Can I play Not So Fast to stop the Rex Deathknell before Ash prevents me from playing spells?",
-      "canonical_answer": "Yes. As soon as Rex is sacrificed, the Deathknell trigger goes on the chain. Then Ash enters and her trigger goes on the chain above it. You can respond to the Ash trigger with Not So Fast, targeting Rex's Deathknell ability on the chain before it resolves.",
+      "question": "My opponent sacrifices Ruined Rex to Baited Hook and grabs Ashe Focused. Can I play Not So Fast to stop the Rex Deathknell before Ashe's trigger resolves and banishes it from my hand?",
+      "canonical_answer": "Yes. As soon as Rex is sacrificed, the Deathknell trigger goes on the chain. Then Ashe Focused enters and her trigger goes on the chain above it. You can respond to the Ashe trigger with Not So Fast, targeting Rex's Deathknell ability on the chain before it resolves.",
       "source": "ruling",
       "rule_reference": null,
-      "tags": ["ruined-rex", "baited-hook", "ash", "not-so-fast", "deathknell", "chain", "reaction", "specific-card"],
+      "tags": ["ruined-rex", "baited-hook", "ashe-focused", "not-so-fast", "deathknell", "chain", "reaction", "specific-card"],
       "difficulty": "hard"
     },
     {
