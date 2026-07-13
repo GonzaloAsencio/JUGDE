@@ -125,9 +125,10 @@ class Settings(BaseSettings):
 
     # Cache
     cache_ttl_s: int = 86400
-    # v6: few-shot chaining examples in the system prompt (improvement plan 4.1).
+    # v7: added a third few-shot example teaching chain placement-order vs
+    # LIFO resolution-order (383.3.d.1) — the model was inverting these.
     # Bumping invalidates the response cache — the version is part of the key.
-    prompt_version: str = "v6"
+    prompt_version: str = "v7"
 
     # DB connection pool sizing. maxconn must not exceed the database's
     # max_connections; a worker that finds the pool exhausted gets a fast 503
