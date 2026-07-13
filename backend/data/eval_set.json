@@ -1,7 +1,7 @@
 {
-  "version": "1.2.0",
+  "version": "1.2.1",
   "created": "2026-05-14",
-  "updated": "2026-06-23",
+  "updated": "2026-07-13",
   "description": "Eval set for Riftbound Judge AI RAG pipeline. Curated questions with canonical answers derived from the official rulebook, errata, and community rulings.",
   "questions": [
     {
@@ -204,8 +204,8 @@
     },
     {
       "id": "eval-023",
-      "question": "If I attack a battlefield controlled by Fiora Peerless with Master Yi Legend, what is Fiora's final might?",
-      "canonical_answer": "Fiora's final might is 10. Master Yi Legend's passive is a continuous effect: the moment Fiora defends alone she gets +2 might instantly, making her 5 might, which is then doubled to 10 by her own ability. If at any point during combat a reaction unit is played alongside her, she would lose the +2 from Yi's passive.",
+      "question": "If I attack a battlefield controlled by Fiora Peerless with Master Yi - Wuju Bladesman, what is Fiora's final might?",
+      "canonical_answer": "Fiora's final might is 10. Master Yi - Wuju Bladesman's passive is a continuous effect: the moment Fiora defends alone she gets +2 might instantly, making her 5 might, which is then doubled to 10 by her own ability. If at any point during combat a reaction unit is played alongside her, she would lose the +2 from Yi's passive.",
       "source": "ruling",
       "rule_reference": null,
       "tags": ["fiora", "master-yi", "passive", "continuous-effect", "might", "combat", "specific-card"],
@@ -258,10 +258,10 @@
     },
     {
       "id": "eval-029",
-      "question": "How many banish zones does the game have? Can Jhin Legend recycle a spell that banished itself, like Time Warp?",
-      "canonical_answer": "Formally, there is one banishment zone. However, the game tracks what banished each card per CR 427.3, for purposes of cards like Jhin, Cursed Sarcophagus, and Zero Drive. Jhin Legend specifically requires that the four spells were banished by him, so spells banished by other effects do not count. Whether Jhin can banish a spell that banishes itself (such as Time Warp) is an unresolved rules debate pending future clarification.",
+      "question": "How many banish zones does the game have? If a spell banishes itself, like Time Warp, does it count toward Jhin - Virtuoso's \"four spells banished with me\" trigger?",
+      "canonical_answer": "Each player has their own banishment zone (rule 108.6.a) — there is no single shared zone. Rule 427.3 lets cards and effects track which specific object banished each card, and 427.3.a clarifies that this tracking is per-object: a card only counts as banished \"by\" a given source if that source's own effect banished it. Time Warp banishes itself via its own text (\"Banish this\"), not via Jhin - Virtuoso's ability, so it was not banished \"with\" Jhin. It does not count toward his total of four.",
       "source": "ruling",
-      "rule_reference": "427.3",
+      "rule_reference": "108.6.a, 427.3, 427.3.a",
       "tags": ["jhin", "time-warp", "banish", "zone", "specific-card"],
       "difficulty": "hard"
     },
