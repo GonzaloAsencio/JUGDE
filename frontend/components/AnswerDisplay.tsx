@@ -124,8 +124,28 @@ function SectionLabel({ label }: { label: 'reasoning' | 'answer' }) {
   );
 }
 
+// The model wraps entity names in backticks ("`Tideturner`"). react-markdown
+// renders those as a bare <code> element by default, which skips processText
+// entirely — so a backticked card name never reaches detectCards. Only card
+// names get special handling here; everything else (rule refs, keywords)
+// already renders correctly as plain inline code.
+function CodeSpan({ children, ...props }: { children?: React.ReactNode }) {
+  const text = React.Children.toArray(children).join('');
+  const cardSegments = detectCards(text);
+  if (cardSegments.length === 1 && cardSegments[0].card) {
+    const card = cardSegments[0].card;
+    return (
+      <CardPreview cardName={card.clean_name}>
+        <CardChip name={card.clean_name} />
+      </CardPreview>
+    );
+  }
+  return <code {...props}>{children}</code>;
+}
+
 function makeComponents(): Components {
   return {
+    code: CodeSpan,
     p: ({ children, ...props }) => {
       // Promote a leading "Reasoning:"/"Answer:" into a section eyebrow so the
       // reader can scan reasoning vs. conclusion. Only the first text child can
