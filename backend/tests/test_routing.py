@@ -19,9 +19,9 @@ from app.rag.retrieval import Chunk
 # is_hard_query — deterministic classifier
 #
 # Thresholds calibrated on the annotated eval set (2026-07-12): cards >= 2 OR
-# keywords >= 2 catches all 4 residual misses (eval-014/015/017/019) plus 10
-# more hard/medium questions and ZERO easy ones. Question length was evaluated
-# as a third signal and rejected: it adds only marginal routes.
+# (a card plus >= 2 keywords) catches all 4 residual misses (eval-014/015/017/
+# 019) plus 10 more hard/medium questions and ZERO easy ones. Question length
+# was evaluated as a third signal and rejected: it adds only marginal routes.
 # ---------------------------------------------------------------------------
 
 def test_two_cards_is_hard():
@@ -30,11 +30,21 @@ def test_two_cards_is_hard():
     assert is_hard_query(card_count=2, keyword_count=0) is True
 
 
-def test_two_keywords_is_hard():
+def test_card_plus_two_keywords_is_hard():
     from app.rag.routing import is_hard_query
 
     # eval-015 shape: one card (Vex Apathetic) + two keywords (stun, ambush).
     assert is_hard_query(card_count=1, keyword_count=2) is True
+
+
+def test_keywords_without_a_card_are_not_hard():
+    from app.rag.routing import is_hard_query
+
+    # The keyword vocabulary contains everyday words (draw, discard, token):
+    # "when do I draw and when do I discard?" is an easy question that must
+    # NOT pay the thinking-model latency. On the eval set every 0-card
+    # question has at most 1 keyword, so this costs no target coverage.
+    assert is_hard_query(card_count=0, keyword_count=2) is False
 
 
 def test_one_card_one_keyword_is_not_hard():
@@ -92,6 +102,36 @@ def test_stuffed_chunks_returns_none_when_rulebook_file_missing():
 
     with patch.object(routing, "_load_rulebook", side_effect=OSError("gone")):
         assert routing.build_stuffed_chunks("Any question?", known_keywords=frozenset()) is None
+
+
+def test_stuffed_chunks_include_extra_card_names_absent_from_the_prose():
+    """A terse question plus explicit card_mentions can classify as hard; the
+    mentioned cards must reach the stuffed context even when the prose never
+    names them (case-insensitive, deduped against prose detections)."""
+    from app.rag.routing import build_stuffed_chunks
+
+    chunks = build_stuffed_chunks(
+        "Can these two interact during combat?",
+        known_keywords=_KNOWN_KEYWORDS,
+        extra_card_names=("vex apathetic", "Tideturner"),
+    )
+
+    assert chunks is not None
+    card_sections = [c.section for c in chunks if c.source_type == "card"]
+    assert card_sections == ["Vex Apathetic", "Tideturner"]
+
+
+def test_stuffed_chunks_dedupe_extra_names_already_detected_in_prose():
+    from app.rag.routing import build_stuffed_chunks
+
+    question = "Does Vex Apathetic stun my unit?"
+    chunks = build_stuffed_chunks(
+        question, known_keywords=_KNOWN_KEYWORDS, extra_card_names=("VEX APATHETIC",)
+    )
+
+    assert chunks is not None
+    card_sections = [c.section for c in chunks if c.source_type == "card"]
+    assert card_sections.count("Vex Apathetic") == 1
 
 
 # ---------------------------------------------------------------------------
@@ -162,12 +202,14 @@ def _fake_settings(routing_on: bool):
     return s
 
 
-# Two whole-word keywords ("stun", "ambush") -> keyword_count 2 -> hard.
-_HARD_QUESTION = "Can I stun an ambush unit before its trigger resolves?"
+# The classifier needs cards: the DB card vocabulary is unavailable under the
+# fake pool, so hardness comes from explicit card_mentions (card_count=2).
+_HARD_QUESTION = "Can Vex Apathetic stun Tideturner before its trigger resolves?"
+_HARD_MENTIONS = ["Vex Apathetic", "Tideturner"]
 _EASY_QUESTION = "How many cards do I draw at the start?"
 
 
-def _run_pipeline(question, settings, provider, hard_provider):
+def _run_pipeline(question, settings, provider, hard_provider, card_mentions=None):
     from tests.conftest import FakeEmbedder
 
     with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
@@ -177,7 +219,7 @@ def _run_pipeline(question, settings, provider, hard_provider):
                     from app.rag.pipeline import answer_question
                     return answer_question(
                         question, FakeEmbedder(), MagicMock(), provider, settings,
-                        hard_provider=hard_provider,
+                        card_mentions=card_mentions, hard_provider=hard_provider,
                     )
 
 
@@ -185,7 +227,7 @@ def test_flag_off_never_touches_the_hard_provider():
     provider = _RecordingProvider()
     hard = _RecordingProvider()
 
-    _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=False), provider, hard)
+    _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=False), provider, hard, card_mentions=_HARD_MENTIONS)
 
     assert hard.calls == []
     assert len(provider.calls) == 1
@@ -199,7 +241,7 @@ def test_flag_on_routes_hard_query_to_hard_provider_with_stuffed_context():
     provider = _RecordingProvider()
     hard = _RecordingProvider()
 
-    result = _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, hard)
+    result = _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, hard, card_mentions=_HARD_MENTIONS)
 
     assert len(hard.calls) == 1
     assert provider.calls == []  # generation went to the hard provider only
@@ -221,7 +263,7 @@ def test_flag_on_easy_query_stays_on_the_normal_path():
 def test_flag_on_without_hard_provider_falls_back_to_normal_path():
     provider = _RecordingProvider()
 
-    _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, None)
+    _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, None, card_mentions=_HARD_MENTIONS)
 
     assert len(provider.calls) == 1
     assert [c.id for c in provider.calls[0]["chunks"]] == ["retrieved-1"]
@@ -232,10 +274,43 @@ def test_flag_on_stuffing_unavailable_falls_back_to_normal_path():
     hard = _RecordingProvider()
 
     with patch("app.rag.pipeline.build_stuffed_chunks", return_value=None):
-        _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, hard)
+        _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, hard, card_mentions=_HARD_MENTIONS)
 
     assert hard.calls == []
     assert len(provider.calls) == 1
+
+
+def test_cache_namespace_is_keyed_on_the_routing_flag():
+    """A flag flip (either direction) must start cold instead of serving up to
+    cache_ttl_s of answers produced by the other model/context. The routed bit
+    itself can't be in the key (the cache lookup precedes retrieval, which the
+    classifier needs), so the whole namespace is keyed on the FLAG — and with
+    the flag off the key is byte-identical to pre-routing behaviour."""
+    from tests.conftest import FakeEmbedder
+
+    captured = {}
+
+    def _capture(question, cv, mentions, pv):
+        captured.setdefault("pvs", []).append(pv)
+        return f"key-{pv}"
+
+    provider = _RecordingProvider()
+    for routing_on in (False, True):
+        with patch("app.rag.pipeline.make_cache_key", side_effect=_capture):
+            with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+                with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+                    with patch("app.rag.pipeline.get_cached", return_value=None):
+                        with patch("app.rag.pipeline.set_cached"):
+                            from app.rag.pipeline import answer_question
+                            answer_question(
+                                _EASY_QUESTION, FakeEmbedder(), MagicMock(), provider,
+                                _fake_settings(routing_on=routing_on),
+                            )
+
+    pv_off, pv_on = captured["pvs"]
+    assert pv_off == "v6"          # flag off: pre-routing key, byte-identical
+    assert pv_on == "v6+hard-routing"
+    assert pv_off != pv_on
 
 
 def test_routed_rulebook_citation_carries_no_rule_codes():
@@ -246,7 +321,7 @@ def test_routed_rulebook_citation_carries_no_rule_codes():
     provider = _RecordingProvider()
     hard = _RecordingProvider()
 
-    result = _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, hard)
+    result = _run_pipeline(_HARD_QUESTION, _fake_settings(routing_on=True), provider, hard, card_mentions=_HARD_MENTIONS)
 
     rulebook_cites = [c for c in result.citations if c.chunk_id == RULEBOOK_CHUNK_ID]
     assert rulebook_cites, "routed response must cite the stuffed rulebook chunk"

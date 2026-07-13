@@ -454,7 +454,18 @@ def answer_question(
     # endpoint. Falling back to settings keeps existing callers/tests working
     # without mutating the cached Settings singleton (see main.py).
     corpus_version = corpus_version or settings.corpus_version or "latest"
-    cache_key = make_cache_key(question, corpus_version, card_mentions, settings.prompt_version)
+    # Routed answers come from a different model AND context, but the routing
+    # decision needs retrieval (card_count) and thus happens after the cache
+    # lookup — so the ROUTED bit can't be in the key. Keying the namespace on
+    # the FLAG instead keeps the cache coherent across the two-step flip: a
+    # flip (either direction) starts cold rather than serving up to
+    # cache_ttl_s of answers produced by the other mode. Flag off ->
+    # byte-identical key to pre-routing behaviour.
+    cache_prompt_version = (
+        settings.prompt_version + "+hard-routing"
+        if settings.hard_query_routing else settings.prompt_version
+    )
+    cache_key = make_cache_key(question, corpus_version, card_mentions, cache_prompt_version)
 
     cached = _try_cached_response(cache_key, settings, query_id, t0)
     if cached is not None:
@@ -479,7 +490,11 @@ def answer_question(
     if hard_provider is not None and settings.hard_query_routing and is_hard_query(
         card_count=card_count, keyword_count=len(_detect_keywords(resolved_question))
     ):
-        stuffed = build_stuffed_chunks(resolved_question, known_keywords=_KNOWN_KEYWORDS)
+        stuffed = build_stuffed_chunks(
+            resolved_question,
+            known_keywords=_KNOWN_KEYWORDS,
+            extra_card_names=tuple(card_mentions or ()),
+        )
         if stuffed is not None:
             chunks = stuffed
             routed = True

@@ -33,7 +33,6 @@ Requires GEMINI_API_KEY (Settings). Does NOT need the DB or the judge.
 """
 import argparse
 import json
-import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,10 +42,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app.config import Settings
-from app.rag.card_detect import detect_card_mentions
 from app.rag.generation import _MULTI_CARD_SCAFFOLD, build_prompt, needs_scaffold
 from app.rag.pipeline import _KNOWN_KEYWORDS
-from app.rag.retrieval import Chunk
+from app.rag.routing import build_stuffed_chunks
 from app.rag.rules import extract_rule_codes
 from scripts.eval_judge import _parse_refs, _rule_codes_cover
 
@@ -55,35 +53,6 @@ CONTROLS = ["eval-001", "eval-030"]
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 REFUSAL = "I don't have enough information to answer that question"
-
-_CARD_HEADER = re.compile(r"^## (.+)$", re.MULTILINE)
-
-
-def load_card_sections() -> dict[str, str]:
-    """cards.md split by '## <card name>' headers -> {name: full section text}."""
-    text = (DATA / "processed" / "cards.md").read_text(encoding="utf-8")
-    sections: dict[str, str] = {}
-    matches = list(_CARD_HEADER.finditer(text))
-    for m, nxt in zip(matches, matches[1:] + [None]):
-        end = nxt.start() if nxt else len(text)
-        sections[m.group(1).strip()] = text[m.start():end].strip()
-    return sections
-
-
-def build_stuffed_chunks(question: str, cards: dict[str, str]) -> tuple[list[Chunk], list[str]]:
-    """Detected card sections first (mirrors production's explicit prepend),
-    then the whole rulebook as a single chunk."""
-    mentions = detect_card_mentions(question, cards.keys(), known_keywords=_KNOWN_KEYWORDS)
-    chunks = [
-        Chunk(id=f"card:{name}", content=cards[name], section=name,
-              parent_section=None, source_type="card", similarity=1.0)
-        for name in mentions
-    ]
-    rulebook = (DATA / "processed" / "rulebook.md").read_text(encoding="utf-8")
-    chunks.append(Chunk(id="rulebook:full", content=rulebook,
-                        section="Core Rulebook (complete)", parent_section=None,
-                        source_type="rulebook", similarity=0.0))
-    return chunks, mentions
 
 
 def call_stuffed(client, model: str, prompt: str, *, temperature: float,
@@ -135,7 +104,6 @@ def main() -> None:
     eval_set = json.loads((DATA / "eval_set.json").read_text(encoding="utf-8"))
     by_id = {q["id"]: q for q in eval_set["questions"]}
     questions = [by_id[qid] for qid in args.ids]
-    cards = load_card_sections()
 
     print(f"model={model}  temp={s.gemini_temperature}  "
           f"max_out={max_out}  samples={args.samples}  pace={args.pace}s")
@@ -145,7 +113,12 @@ def main() -> None:
     first_call = True
     for q in questions:
         refs = _parse_refs(q.get("rule_reference"))
-        chunks, mentions = build_stuffed_chunks(q["question"], cards)
+        # The PRODUCTION stuffed-context builder — the probe certifies the
+        # exact context assembly the routed pipeline uses.
+        chunks = build_stuffed_chunks(q["question"], known_keywords=_KNOWN_KEYWORDS)
+        if chunks is None:
+            raise SystemExit("stuffing unavailable: data/processed files missing")
+        mentions = [c.section for c in chunks if c.source_type == "card"]
         extra = _MULTI_CARD_SCAFFOLD if needs_scaffold(q["question"], len(mentions)) else ""
         prompt = build_prompt(q["question"], chunks, extra_system=extra)
         kind = "MISS" if q["id"] in MISSES else "CONTROL"
