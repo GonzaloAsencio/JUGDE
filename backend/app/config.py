@@ -43,9 +43,13 @@ class Settings(BaseSettings):
     # Gemini-only: requires llm_provider=gemini.
     hard_query_routing: bool = True
     hard_gemini_model: str = "gemini-3.5-flash"
-    # Routed calls carry ~80K prompt tokens and think before answering: probe
-    # latency was 18-32s, so prod's gemini_timeout_s (30s) would cut them off.
-    hard_timeout_s: float = 60.0
+    # Routed calls carry ~80K prompt tokens and think before answering: the
+    # 2026-07-13 probe measured 18-32s on a small sample, but the 2026-07-14
+    # eval showed real-world latency spreading up to 58s with 6/21 hard
+    # queries breaching the old 60s cutoff by only a few seconds — the probe
+    # undersampled Gemini's variance, not a context-size regression (rulebook.md
+    # unchanged since #58). Raised to give headroom above observed p99.
+    hard_timeout_s: float = 90.0
     # Thinking models spend the output budget on thoughts; 1024 strangles them.
     hard_max_output_tokens: int = 8192
 
