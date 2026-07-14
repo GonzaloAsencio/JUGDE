@@ -2,8 +2,11 @@ import json
 import re
 import time
 import uuid
+from dataclasses import dataclass
 
-from app.cache import get_cached, make_cache_key, set_cached
+from app import semantic_cache
+from app.cache import directive_key, get_cached, make_cache_key, set_cached
+from app.cache import is_enabled as cache_is_enabled
 from app.config import Settings
 from app.observability import get_logger
 from app.rag.embedder import Embedder
@@ -210,32 +213,36 @@ def _try_cached_response(cache_key: str, settings: Settings, query_id: str, t0: 
     return response
 
 
-def _retrieve(
-    question: str,
-    embedder: Embedder,
-    db_pool,
-    provider: LLMProvider,
-    settings: Settings,
-    card_mentions: list[str] | None,
-    corpus_version: str,
-    query_id: str,
-) -> tuple[list, str, float, bool, int]:
-    """Embed + retrieve + assemble the final context.
+@dataclass(frozen=True)
+class _Entities:
+    """Deterministic entity signal for a question — no LLM, no cosine.
 
-    Returns (chunks, clean_question, semantic_confidence, has_exact_card_match, card_count).
+    Shared by the semantic-cache gate (which must classify a query BEFORE paying
+    for retrieval) and _retrieve (which needs the same tags to build context).
+    Computed once per query and threaded through so the ~960-pattern card scan
+    doesn't run twice.
     """
-    clean_question, explicit_tags = _extract_tags(question)
-    base_question = clean_question or question
-    auto_tags = _detect_keywords(base_question)
-    mention_tags = [m.lower() for m in (card_mentions or [])]
+    auto_card_tags: list[str]
+    ambiguous_champion_count: int
 
-    # Auto-detect card names in the question. Multi-card interaction questions
-    # embed poorly (the scenario prose dominates the cosine), so named cards rarely
-    # surface in semantic retrieval — a deterministic probe found 9/12 named cards
-    # ABSENT from context on the hard bucket. Detected names join the user-directed
-    # tags so tagged_lookup pulls them into reserved slots (see _assemble_context).
-    # Best-effort: a vocabulary-load failure must never break query answering, so
-    # the feature degrades to the prior behaviour instead of raising.
+    def card_count(self, mention_tags: list[str]) -> int:
+        return len(set(self.auto_card_tags) | set(mention_tags)) + self.ambiguous_champion_count
+
+
+def _detect_entities(
+    base_question: str, db_pool, corpus_version: str, query_id: str
+) -> _Entities:
+    """Auto-detect card names + bare champion mentions in the question.
+
+    Multi-card interaction questions embed poorly (the scenario prose dominates
+    the cosine), so named cards rarely surface in semantic retrieval — a
+    deterministic probe found 9/12 named cards ABSENT from context on the hard
+    bucket. Detected names join the user-directed tags so tagged_lookup pulls
+    them into reserved slots (see _assemble_context).
+
+    Best-effort: a vocabulary-load failure must never break query answering, so
+    the feature degrades to the prior behaviour instead of raising.
+    """
     auto_card_tags: list[str] = []
     ambiguous_champion_count = 0
     try:
@@ -248,7 +255,7 @@ def _retrieve(
         # only holds full printed names). Unambiguous tags resolve to their
         # one card and join auto_card_tags like any other exact match;
         # ambiguous ones (e.g. "Vi" has 7 printed variants) resolve to
-        # nothing here but still count as a distinct entity below — see
+        # nothing here but still count as a distinct entity — see
         # card_detect.detect_champion_mentions for why we never guess.
         resolved_champions, ambiguous_champion_count = detect_champion_mentions(
             base_question, load_champion_tag_index(), known_keywords=_KNOWN_KEYWORDS
@@ -256,6 +263,124 @@ def _retrieve(
         auto_card_tags += [c.lower() for c in resolved_champions if c.lower() not in auto_card_tags]
     except Exception as e:  # pragma: no cover - defensive: never fail a query on detection
         logger.warning("card_detect.failed", query_id=query_id, error=str(e))
+    return _Entities(auto_card_tags=auto_card_tags, ambiguous_champion_count=ambiguous_champion_count)
+
+
+def _semantic_cache_is_safe(*, card_count: int, keyword_count: int) -> bool:
+    """Whether a question may be answered from the SEMANTIC cache (2.3).
+
+    Hard (multi-entity) questions must NEVER be, and this is measured, not
+    cautious. scripts/semantic_cache_probe.py found an adversarial pair inside
+    our own eval set:
+
+        eval-013: "... I play Tideturner DURING MY OPPONENT'S TURN ..." -> YES
+        eval-014: "... I play Tideturner ON MY OWN TURN ..."            -> NO
+
+    Cosine similarity: 0.982. Two words apart, OPPOSITE rulings — because
+    383.3.d.1 hangs the whole answer on who the turn player is. Across the full
+    eval set the highest different-question cosine is that 0.982, while the
+    LOWEST self-paraphrase cosine is 0.874: there is no threshold that both
+    rejects the wrong answer and still catches a reworded question. Globally,
+    this feature cannot be made safe at any threshold.
+
+    Restricted to NON-hard questions the picture inverts: the ceiling drops to
+    0.763 against the same 0.874 floor, leaving a wide safe band. That is not a
+    coincidence — rules questions hinge on discriminative micro-details (whose
+    turn, which zone, ready vs exhausted) that embeddings smooth over, and those
+    details are exactly what makes a question hard in the first place.
+
+    So the gate reuses is_hard_query: the same classifier that routes a question
+    to the thinking model also disqualifies it from the semantic cache.
+    """
+    return not is_hard_query(card_count=card_count, keyword_count=keyword_count)
+
+
+def _try_semantic_response(
+    db_pool,
+    question_embedding: list[float],
+    semantic_key: str,
+    corpus_version: str,
+    cache_prompt_version: str,
+    settings: Settings,
+    query_id: str,
+    t0: float,
+) -> QueryResponse | None:
+    """Return the answer of the nearest already-answered question, or None (2.3).
+
+    Runs only after the exact key missed. The neighbour's answer lives in Redis;
+    this resolves the pointer and reuses it.
+
+    Every hit is logged with the matched question and its cosine — the gate for
+    turning this feature on is "zero false positives, read by hand", and a hit
+    that isn't visible cannot be audited.
+    """
+    match = semantic_cache.lookup(
+        db_pool, question_embedding,
+        corpus_version=corpus_version,
+        prompt_version=cache_prompt_version,
+        directive_key=semantic_key,
+        threshold=settings.semantic_cache_threshold,
+        ttl_s=settings.cache_ttl_s,
+    )
+    if match is None:
+        return None
+    neighbour_key, neighbour_question, similarity = match
+
+    cached_raw = get_cached(neighbour_key)
+    if cached_raw is None:
+        # The pointer outlived its answer (early Redis eviction). Drop the row so
+        # it stops shadowing a real neighbour, and fall through to generation.
+        logger.info("semantic_cache.stale_pointer", query_id=query_id, similarity=similarity)
+        semantic_cache.forget(db_pool, neighbour_key)
+        return None
+    try:
+        cached_data = json.loads(cached_raw)
+        latency_ms = round((time.time() - t0) * 1000)
+        response = QueryResponse(**{**cached_data, "cache_hit": True, "latency_ms": latency_ms})
+    except Exception:
+        return None  # Corrupt entry — regenerate rather than serve garbage.
+
+    logger.info(
+        "semantic_cache.hit",
+        query_id=query_id,
+        similarity=round(similarity, 4),
+        matched_question=neighbour_question,
+        latency_ms=latency_ms,
+    )
+    return response
+
+
+def _retrieve(
+    question: str,
+    embedder: Embedder,
+    db_pool,
+    provider: LLMProvider,
+    settings: Settings,
+    card_mentions: list[str] | None,
+    corpus_version: str,
+    query_id: str,
+    question_embedding: list[float] | None = None,
+    entities: "_Entities | None" = None,
+) -> tuple[list, str, float, bool, int]:
+    """Embed + retrieve + assemble the final context.
+
+    Returns (chunks, clean_question, semantic_confidence, has_exact_card_match, card_count).
+
+    *question_embedding* and *entities* let the caller hand in work it already
+    did. The semantic cache (2.3) must classify the query and embed it BEFORE
+    this call — recomputing either here would pay bge-m3's CPU cost (~50-100ms)
+    and the ~960-pattern card scan twice for the identical text. None -> compute
+    here, as before.
+    """
+    clean_question, explicit_tags = _extract_tags(question)
+    base_question = clean_question or question
+    auto_tags = _detect_keywords(base_question)
+    mention_tags = [m.lower() for m in (card_mentions or [])]
+
+    if entities is None:
+        entities = _detect_entities(base_question, db_pool, corpus_version, query_id)
+    auto_card_tags = entities.auto_card_tags
+    ambiguous_champion_count = entities.ambiguous_champion_count
 
     # User-directed tags (@tags + card mentions + auto-detected cards) may prepend;
     # auto-detected KEYWORDS are a weaker heuristic and only fill leftover budget.
@@ -284,8 +409,11 @@ def _retrieve(
     pool_k = settings.rerank_pool_size if settings.enable_reranker else settings.top_k
     hyde_text = provider.hyde(base_question)
     arm_top_k = settings.top_k_fetch if hyde_text else pool_k
+    base_embedding = (
+        question_embedding if question_embedding is not None else embedder.encode(base_question)
+    )
     chunks = hybrid_search(
-        db_pool, embedder.encode(base_question), base_question, corpus_version,
+        db_pool, base_embedding, base_question, corpus_version,
         top_k=arm_top_k,
         top_k_fetch=settings.top_k_fetch,
         rrf_k=settings.rrf_k,
@@ -485,8 +613,36 @@ def answer_question(
     if cached is not None:
         return cached
 
+    # 2.3 semantic cache (flag off by default). The exact key above is a hash, so
+    # a paraphrase of an already-answered question misses it and pays a full LLM
+    # call. Classify FIRST (deterministic, no LLM), because the cache is only
+    # safe for one half of the traffic — see _semantic_cache_is_safe.
+    tag_stripped, explicit_tags = _extract_tags(question)
+    base_question = tag_stripped or question
+    mention_tags = [m.lower() for m in (card_mentions or [])]
+    semantic_key = directive_key(card_mentions, explicit_tags)
+
+    entities: _Entities | None = None
+    question_embedding: list[float] | None = None
+    semantic_eligible = False
+    if settings.semantic_cache_enabled and cache_is_enabled():
+        entities = _detect_entities(base_question, db_pool, corpus_version, query_id)
+        semantic_eligible = _semantic_cache_is_safe(
+            card_count=entities.card_count(mention_tags),
+            keyword_count=len(_detect_keywords(base_question)),
+        )
+        if semantic_eligible:
+            question_embedding = embedder.encode(base_question)
+            semantic = _try_semantic_response(
+                db_pool, question_embedding, semantic_key, corpus_version,
+                cache_prompt_version, settings, query_id, t0,
+            )
+            if semantic is not None:
+                return semantic
+
     chunks, clean_question, semantic_confidence, has_exact_card_match, card_count = _retrieve(
-        question, embedder, db_pool, provider, settings, card_mentions, corpus_version, query_id
+        question, embedder, db_pool, provider, settings, card_mentions, corpus_version, query_id,
+        question_embedding=question_embedding, entities=entities,
     )
 
     resolved_question = clean_question or question
@@ -572,6 +728,22 @@ def answer_question(
             json.dumps({"answer": answer, "citations": [c.model_dump() for c in citations], "confidence": confidence}),
             ttl=settings.cache_ttl_s,
         )
+        # Index the question for the semantic cache under the SAME key. Gated on
+        # the same degraded check on purpose: a pointer to an answer Redis was
+        # told not to store would only ever resolve to nothing. Gated on
+        # semantic_eligible too — a hard question must not even be REMEMBERED,
+        # or it becomes the wrong-answer neighbour for the next paraphrase
+        # (see _semantic_cache_is_safe).
+        if semantic_eligible and question_embedding is not None:
+            semantic_cache.remember(
+                db_pool,
+                base_question,
+                question_embedding,
+                cache_key,
+                corpus_version=corpus_version,
+                prompt_version=cache_prompt_version,
+                directive_key=semantic_key,
+            )
 
     logger.info(
         "query.complete",
