@@ -84,6 +84,9 @@ def _fake_settings(corpus_version: str = "v1"):
     s.keyword_family_extra = 0
     s.semantic_cache_enabled = False
     s.semantic_cache_threshold = 0.85
+    s.skip_hyde_when_routed = False
+    s.hyde_model = None
+    s.concise_reasoning = False
     return s
 
 

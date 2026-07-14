@@ -262,6 +262,28 @@ Continue to use the Reasoning: / Answer: format from rule 7.
 """
 
 
+# Appended (like _MULTI_CARD_SCAFFOLD, never mutating _SYSTEM_INSTRUCTION) when
+# concise_reasoning is on and the question is neither routed nor scaffolded —
+# i.e. the simple end of the traffic. Rule 7 makes a Reasoning section mandatory,
+# which is what lifts the hard bucket; on a one-rule lookup it just pays output
+# tokens (the expensive side) to restate the obvious.
+#
+# It CAPS the section, never removes it: dropping Reasoning entirely would change
+# the answer's shape, break _ANSWER_HEADING_RE's parsing, and undo the chaining
+# gains of the v6/v7 few-shots. Mutually exclusive with _MULTI_CARD_SCAFFOLD by
+# construction — the caller picks one — so the two can never contradict.
+_CONCISE_REASONING = """
+
+Brevity guidance (applies to this question):
+This question is a direct rules lookup — no multi-card interaction, no
+conditional or simultaneous timing. Keep the Reasoning section to AT MOST 3
+bullets, citing only the rules you actually apply. Do not restate the question,
+do not enumerate rules you are not using. Keep the Reasoning: / Answer: format
+from rule 7 exactly as specified; brevity applies to the Reasoning bullets only,
+never to the correctness or completeness of the Answer.
+"""
+
+
 def build_prompt(question: str, chunks: list[Chunk], extra_system: str = "") -> str:
     """Pure function: build the full prompt string for Gemini.
 
