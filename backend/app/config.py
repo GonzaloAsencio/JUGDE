@@ -53,6 +53,31 @@ class Settings(BaseSettings):
     # Thinking models spend the output budget on thoughts; 1024 strangles them.
     hard_max_output_tokens: int = 8192
 
+    # 2.2 HyDE model: the HyDE passage is 2-3 throwaway sentences used only to
+    # embed a second retrieval arm — it does not need the answer model. None =
+    # use the main model (byte-identical to pre-2.2 behaviour).
+    hyde_model: str | None = None
+
+    # 2.1 skip HyDE on routed queries. A routed (hard) query REPLACES its
+    # retrieved context with the stuffed rulebook (see pipeline.answer_question:
+    # `chunks = stuffed`), so the HyDE arm it just paid an LLM call to build is
+    # thrown away. Skipping it saves one LLM call per hard query for free.
+    #
+    # This replaces the plan's original 2.1 ("skip HyDE when the raw cosine is
+    # already high"), which was KILLED BY MEASUREMENT: on the eval set the raw
+    # best cosine does not separate "gold retrieved" from "gold missed" at all
+    # (eval-037 scores 0.7007 — 2nd highest — with its gold absent from the
+    # top-15; eval-010 scores the LOWEST at 0.5277 with its gold at rank 1).
+    # Any threshold high enough to be safe (>=0.75) skips HyDE on 0/40
+    # questions; any threshold low enough to save calls strips HyDE from
+    # exactly the hard questions that need it most.
+    #
+    # Trade-off this DOES have: semantic_confidence for a routed query is then
+    # computed from the raw arm alone. That number is already of dubious meaning
+    # for routed queries (their context isn't what retrieval returned), but it
+    # does move — hence the flag, and the eval gate.
+    skip_hyde_when_routed: bool = False
+
     # LLM provider: "gemini" (default) | "openai_compat" (Groq, LM Studio, Ollama, etc.)
     llm_provider: str = "gemini"
     llm_base_url: str | None = None

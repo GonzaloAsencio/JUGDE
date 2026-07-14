@@ -361,6 +361,7 @@ def _retrieve(
     query_id: str,
     question_embedding: list[float] | None = None,
     entities: "_Entities | None" = None,
+    skip_hyde: bool = False,
 ) -> tuple[list, str, float, bool, int]:
     """Embed + retrieve + assemble the final context.
 
@@ -407,7 +408,10 @@ def _retrieve(
     # pre-reranker behaviour (the regression guarantee). When on, the pool is
     # widened to rerank_pool_size and reranked back down to top_k below.
     pool_k = settings.rerank_pool_size if settings.enable_reranker else settings.top_k
-    hyde_text = provider.hyde(base_question)
+    # 2.1: a routed query throws this whole retrieval away (`chunks = stuffed`),
+    # so building its HyDE arm would burn an LLM call for nothing. The caller
+    # predicts routing before calling us — see answer_question.
+    hyde_text = "" if skip_hyde else provider.hyde(base_question)
     arm_top_k = settings.top_k_fetch if hyde_text else pool_k
     base_embedding = (
         question_embedding if question_embedding is not None else embedder.encode(base_question)
@@ -622,27 +626,45 @@ def answer_question(
     mention_tags = [m.lower() for m in (card_mentions or [])]
     semantic_key = directive_key(card_mentions, explicit_tags)
 
+    # Both the semantic cache and the HyDE skip need to know what KIND of query
+    # this is before any retrieval happens, and both read it from the same
+    # deterministic signal — so detect once and share.
+    routing_possible = hard_provider is not None and settings.hard_query_routing
+    semantic_possible = settings.semantic_cache_enabled and cache_is_enabled()
+
     entities: _Entities | None = None
     question_embedding: list[float] | None = None
     semantic_eligible = False
-    if settings.semantic_cache_enabled and cache_is_enabled():
+    will_route = False
+    if semantic_possible or (settings.skip_hyde_when_routed and routing_possible):
         entities = _detect_entities(base_question, db_pool, corpus_version, query_id)
-        semantic_eligible = _semantic_cache_is_safe(
+        is_hard = is_hard_query(
             card_count=entities.card_count(mention_tags),
             keyword_count=len(_detect_keywords(base_question)),
         )
-        if semantic_eligible:
-            question_embedding = embedder.encode(base_question)
-            semantic = _try_semantic_response(
-                db_pool, question_embedding, semantic_key, corpus_version,
-                cache_prompt_version, settings, query_id, t0,
+        # Predicts the routing decision made below. The only way they can
+        # disagree is build_stuffed_chunks returning None (a missing data file),
+        # in which case that query degrades to raw-only retrieval — acceptable,
+        # since a missing rulebook.md is a broken deploy, not a normal path.
+        will_route = settings.skip_hyde_when_routed and routing_possible and is_hard
+
+        if semantic_possible:
+            semantic_eligible = _semantic_cache_is_safe(
+                card_count=entities.card_count(mention_tags),
+                keyword_count=len(_detect_keywords(base_question)),
             )
-            if semantic is not None:
-                return semantic
+            if semantic_eligible:
+                question_embedding = embedder.encode(base_question)
+                semantic = _try_semantic_response(
+                    db_pool, question_embedding, semantic_key, corpus_version,
+                    cache_prompt_version, settings, query_id, t0,
+                )
+                if semantic is not None:
+                    return semantic
 
     chunks, clean_question, semantic_confidence, has_exact_card_match, card_count = _retrieve(
         question, embedder, db_pool, provider, settings, card_mentions, corpus_version, query_id,
-        question_embedding=question_embedding, entities=entities,
+        question_embedding=question_embedding, entities=entities, skip_hyde=will_route,
     )
 
     resolved_question = clean_question or question
