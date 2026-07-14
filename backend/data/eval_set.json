@@ -240,8 +240,8 @@
     },
     {
       "id": "eval-027",
-      "question": "I have a Reflection Token of the Soaring Scout with Temporary. My opponent argues the 2 runes channeled by its Deathknell are ready because of the Awaken step. Is that correct?",
-      "canonical_answer": "No. The turn phases resolve in order: (A) Awaken — all runes and units ready; (B) Beginning — Temporary triggers fire and Deathknell goes on the chain; (C) Channel — new ready rune is channeled; (D) Draw. Since the Awaken step is fully completed before the Beginning step, the 2 runes channeled by the Reflection Token's Deathknell enter exhausted. The Awaken step has already passed by the time those runes are created.",
+      "question": "I have a Reflection Token of the Soaring Scout with Temporary. My opponent argues the rune channeled by its Deathknell is ready because of the Awaken step. Is that correct?",
+      "canonical_answer": "No. The turn phases resolve in order: (A) Awaken — all runes and units ready; (B) Beginning — Temporary triggers fire and Deathknell goes on the chain; (C) Channel — new ready rune is channeled; (D) Draw. Since the Awaken step is fully completed before the Beginning step, the rune channeled by the Reflection Token's Deathknell (Soaring Scout's Deathknell channels 1 rune, exhausted) enters exhausted. The Awaken step has already passed by the time that rune is created.",
       "source": "ruling",
       "rule_reference": "315.1, 315.2, 808",
       "tags": ["reflection-token", "soaring-scout", "temporary", "deathknell", "awaken", "beginning-phase", "runes", "specific-card"],
