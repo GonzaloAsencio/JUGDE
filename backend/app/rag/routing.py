@@ -16,7 +16,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from app.observability import get_logger
-from app.rag.card_detect import detect_card_mentions
+from app.rag.card_detect import detect_card_mentions, detect_champion_mentions
 from app.rag.retrieval import Chunk
 
 logger = get_logger(__name__)
@@ -28,6 +28,8 @@ _PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
 RULEBOOK_CHUNK_ID = "rulebook:full"
 
 _CARD_HEADER = re.compile(r"^## (.+)$", re.MULTILINE)
+_TYPE_LEGEND_RE = re.compile(r"^\*\*Type\*\*:\s*Legend\b", re.MULTILINE)
+_TAGS_LINE_RE = re.compile(r"^\*\*Tags\*\*:\s*(.+)$", re.MULTILINE)
 
 
 def is_hard_query(*, card_count: int, keyword_count: int) -> bool:
@@ -64,6 +66,34 @@ def _load_card_sections() -> dict[str, str]:
     return sections
 
 
+@lru_cache(maxsize=1)
+def load_champion_tag_index() -> dict[str, tuple[str, ...]]:
+    """Champion identity -> every printed card carrying it, e.g.
+    ``"vi" -> ("Vi Piltover Enforcer", "Vi Destructive", ...)``.
+
+    Built from each ``Type: Legend`` block's ``**Tags**`` line (the first tag
+    is always the champion's own name, e.g. "Master Yi Unstoppable" carries
+    ``Tags: Master Yi, Ionia``). This is curated ground truth already in the
+    data, not a first-word guess — a non-champion card that happens to share
+    a leading word ("Void Assault", "The Grand Plaza", "Master Yi" itself
+    isn't affected since only its OWN Legend cards feed the index) never
+    enters this index, because only ``Type: Legend`` blocks are read.
+
+    Cached once; callers must treat the dict as read-only.
+    """
+    index: dict[str, list[str]] = {}
+    for name, section in _load_card_sections().items():
+        if not _TYPE_LEGEND_RE.search(section):
+            continue
+        tags_match = _TAGS_LINE_RE.search(section)
+        if not tags_match:
+            continue
+        tag = tags_match.group(1).split(",")[0].strip().lower()
+        if tag:
+            index.setdefault(tag, []).append(name)
+    return {tag: tuple(names) for tag, names in index.items()}
+
+
 def build_stuffed_chunks(
     question: str,
     *,
@@ -92,6 +122,22 @@ def build_stuffed_chunks(
 
     mentions = detect_card_mentions(question, cards.keys(), known_keywords=known_keywords)
     seen = {m.lower() for m in mentions}
+
+    # Bare champion mentions ("a Vi") the exact/subset passes above can't see —
+    # the vocabulary only holds full printed names. Only an UNAMBIGUOUS tag
+    # (one printed card) is added here; an ambiguous one (e.g. "Vi" has 7
+    # variants) contributes nothing — the full rulebook chunk appended below
+    # is what a genuinely rule-driven question like that needs anyway, and
+    # guessing the wrong printed card's ability text would be worse than
+    # omitting it. See card_detect.detect_champion_mentions.
+    resolved_champions, _ = detect_champion_mentions(
+        question, load_champion_tag_index(), known_keywords=known_keywords
+    )
+    for name in resolved_champions:
+        if name.lower() not in seen:
+            mentions.append(name)
+            seen.add(name.lower())
+
     by_lower = {name.lower(): name for name in cards}
     for extra in extra_card_names:
         name = by_lower.get(extra.strip().lower())

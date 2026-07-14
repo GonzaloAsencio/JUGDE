@@ -189,6 +189,73 @@ def detect_card_mentions(
     return out
 
 
+def detect_champion_mentions(
+    question: str,
+    tag_index: dict[str, tuple[str, ...]],
+    *,
+    known_keywords: frozenset[str] = frozenset(),
+) -> tuple[list[str], int]:
+    """Resolve bare champion identity mentions ("a Vi", "I play Ahri") that
+    :func:`detect_card_mentions` cannot see — the card vocabulary only holds
+    full printed names ("Vi Piltover Enforcer", "Vi Destructive", ...), never
+    the bare champion name a player actually types.
+
+    *tag_index* maps a lowercased champion tag to every printed card that
+    carries it (see ``routing.load_champion_tag_index``) — curated ground
+    truth from each card's ``Type: Legend`` block, not a raw first-word guess.
+
+    Returns ``(resolved_names, ambiguous_count)``:
+    - A tag with exactly ONE card is unambiguous: that card's full name is
+      returned in *resolved_names*, safe to treat like any other exact card
+      match.
+    - A tag with multiple printed cards (e.g. "Vi" has 7) is ambiguous: we
+      never guess which one is meant — no name is added — but the mention
+      still counts as evidence of a multi-entity question, tallied in
+      *ambiguous_count* so callers can factor it into routing decisions
+      without asserting a card identity.
+
+    Same proper-noun signal as the single-word pass in
+    :func:`detect_card_mentions`: a tag only counts when it appears
+    CAPITALIZED, and tags colliding with a known rules keyword are skipped.
+    No length floor — the vocabulary is pre-vetted, not a raw word guess.
+    """
+    if not question or not tag_index:
+        return [], 0
+
+    # Longest tag first (word count, then length) so "Master Yi" claims its
+    # span before a shorter tag could nest inside it — mirrors _prepare_vocab.
+    ordered_tags = sorted(
+        tag_index, key=lambda t: (len(t.split()), len(t)), reverse=True
+    )
+
+    accepted_spans: list[tuple[int, int]] = []
+    hits: list[tuple[int, str]] = []
+    for tag in ordered_tags:
+        if tag in known_keywords:
+            continue
+        pattern = re.compile(r"\b" + re.escape(tag) + r"\b", re.IGNORECASE)
+        for m in pattern.finditer(question):
+            if not m.group()[0].isupper():
+                continue
+            if any(s <= m.start() and m.end() <= e for s, e in accepted_spans):
+                continue  # nested inside an already-claimed longer tag
+            accepted_spans.append((m.start(), m.end()))
+            hits.append((m.start(), tag))
+            break
+
+    hits.sort(key=lambda t: t[0])
+    resolved: list[str] = []
+    ambiguous_count = 0
+    for _, tag in hits:
+        names = tag_index[tag]
+        if len(names) == 1:
+            if names[0] not in resolved:
+                resolved.append(names[0])
+        else:
+            ambiguous_count += 1
+    return resolved, ambiguous_count
+
+
 def load_card_names(pool, corpus_version: str) -> tuple[str, ...]:
     """Distinct card-name vocabulary for a corpus version (the card chunks'
     section headers, which hold the card name). Cached per corpus_version — the

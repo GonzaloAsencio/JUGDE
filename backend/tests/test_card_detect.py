@@ -6,7 +6,7 @@ POSITIVES: many single-word card names ("Charm", "Block", "Eclipse") are also
 ordinary English. These tests pin the rules that keep those from firing while
 still catching the real multi-card interaction queries the hard bucket needs.
 """
-from app.rag.card_detect import detect_card_mentions
+from app.rag.card_detect import detect_card_mentions, detect_champion_mentions
 
 KW = frozenset({"counter", "chain", "stun"})
 
@@ -137,3 +137,66 @@ def test_v2_does_not_double_count_with_exact_match():
     # exact contiguous match must not also be re-added by the secondary pass
     out = detect_card_mentions("play Marching Orders now", {"Marching Orders"})
     assert out == ["Marching Orders"]
+
+
+# ---------------------------------------------------------------------------
+# detect_champion_mentions — bare champion identity ("a Vi") that the card
+# vocabulary above can never see, since it only holds full printed names.
+# ---------------------------------------------------------------------------
+
+TAG_INDEX = {
+    "vi": ("Vi Piltover Enforcer", "Vi Destructive", "Vi Hotheaded", "Vi Peacekeeper"),
+    "ahri": ("Ahri Nine Tailed Fox",),
+    "master yi": ("Master Yi Unstoppable", "Master Yi Wuju Master"),
+}
+
+
+def test_unambiguous_tag_resolves_to_its_one_card():
+    resolved, ambiguous = detect_champion_mentions("I play Ahri and attack", TAG_INDEX)
+    assert resolved == ["Ahri Nine Tailed Fox"]
+    assert ambiguous == 0
+
+
+def test_ambiguous_tag_resolves_to_nothing_but_is_counted():
+    resolved, ambiguous = detect_champion_mentions("I play a Vi into an empty battlefield", TAG_INDEX)
+    assert resolved == []
+    assert ambiguous == 1
+
+
+def test_multiword_ambiguous_tag_matched():
+    resolved, ambiguous = detect_champion_mentions("Master Yi Legend says...", TAG_INDEX)
+    assert resolved == []
+    assert ambiguous == 1
+
+
+def test_lowercase_tag_not_matched():
+    # no proper-noun signal -> must not fire
+    resolved, ambiguous = detect_champion_mentions("i vi my opponent", TAG_INDEX)
+    assert resolved == []
+    assert ambiguous == 0
+
+
+def test_tag_colliding_with_keyword_excluded():
+    resolved, ambiguous = detect_champion_mentions(
+        "I play Ahri", TAG_INDEX, known_keywords=frozenset({"ahri"})
+    )
+    assert resolved == []
+    assert ambiguous == 0
+
+
+def test_empty_tag_index_returns_empty():
+    assert detect_champion_mentions("I play a Vi", {}) == ([], 0)
+
+
+def test_empty_question_returns_empty():
+    assert detect_champion_mentions("", TAG_INDEX) == ([], 0)
+
+
+def test_two_distinct_tags_both_counted():
+    resolved, ambiguous = detect_champion_mentions(
+        "If I move an Irresistible Faefolk and a Vi into an empty battlefield, "
+        "does Vi get her attack trigger?",
+        TAG_INDEX,
+    )
+    assert resolved == []
+    assert ambiguous == 1  # "Vi" mentioned twice, deduped to one hit
