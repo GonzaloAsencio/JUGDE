@@ -237,6 +237,62 @@ corpus_ab_probe pareado + matcher estricto contra v2.2.1. Dos variantes:
       sentence-transformers. Gratis en plata, caro en tiempo. Solo si 3.1–3.8 no
       alcanzan.
 
+### 3.10 Detección de cartas: fix del posesivo + desambiguación (2026-07-15)
+
+Sesión de re-eval sobre `feat/concise-reasoning`. El "57% correct" del primer run
+era mentira estadística (7 `error` eran caídas de red/DB, no del sistema); real
+**~69% correct / 77% con partials** sobre lo que corrió. Diagnóstico honesto de
+los wrong reales, cada uno con causa distinta (no comparten fix):
+
+- **eval-029 → FIX SHIPPEADO** (`538b4e8`). Un nombre de carta en posesivo con
+  guion (`"Jhin - Virtuoso's"`) no se detectaba: el guion fuerza el pass subset y
+  `_norm_word` convertía el token en `"virtuosos"` (≠ `"virtuoso"`). Se strippea
+  el posesivo antes de sacar puntuación. TDD (test rojo→verde, 27/27), verificado
+  determinísticamente que Jhin ahora entra al contexto stuffeado (2→3 secciones).
+  E2E pendiente de reset de cuota. **Bonus:** cualquier carta en posesivo+guion.
+- **eval-028 "Jhin Legend" → abierto.** No es bug del eval-set: "Legend" es el
+  TIPO de la carta `Jhin - Virtuoso`. Resolver una referencia por-tipo a la carta
+  impresa es un problema aparte (más grande que el posesivo).
+- **eval-020 (y 013/014/015/017) → gap semántico sistémico de la familia 383
+  "Triggered Abilities".** El sub-rule gold (383.3.d / 383.3.d.1 / 383.4.e) NO
+  está ni en el vector top-50. **MEDIDO 2026-07-15 (gratis, HyDE off):** agregar
+  "trigger"/"triggered"/"triggers" a `_KNOWN_KEYWORDS` para sembrar la familia vía
+  `tagged_lookup` → **0 wins, 0 losses, y el sub-rule sigue ausente en las 5**
+  (CONTROL=T2=False). La compuerta de `_complete_keyword_families` exige que un
+  chunk de la familia SOBREVIVA el retrieval, y acá no sobrevive → nada que
+  completar. Keyword-family muerto para este gap. Necesita el "lever B" real
+  (arm FTS-keyword sobre keywords extraídos, inyección de familia sin la
+  compuerta, o HyDE mejor). **"trigger" habría sido blast-radius amplio por CERO
+  beneficio — validado medir-antes-de-shippear.**
+- **eval-005 / eval-034 → razonamiento genuino** (regla presente en contexto,
+  modelo concluye mal). Fix vía prompt = mayor blast-radius del pipeline; caza de
+  baja probabilidad, se deja para un enfoque de eval más sistemático.
+
+**Ojo metodológico reconfirmado:** `retrieval_hit`/`match_rule_reference` cuenta
+un hit si CUALQUIER ref matchea, y una pregunta que erroró queda como recall miss.
+Ambos distorsionan. Medir presencia del sub-rule ESPECÍFICO en el contexto de
+generación, no el recall de citations.
+
+#### 3.10.1 Desambiguación de carta ("¿te referís a...?") — FUTURA, diseñar aparte
+El `@tag` ya garantiza el nombre exacto (camino confiable). `detect_card_mentions`
+es el fallback degradado para texto libre/typos. La respuesta correcta a largo
+plazo para el camino degradado: cuando la mención es ambigua ("Jhin" = 3
+impresiones) o un typo ("Jihn Virtouso"), **mostrar candidatos y que el usuario
+elija**, en vez de responder en silencio con la carta equivocada o ausente.
+
+Menos complejo de lo que parece:
+- [ ] La señal de ambigüedad YA EXISTE: `entities.ambiguous_champion_count`
+      (`pipeline.py::_retrieve`) — hoy se computa y se descarta.
+- [ ] Candidatos para typos = **determinístico, NO IA**: `pg_trgm` (similitud de
+      trigramas) contra la vocab de cartas. Más seguro y barato que hacer razonar
+      al modelo.
+- [ ] Re-consulta ya resuelta: la selección vuelve como `@tag` → `tagged_lookup`.
+- [ ] Lo que falta es producto/UX: (1) generación de candidatos vía pg_trgm,
+      (2) nuevo estado de respuesta de la API ("necesita desambiguación" + candidatos),
+      (3) UI de chips seleccionables, (4) aceptar la fricción de convertir one-shot
+      en turno de aclaración. **Costo en API + frontend, no en IA.** Merece su
+      propio cambio SDD, NO colgado del fix de detección.
+
 ---
 
 ## Fase 4 — Razonamiento para el bucket hard (si Fase 0 dice "razonamiento")
