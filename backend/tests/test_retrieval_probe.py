@@ -9,8 +9,13 @@ from types import SimpleNamespace
 from scripts.retrieval_probe import (
     chunk_covers_refs,
     first_covering_rank,
+    fully_covered,
+    per_ref_ranks,
     recall_at_k,
+    routing_decision,
     source_distribution,
+    split_by_route,
+    strict_recall_at_k,
 )
 
 
@@ -114,3 +119,157 @@ def test_source_distribution_counts_by_type():
 
 def test_source_distribution_empty():
     assert source_distribution([]) == {}
+
+
+# ---------------------------------------------------------------------------
+# routing_decision — does production replace retrieval with the stuffed rulebook?
+#
+# Why this exists: without it the probe measures hybrid_search for EVERY
+# question, including the ones production never answers from hybrid_search. That
+# blind spot produced a false "383-family systemic gap" diagnosis on 2026-07-15
+# (4 of the 5 questions route and answer correctly). Mirrors the production
+# gate at pipeline.py:690 — routing_enabled AND is_hard_query.
+# ---------------------------------------------------------------------------
+
+def test_routing_decision_matches_production_threshold_on_cards():
+    # cards >= 2 routes on its own (routing.py::is_hard_query)
+    assert routing_decision(card_count=2, keyword_count=0, routing_enabled=True) is True
+
+
+def test_routing_decision_matches_production_threshold_on_card_plus_keywords():
+    # one card needs >= 2 keywords to clear the bar
+    assert routing_decision(card_count=1, keyword_count=2, routing_enabled=True) is True
+
+
+def test_routing_decision_false_below_threshold():
+    # eval-020's exact shape: 1 card, 1 keyword -> NOT routed, so its retrieval
+    # recall is a real production signal (this is the one live 383 gap).
+    assert routing_decision(card_count=1, keyword_count=1, routing_enabled=True) is False
+
+
+def test_routing_decision_false_when_routing_disabled():
+    # flag off -> production uses retrieval for everything, so must the probe
+    assert routing_decision(card_count=3, keyword_count=5, routing_enabled=False) is False
+
+
+# ---------------------------------------------------------------------------
+# split_by_route — recall only carries meaning for the non-routed bucket
+# ---------------------------------------------------------------------------
+
+def test_split_by_route_separates_buckets():
+    results = [
+        {"id": "eval-014", "routed": True},
+        {"id": "eval-020", "routed": False},
+        {"id": "eval-013", "routed": True},
+    ]
+    routed, retrieved = split_by_route(results)
+    assert [r["id"] for r in routed] == ["eval-014", "eval-013"]
+    assert [r["id"] for r in retrieved] == ["eval-020"]
+
+
+def test_split_by_route_empty():
+    assert split_by_route([]) == ([], [])
+
+
+# ---------------------------------------------------------------------------
+# per_ref_ranks / strict_recall_at_k — the any-ref masking made visible
+#
+# Why this exists: chunk_covers_refs (and first_covering_rank through it) score
+# a hit when ANY gold ref is covered. That rule is deliberate — for questions
+# whose refs are alternatives it's correct — but for questions whose refs are
+# conjuncts it hides a real gap. Measured on eval-020 (gold "816, 383.3.d"):
+# 816 lands at rank 1 while 383.3.d is absent from the top-15, so the probe
+# printed a healthy h=1 for the one question with a genuine 383 gap. Both
+# figures are now reported; the gap between them is the size of the lie.
+# ---------------------------------------------------------------------------
+
+def test_per_ref_ranks_reports_each_ref_separately():
+    chunks = [
+        _chunk("816. Attachments do this."),
+        _chunk("200. unrelated"),
+    ]
+    assert per_ref_ranks(["816", "383.3.d"], chunks) == {"816": 1, "383.3.d": None}
+
+
+def test_per_ref_ranks_empty_refs():
+    assert per_ref_ranks([], [_chunk("816. x")]) == {}
+
+
+def test_per_ref_ranks_finds_each_ref_at_its_own_chunk():
+    # One pass must not stop at the first ref it resolves.
+    chunks = [
+        _chunk("816. Attachments do this."),
+        _chunk("200. unrelated"),
+        _chunk("383.3.d ordering of triggers."),
+    ]
+    assert per_ref_ranks(["816", "383.3.d"], chunks) == {"816": 1, "383.3.d": 3}
+
+
+def test_per_ref_ranks_records_first_covering_chunk_only():
+    chunks = [_chunk("816. first"), _chunk("816. second")]
+    assert per_ref_ranks(["816"], chunks) == {"816": 1}
+
+
+def test_strict_recall_requires_every_ref_within_k():
+    # eval-020's exact shape: one ref at rank 1, the other absent -> not a
+    # strict hit, even though the any-ref recall counts it.
+    ranks = [{"816": 1, "383.3.d": None}]
+    assert strict_recall_at_k(ranks, 5) == 0.0
+
+
+def test_strict_recall_counts_when_all_refs_within_k():
+    ranks = [{"816": 1, "383.3.d": 4}]
+    assert strict_recall_at_k(ranks, 5) == 1.0
+
+
+def test_strict_recall_excludes_ref_beyond_k():
+    ranks = [{"816": 1, "383.3.d": 9}]
+    assert strict_recall_at_k(ranks, 5) == 0.0
+    assert strict_recall_at_k(ranks, 10) == 1.0
+
+
+def test_strict_recall_empty_is_zero():
+    assert strict_recall_at_k([], 5) == 0.0
+
+
+def test_strict_and_any_recall_diverge_on_partial_coverage():
+    # The headline contrast: any-ref says 100%, strict says 0%. Same data.
+    per_ref = [{"816": 1, "383.3.d": None}]
+    assert recall_at_k([1], 5) == 1.0
+    assert strict_recall_at_k(per_ref, 5) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# fully_covered — the headline: is EVERY gold ref in the generation context?
+#
+# Third blind spot this closes: the probe used to measure hybrid_search's raw
+# output, but production assembles the non-routed context through
+# tagged_lookup + _assemble_context + _complete_keyword_families on top of it.
+# Measuring the arm and calling it "the context" under-reports — eval-030's
+# Deflect family siblings arrive via family completion, which raw hybrid_search
+# never shows.
+# ---------------------------------------------------------------------------
+
+def test_fully_covered_true_when_every_ref_present():
+    assert fully_covered({"816": 1, "383.3.d": 4}) is True
+
+
+def test_fully_covered_false_when_any_ref_missing():
+    assert fully_covered({"816": 1, "383.3.d": None}) is False
+
+
+def test_fully_covered_empty_is_false():
+    # No refs is not evidence of coverage — don't score it as a win.
+    assert fully_covered({}) is False
+
+
+def test_recall_over_retrieved_bucket_ignores_routed_misses():
+    # The regression this guards: a routed question whose gold rule is absent
+    # from hybrid_search is NOT a production miss — the stuffed rulebook carries
+    # it. Folding it into recall is what manufactured the phantom gap.
+    results = [
+        {"id": "eval-014", "routed": True, "hybrid_rank": None},
+        {"id": "eval-020", "routed": False, "hybrid_rank": 3},
+    ]
+    _, retrieved = split_by_route(results)
+    assert recall_at_k([r["hybrid_rank"] for r in retrieved], 5) == 1.0
