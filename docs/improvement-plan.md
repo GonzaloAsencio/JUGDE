@@ -509,50 +509,60 @@ números, y esos números se vuelven mentira en silencio. Pasó dos veces:
   llamaba "el contexto". Produjo el "gap sistémico familia 383" — 5 preguntas —
   cuando 4 de las 5 rutean y contestan bien citando `383.3.d`. Una sola estaba
   rota. Casi arrancamos un SDD para arreglar un problema inexistente.
-- **`card_presence_probe` está VIEJO** (ver 6.1). Distinto pecado: su medición era
-  correcta el día que se tomó; el mundo cambió abajo.
+- **`card_presence_probe` tenía un AGUJERO DE COBERTURA** (arreglado, ver 6.1).
+  Distinto pecado: no mentía sobre su número, pero lo medía sobre la población
+  equivocada — 15 de 21 preguntas hard rutean y él miraba el contexto que esas 15
+  descartan. Un guard que dice "todo OK" sin mirar el path real.
 
 La diferencia importa. Lo primero es un error de método (medir un arm intermedio y
-extrapolar). Lo segundo es entropía: nadie se equivocó, y por eso nadie lo vio.
+extrapolar). Lo segundo es entropía: la feature se movió abajo del guard y el
+guard no se rompió — siguió imprimiendo un 100% verdadero-por-casualidad. Nadie se
+equivocó, y por eso nadie lo vio.
 
-### 6.1 Auditar `card_presence_probe` — punto ciego CONFIRMADO, medición STALE ⚠️
+### 6.1 ✅ Auditar `card_presence_probe` — HECHO (2026-07-16). Agujero de cobertura cerrado; el guard NO encontró bug
 
-**Confirmado sin correr nada** (`rg` sobre el archivo): no importa `is_hard_query`
-ni `build_stuffed_chunks` → no modela routing. Es MENOS ciego que lo que era
-`retrieval_probe`: sí usa `_assemble_context` + `tagged_lookup`, así que le falta
-una puerta, no tres.
+**Corrección primero: la hipótesis con la que se abrió este ítem era equivocada.**
+Se escribió que la medición "9/12 cartas ausentes" citada en `pipeline.py:240`
+estaba *stale*. **No lo está.** Leída completa, la cita dice: *"a deterministic
+probe found 9/12 named cards ABSENT... Detected names join the user-directed tags
+so tagged_lookup pulls them into reserved slots"* — el 9/12 es el diagnóstico
+**PREVIO al fix**, el que MOTIVÓ construir los auto card tags. Es historia, y la
+historia no queda vieja: pasó. El error fue citar de memoria en vez de leer.
 
-**El timeline es lo que cambia el diagnóstico:**
-- `card_presence_probe.py` creado **2026-06-29** (`bbc6653`)
-- hard-query routing shippeado **2026-07-12** (`a2e98e7`)
+**El punto ciego SÍ era real, pero por otro motivo — y peor.** El probe es el
+*guard* del fix (su docstring: "a delivery rate below ~100% means the
+assembly/budget regressed"). Medido: **15 de las 21 preguntas hard RUTEAN**, y una
+query ruteada descarta el contexto recuperado entero (`chunks = stuffed`,
+pipeline.py:699). O sea que para el **71% de su propio bucket** el guard medía un
+contexto que producción tira, y era **ciego a regresiones en el path que esas 15
+realmente usan** (el stuffing). Reportaba un 100% confiado mirando la puerta
+equivocada.
 
-La medición "**9/12 cartas nombradas AUSENTES del contexto en el bucket hard**" —
-citada textualmente en `pipeline.py:240` como justificación de los auto card tags —
-se tomó **2 semanas ANTES de que el routing existiera**. No era falsa: era
-verdadera y quedó vieja. Y quedó vieja justo donde más duele, porque el bucket
-hard es exactamente el que hoy rutea: `build_stuffed_chunks` pone las secciones de
-carta detectadas PRIMERO en el contexto stuffeado.
+**Fix aplicado**: resuelve el camino real por pregunta y difiere al pipeline de
+verdad (`build_stuffed_chunks` si rutea, `_retrieve` si no) en vez de re-implementar
+la assembly — la copia local es exactamente lo que había derivado. Reutiliza
+`routing_decision`/`split_by_route` de `retrieval_probe` (una sola definición de
+"¿producción rutea esto?", o los dos probes vuelven a divergir).
 
-- [ ] **Re-medir con routing modelado.** Mismo fix que 6.1 de `retrieval_probe`:
-      resolver el camino real por pregunta antes de medir presencia. Determinista,
-      cero cuota.
-- [ ] **Gate pre-comprometido (fijado ANTES de correr):**
-  - Si el 9/12 **sobrevive** con routing modelado → los auto card tags siguen
-    justificados por su propia evidencia. Se actualiza la cita de `pipeline.py:240`
-    con la medición nueva y se cierra.
-  - Si el 9/12 **colapsa** (como colapsó el gap 383) → la justificación citada está
-    vieja. **NO se toca la feature**: los auto card tags tienen evidencia
-    independiente que NO depende de este probe (eval-029 e2e, `correct`/conf=1.0
-    con el fix del posesivo). Lo que se hace es corregir la cita y abrir la
-    pregunta honesta: ¿el scan de ~960 patrones por query se paga hoy con lo que
-    aporta al contexto de las NO-ruteadas, o solo con el `card_count` que alimenta
-    la decisión de routing? Eso es un ítem aparte, con su propio gate.
+**Resultado del gate: el 100% SOBREVIVE. No había bug.**
 
-**Trampa a evitar:** que el 9/12 colapse NO prueba que la feature sobre. Para las
-ruteadas el contexto de `_retrieve` se descarta entero (`chunks = stuffed`), pero
-el scan sigue haciendo falta para `card_count` → la decisión de routing. La
-pregunta correcta no es "¿sirve?" sino "¿para qué población sirve, y cuánto cuesta
-la que no?".
+| Path | Delivery | Preguntas |
+|---|---|---|
+| routed (stuffed) | **25/25 (100%)** | 15 |
+| rag (assembly) | **4/4 (100%)** | 6 |
+
+Lo que cambió no es el número, es su naturaleza: antes era 100% **por casualidad**
+(midiendo contexto descartado), ahora es 100% **medido sobre el contexto real**. Y
+quedó medido algo que nunca lo había estado: **el stuffing entrega 25/25**. Cita de
+`pipeline.py:240` actualizada con la medición nueva y con la aclaración de que el
+9/12 es pre-fix.
+
+**Lo que NO se hace (y por qué):** no se toca la feature. Aparte de este probe
+tiene evidencia independiente (eval-029 e2e, `correct`/conf=1.0). Y el scan de
+~960 patrones **no es opcional aunque el contexto de las ruteadas se descarte**:
+`card_count` alimenta `is_hard_query` → **decide el routing mismo**. Sacarlo
+rompería la decisión, no solo el contexto. Anotado en el docstring para el que
+venga.
 
 ### 6.2 Arm FTS: 0% en todos los k — confirmar o matar
 
