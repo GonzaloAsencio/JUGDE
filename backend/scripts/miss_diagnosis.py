@@ -31,14 +31,24 @@ load_dotenv()
 from app.config import Settings
 from app.db import close_pool, get_conn, init_pool
 from app.rag.embedder import Embedder
+from app.rag.pipeline import (
+    _KNOWN_KEYWORDS,
+    _detect_entities,
+    _detect_keywords,
+    _extract_tags,
+    _retrieve,
+)
 from app.rag.retrieval import vector_search
+from app.rag.routing import build_stuffed_chunks
 from app.rag.rules import extract_rule_codes
 from scripts.eval_judge import _parse_refs
 from scripts.retrieval_probe import (
+    _NoHydeProvider,
     _load_evaluable,
     _resolve_corpus_version,
     chunk_covers_refs,
-    first_covering_rank,
+    per_ref_ranks,
+    routing_decision,
 )
 
 TOP_K = 15
@@ -54,6 +64,18 @@ def numeric_base(code: str) -> str | None:
     (e.g. ``errata/...``)."""
     m = _BASE.match(code)
     return m.group(0) if m else None
+
+
+def missing_refs(per_ref: dict[str, int | None]) -> list[str]:
+    """The gold refs that never reached the context, in declared order.
+
+    The diagnosis unit is the MISSING REF, not the question. diagnose() used to
+    skip any question where first_covering_rank found ANY ref, so eval-020 (816
+    at rank 1, 383.3.d nowhere) and eval-030 (809.1 at rank 12, 365.1 nowhere)
+    were never diagnosed at all — the two partial-coverage gaps were invisible
+    to the tool whose entire job is choosing their lever.
+    """
+    return [ref for ref, rank in per_ref.items() if rank is None]
 
 
 def classify_miss(refs: list[str], top_chunks) -> str:
@@ -112,43 +134,86 @@ def _print_top15(chunks) -> None:
         print(f"         codes: {codes_str or '(none)'}")
 
 
-def diagnose(questions, embedder, pool, corpus_version, all_chunks) -> list[dict]:
+def diagnose(questions, embedder, pool, corpus_version, all_chunks, settings) -> list[dict]:
+    """One record per MISSING REF, judged against the real generation context.
+
+    Two fixes over the previous version, both of the same family of bug:
+      * it filtered on first_covering_rank (ANY ref) and skipped questions where
+        one ref happened to be retrieved — hiding every partial-coverage gap;
+      * it filtered on the raw vector arm, not the context production builds,
+        so routed questions and family-completed refs looked like misses.
+    The vector top-15 is still dumped as the diagnostic lens: it answers WHY a
+    ref is unreachable, which is what picks the lever.
+    """
+    provider = _NoHydeProvider()
+    routing_enabled = settings.hard_query_routing
     misses = []
     for q in questions:
         refs = _parse_refs(q["rule_reference"])
-        embedding = embedder.encode(q["question"])
-        top = vector_search(pool, embedding, corpus_version, top_k=TOP_K)
-        rank = first_covering_rank(refs, top)
-        if rank is not None:
-            continue  # retrieved within top-15 — not a chunking-miss
+        question = q["question"]
+        clean_question, _ = _extract_tags(question)
+        base_question = clean_question or question
+        embedding = embedder.encode(base_question)
 
-        cls = classify_miss(refs, top)
-        misses.append({
-            "id": q.get("id", "?"),
-            "question": q["question"],
-            "refs": refs,
-            "rule_reference": q["rule_reference"],
-            "top": top,
-            "class": cls,
-            "covering": _covering_chunks(refs, all_chunks),
-        })
+        entities = _detect_entities(base_question, pool, corpus_version, "diag")
+        routed = routing_decision(
+            card_count=entities.card_count([]),
+            keyword_count=len(_detect_keywords(base_question)),
+            routing_enabled=routing_enabled,
+        )
+        context = None
+        if routed:
+            context = build_stuffed_chunks(base_question, known_keywords=_KNOWN_KEYWORDS)
+        if context is None:
+            context, _, _, _, _ = _retrieve(
+                question, embedder, pool, provider, settings, None, corpus_version,
+                "diag", question_embedding=embedding, entities=entities, skip_hyde=True,
+            )
+
+        absent = missing_refs(per_ref_ranks(refs, context))
+        if not absent:
+            continue  # every gold ref reached the model — nothing to diagnose
+
+        # The lens: what the embedding CAN reach, which decides the lever.
+        top = vector_search(pool, embedding, corpus_version, top_k=TOP_K)
+        for ref in absent:
+            misses.append({
+                "id": q.get("id", "?"),
+                "question": question,
+                "ref": ref,
+                "rule_reference": q["rule_reference"],
+                "routed": routed,
+                "top": top,
+                # Classified per-ref: a sibling of ANOTHER gold ref must not
+                # rescue this one's verdict.
+                "class": classify_miss([ref], top),
+                "covering": _covering_chunks([ref], all_chunks),
+            })
     return misses
 
 
 def _print_report(misses) -> None:
     print("\n" + "=" * 72)
-    print("MISS DIAGNOSIS (deterministic — no LLM)")
+    print("MISS DIAGNOSIS (deterministic — no LLM, per MISSING REF)")
     print("=" * 72)
-    print(f"  CHUNKING-misses found: {len(misses)}\n")
+    questions = {m["id"] for m in misses}
+    print(f"  missing refs: {len(misses)}  across {len(questions)} questions\n")
 
     a = sum(1 for m in misses if m["class"].startswith("A"))
     b = sum(1 for m in misses if m["class"].startswith("B"))
     print(f"  (A) granularity  : {a}  -> lever: chunk lineage")
     print(f"  (B) semantic gap : {b}  -> lever: FTS-keyword arm\n")
+    print("  Per missing ref:")
+    for m in misses:
+        corpus = "in corpus" if m["covering"] else "NOT IN CORPUS"
+        print(f"    {m['id']:10s} ref={m['ref']:<12s} {m['class']:16s} "
+              f"gold chunk {corpus}")
+    print()
 
     for m in misses:
         print("-" * 72)
-        print(f"  {m['id']}  ref={m['rule_reference']}  CLASS={m['class']}")
+        print(f"  {m['id']}  MISSING ref={m['ref']}  (gold set: {m['rule_reference']})"
+              f"  CLASS={m['class']}")
         print(f"  Q: {m['question']}")
         cov = m["covering"]
         print(f"\n  Gold chunk(s) in corpus that cover the ref: {len(cov)}")
@@ -183,7 +248,7 @@ def main() -> None:
     print(f"  {len(all_chunks)} chunks in corpus {corpus_version}.\n")
 
     try:
-        misses = diagnose(questions, embedder, pool, corpus_version, all_chunks)
+        misses = diagnose(questions, embedder, pool, corpus_version, all_chunks, settings)
     finally:
         close_pool(pool)
 

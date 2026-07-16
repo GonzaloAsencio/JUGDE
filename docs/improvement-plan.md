@@ -304,29 +304,75 @@ tratarlos como una familia sería repetir el error del "gap 383":
 | eval-037 | `131.4`, `425` | 2 de 3 refs |
 | eval-039 | `347.3`, `348` | 2 de 2 refs — contexto sin NADA del gold |
 
-- [ ] **3.11.0 Triage antes de tocar retrieval.** Con el probe arreglado, mirar si
-      comparten mecanismo o no. Hipótesis a favor de que NO: 020/030 pierden un
-      ref con el resto presente (problema de cobertura parcial), 039 pierde el
-      100% (problema de vocabulario/embedding, otro animal). Cero código.
-      **Gate: si el triage no encuentra mecanismo común, se atacan por separado y
-      cada uno se gatea solo. Prohibido inventar una "familia".**
-- [ ] **3.11.1 eval-020** — TRES caminos, todos medibles sin cuota:
-      (a) ampliar el umbral de `is_hard_query` para que rutee (barato, pero mueve
-      el routing de más preguntas → medir el blast radius sobre las otras 25);
-      (b) family injection sin compuerta vía `family_lookup` + mapa
-      keyword→sección (mapa nuevo = superficie de mantenimiento sin fallback
-      difuso);
-      (c) **arm FTS sobre keywords extraídos** — el lead de 6.2: FTS con
-      `"triggered abilities"` devuelve un chunk con `383.3.d.1`, que cubre por
-      lineage el `383.3.d` que falta. **El eslabón NO medido es la extracción**:
-      ¿produce el término desde "...when Temporary *triggers*?"? Así murió 3.6 —
-      el mecanismo servía y la extracción no llegaba. Medir eso PRIMERO, con cero
-      código de producto; si la extracción no lo produce, (c) está muerto y no se
-      escribe una línea.
-      **Gate (para los tres): gana el que sume 020 sin sacar ningún gold ref a las
-      otras 25. Empate → no se shippea ninguno.** Para (c), gate previo: si la
-      extracción determinística no produce el término desde la pregunta, muere ahí.
-- [ ] **3.11.2 eval-030 / 037 / 039** — pendientes del triage 3.11.0.
+- [x] **3.11.0 ✅ Triage — HECHO (2026-07-16). VEREDICTO: NO comparten mecanismo.**
+
+**Primero hubo que arreglar la herramienta de triage** (no se pudo cumplir el
+"cero código"): `miss_diagnosis.py` filtraba con `first_covering_rank` (regla
+ANY-ref) y hacía `continue` si CUALQUIER ref se recuperaba → **eval-020 (`816` en
+rank 1) y eval-030 (`809.1` en rank 12) NUNCA fueron diagnosticadas**. La
+herramienta cuyo trabajo es elegir el lever era ciega a 2 de los 4 gaps. Tercer
+instrumento con la misma mentira. Ahora diagnostica **por REF FALTANTE** (la
+unidad correcta) contra el contexto real, y clasifica cada ref por separado — un
+hermano de OTRO gold ref ya no rescata el veredicto de éste.
+
+**Resultado: 6 refs faltantes en 4 preguntas. Los 6 chunks gold ESTÁN en el corpus
+→ los 6 son gaps de retrieval, ninguno de corpus.**
+
+| Pregunta | Ref | Clase | Lever |
+|---|---|---|---|
+| eval-020 | `383.3.d` | **A: granularidad** | chunk lineage |
+| eval-030 | `365.1` | B: gap semántico | puente de vocabulario |
+| eval-037 | `131.4`, `425` | B: gap semántico | puente de vocabulario |
+| eval-039 | `347.3`, `348` | B: gap semántico | puente de vocabulario |
+
+**1 A + 5 B → se atacan por separado.** Confirmado el gate: no hay familia que
+inventar.
+
+**eval-020 (A) — el hallazgo que cambia su lever.** Su vector top-15 trae
+`[1] 816. Temporary` y **`[4]` y `[6]` de `383. Triggered Abilities`**. La familia
+383 YA ESTÁ EN EL CONTEXTO; lo que falta es el chunk hermano que lleva
+`383.3.d` — y vive en la MISMA sección. No es gap semántico: es lineage. Y explica
+por qué "trigger" como keyword murió ayer: `_complete_keyword_families` exige que
+la familia la nomine un **keyword TAGEADO** (`kw_sections` sale de `auto_chunks` =
+`tagged_lookup`), no le alcanza con que la familia esté en contexto por el arm
+vectorial. **La compuerta pide la puerta equivocada.** → El lever de 020 es
+completar la familia de una sección de regla YA presente en el contexto, sin
+compuerta de keyword. **Esto DESPLAZA al lead FTS de 6.2 para esta pregunta**
+(seguía sirviendo, pero el lineage es más directo y de menor blast radius).
+
+**eval-039 (B) — el perfil opuesto, y una advertencia.** Gold en `341. Showdowns`;
+se recupera `649. Conceding`, `339. Step 3: Pass`, `338. Step 2: Execute` — nada de
+la familia 347/348. Causa: **la pregunta dice "pass priority", la regla dice
+"Focus"**. Desajuste de vocabulario puro. Es EXACTAMENTE el perfil por el que murió
+3.6 ("los términos ganadores NO están en la pregunta") → **el arm FTS-keyword
+probablemente tampoco lo salve**. Antes de construir nada para los B, medir si
+existe algún término extraíble de la pregunta que alcance el gold. Si no existe,
+los B son puente de vocabulario (HyDE / fine-tuning 3.9), no keyword.
+- [ ] **3.11.1 eval-020 (clase A: lineage)** — el triage 3.11.0 reordenó los
+      candidatos. Favorito ahora:
+      **(d) completar la familia de una sección de regla YA presente en el
+      contexto, sin compuerta de keyword.** Es el lever que el triage señala: la
+      sección `383. Triggered Abilities` ya entra en rank 4 y 6, solo falta su
+      hermano con `383.3.d`. Reusa `family_lookup` + `_complete_keyword_families`
+      (contrato append-only ya shippeado con `keyword_family_extra=8`); el cambio
+      es de QUÉ nomina la familia: hoy `kw_sections` (keywords tageados), la
+      propuesta es las secciones de regla del contexto. **Blast radius a medir: es
+      MÁS ancho que el actual — completa familias de toda pregunta con una sección
+      de regla en contexto. Ese es el riesgo real y hay que medirlo sobre las 25.**
+      Alternativas si (d) pierde:
+      (a) ampliar el umbral de `is_hard_query` para que rutee (barato, blast radius
+      ancho sobre routing);
+      (c) arm FTS sobre keywords extraídos (el lead de 6.2 — sigue vivo, pero el
+      triage lo desplaza: para 020 el lineage es más directo y más barato).
+      **Gate: gana el que sume 020 sin sacar ningún gold ref a las otras 25.
+      Empate → no se shippea ninguno.**
+- [ ] **3.11.2 eval-030 / 037 / 039 (clase B: puente de vocabulario)** — los 5 refs
+      B NO son un problema de keyword hasta que se demuestre lo contrario.
+      **Gate previo, antes de escribir una línea:** para cada ref B, ¿existe algún
+      término EXTRAÍBLE de la pregunta que traiga el gold por FTS? eval-039 sugiere
+      que no ("pass priority" vs regla que dice "Focus") — mismo perfil que mató a
+      3.6. **Si no existe término extraíble → los B son puente de vocabulario
+      (HyDE / 3.9 fine-tuning), y (c) muere para ellos también.** Cero cuota.
 
 **Nota de método:** el número a mover es *presencia del gold en el contexto*, NO
 recall@k del arm. El arm sub-reporta a propósito (producción le suma cartas

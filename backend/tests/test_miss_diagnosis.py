@@ -5,7 +5,7 @@ cover the deterministic verdict that picks the lever for each chunking-miss.
 """
 from types import SimpleNamespace
 
-from scripts.miss_diagnosis import classify_miss, numeric_base
+from scripts.miss_diagnosis import classify_miss, missing_refs, numeric_base
 
 
 def _chunk(content: str):
@@ -65,3 +65,40 @@ def test_errata_only_refs_are_semantic_gap():
     # no numeric base to compare against -> defaults to semantic gap.
     top = [_chunk("103.2 whatever")]
     assert classify_miss(["errata/origins/x"], top) == "B:semantic_gap"
+
+
+# ---------------------------------------------------------------------------
+# missing_refs — diagnose the REF that's absent, not the question
+#
+# Why: diagnose() used to skip any question where first_covering_rank found ANY
+# ref, so eval-020 (816 at rank 1, 383.3.d nowhere) and eval-030 (809.1 at rank
+# 12, 365.1 nowhere) were NEVER diagnosed — the two partial-coverage gaps were
+# invisible to the tool whose job is picking their lever. Classification has the
+# same flaw at its own level (see test_multi_ref_matches_any_family: a 459
+# sibling classifies a missing 383.4.e as granularity), which per-ref
+# classification avoids by construction.
+# ---------------------------------------------------------------------------
+
+def test_missing_refs_returns_only_absent_ones():
+    # eval-020's exact shape.
+    assert missing_refs({"816": 1, "383.3.d": None}) == ["383.3.d"]
+
+
+def test_missing_refs_empty_when_all_present():
+    assert missing_refs({"816": 1, "383.3.d": 4}) == []
+
+
+def test_missing_refs_all_absent():
+    assert missing_refs({"347.3": None, "348": None}) == ["347.3", "348"]
+
+
+def test_missing_refs_empty_map():
+    assert missing_refs({}) == []
+
+
+def test_classify_single_missing_ref_is_not_rescued_by_another_family():
+    # The per-ref unit in action: classifying 383.4.e ALONE against a top that
+    # only has 459-family chunks correctly reports a semantic gap, where the
+    # question-level call would have said granularity off the 459 sibling.
+    top = [_chunk("459.2.a some rule in the 459 family")]
+    assert classify_miss(["383.4.e"], top) == "B:semantic_gap"
