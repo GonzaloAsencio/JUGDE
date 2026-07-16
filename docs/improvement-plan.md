@@ -387,14 +387,55 @@ hasta que uno gane es fitear ruido. Y el costo lo condena igual: **+62% de
 contexto en TODAS las preguntas para ganar UNA**. Aunque se arreglara la dilución
 (cap por familia, round-robin), el trade sigue siendo malo.
 
-- [ ] **Alternativas vivas para eval-020:**
-      **(a)** ampliar el umbral de `is_hard_query` para que rutee — las 12 ruteadas
-      tienen cobertura 12/12, así que el mecanismo funciona; el costo es que manda
-      más preguntas al modelo thinking (latencia + cuota) y mueve el routing de
-      otras. Medible sin cuota sobre el blast radius de routing.
-      **(c)** arm FTS sobre keywords extraídos (lead de 6.2). Requiere el gate
-      previo: ¿la extracción produce el término desde la pregunta?
-      **Gate (para las dos): suma 020 sin sacar ningún gold ref a las otras 25.**
+#### (a) Relajar el umbral a 1 carta + 1 keyword — ✅ **GANA EL GATE DE RETRIEVAL** (2026-07-16, cero código de producto)
+
+Gateado con `scripts/routing_threshold_probe.py`. CONTROL = `is_hard_query`
+shippeado; TREATMENT = misma función con la rama carta+keyword relajada a
+`keyword_count >= 1`. **La exigencia de carta SE MANTIENE** — `routing.py` es
+explícito: el vocabulario de keywords tiene palabras cotidianas (draw, discard,
+token, combat), así que relajar sin carta mandaría "¿cuándo robo?" al modelo
+thinking. Un test pinea que el delta es EXACTAMENTE la celda (1 carta, 1 keyword)
+y ninguna otra.
+
+**Resultado: 3W / 0L.**
+
+| | |
+|---|---|
+| GANA | eval-020 `383.3.d`, eval-030 `365.1`, eval-037 `131.4`+`425` |
+| PIERDE | **nada** |
+| Cobertura | 22/26 → **25/26** |
+
+**Cierra 3 de los 4 gaps**, no solo el que motivó el ítem. `eval-010` (única con
+gold en errata, que el rulebook stuffeado NO lleva) no se mueve: no detecta
+cartas y el umbral sigue exigiéndola — el riesgo identificado antes de correr no
+se materializó.
+
+Señal de que el mecanismo es sano, no un artefacto: las 6 que empiezan a rutear
+tienen keywords `hidden`, `showdown`, `temporary`, `deflect`, `repeat` — mecánicas
+reales, no palabras cotidianas. "1 carta + 1 mecánica" ES una pregunta de
+interacción.
+
+**COSTO — decisión humana, no auto-ship:**
+- **routing 21/40 → 27/40** (52% → 67% del set). 6 nuevas al modelo thinking.
+- 3 de esas 6 (eval-016/018/032) **no tienen gold ref**: pagan latencia y cuota
+  sin beneficio medible acá.
+- gemini-3.5-flash: **~25-35s** por consulta y **~20 req/día** de free tier. Hoy
+  mismo saltó `llm.rate_limited` con 2 preguntas. Esto empeora ~30% un problema
+  que YA existe a 52%.
+- ⚠️ **El eval NO es tráfico real**: está enriquecido con preguntas hard, así que
+  "67% del eval rutea" ≠ "67% de prod rutea". No extrapolar (lección del día).
+
+**Lo que este gate NO prueba:** mide PRESENCIA EN CONTEXTO, no que el LLM
+responda bien. eval-020 con `383.3.d` en contexto ≠ eval-020 correcta. Falta el
+gate de generación, que necesita cuota.
+
+- [ ] **Siguiente paso (two-step, método de la casa):** implementar flag-off →
+      correr eval de las 3 preguntas al resetear cuota → flipear solo si ganan.
+- [ ] **(c)** arm FTS sobre keywords extraídos (lead de 6.2) — queda como
+      alternativa si (a) muere en el gate de generación o si el costo de cuota lo
+      hace inviable.
+- [ ] **eval-039** sigue sin lever: no rutea (perfil de vocabulario puro,
+      "pass priority" vs regla que dice "Focus"). Es 3.11.2.
 - [ ] **3.11.2 eval-030 / 037 / 039 (clase B: puente de vocabulario)** — los 5 refs
       B NO son un problema de keyword hasta que se demuestre lo contrario.
       **Gate previo, antes de escribir una línea:** para cada ref B, ¿existe algún
