@@ -289,6 +289,41 @@ corpus_ab_probe pareado + matcher estricto contra v2.2.1. Dos variantes:
       sentence-transformers. Gratis en plata, caro en tiempo. Solo si 3.1–3.8 no
       alcanzan.
 
+### 3.11 Los 4 gaps reales de contexto (2026-07-16, post-arreglo del probe)
+
+Con `retrieval_probe` midiendo el contexto que producción ARMA (ver Fase 6.1), el
+baseline honesto es **22/26 (85%)** de las evaluables con TODOS sus gold refs en
+el contexto de generación. El bucket ruteado está limpio (**12/12**). Los 4 gaps
+reales están todos en el bucket **no-ruteado**, y no comparten causa conocida —
+tratarlos como una familia sería repetir el error del "gap 383":
+
+| Pregunta | Falta | Perfil |
+|---|---|---|
+| eval-020 | `383.3.d` | 1 de 2 refs. `816` entra en rank 1 y lo tapaba |
+| eval-030 | `365.1` | 1 de 3 refs. `809.1.a` llega por family completion |
+| eval-037 | `131.4`, `425` | 2 de 3 refs |
+| eval-039 | `347.3`, `348` | 2 de 2 refs — contexto sin NADA del gold |
+
+- [ ] **3.11.0 Triage antes de tocar retrieval.** Con el probe arreglado, mirar si
+      comparten mecanismo o no. Hipótesis a favor de que NO: 020/030 pierden un
+      ref con el resto presente (problema de cobertura parcial), 039 pierde el
+      100% (problema de vocabulario/embedding, otro animal). Cero código.
+      **Gate: si el triage no encuentra mecanismo común, se atacan por separado y
+      cada uno se gatea solo. Prohibido inventar una "familia".**
+- [ ] **3.11.1 eval-020** — dos caminos ya identificados, medibles sin cuota:
+      (a) ampliar el umbral de `is_hard_query` para que rutee (barato, pero mueve
+      el routing de más preguntas → medir el blast radius sobre las otras 25);
+      (b) family injection sin compuerta vía `family_lookup` + mapa
+      keyword→sección (mapa nuevo = superficie de mantenimiento sin fallback
+      difuso). **Gate: gana el que sume 020 sin sacar ningún gold ref a las otras
+      25. Empate → no se shippea ninguno.**
+- [ ] **3.11.2 eval-030 / 037 / 039** — pendientes del triage 3.11.0.
+
+**Nota de método:** el número a mover es *presencia del gold en el contexto*, NO
+recall@k del arm. El arm sub-reporta a propósito (producción le suma cartas
+tagueadas y family completion encima). Y ojo con el piso: el probe corre HyDE off
+y producción fusiona un arm HyDE en las no-ruteadas.
+
 ### 3.10 Detección de cartas: fix del posesivo + desambiguación (2026-07-15)
 
 Sesión de re-eval sobre `feat/concise-reasoning`. El "57% correct" del primer run
@@ -461,6 +496,96 @@ en un hipotético futuro pagarían los usuarios. Diseño acordado:
 - [ ] Futuro pago real: Stripe metered billing SOBRE el mismo ledger de 5.3.
       El ledger es el punto en común de todos los caminos — por eso se
       construye primero.
+
+---
+
+## Fase 6 — Confiabilidad del instrumental (2026-07-16)
+
+**Por qué existe esta fase.** Todo probe es una AFIRMACIÓN SOBRE PRODUCCIÓN. Cuando
+producción cambia, el probe no se rompe: sigue corriendo, sigue imprimiendo
+números, y esos números se vuelven mentira en silencio. Pasó dos veces:
+
+- **`retrieval_probe` MINTIÓ** (arreglado, `d4af51a`). Medía `hybrid_search` y lo
+  llamaba "el contexto". Produjo el "gap sistémico familia 383" — 5 preguntas —
+  cuando 4 de las 5 rutean y contestan bien citando `383.3.d`. Una sola estaba
+  rota. Casi arrancamos un SDD para arreglar un problema inexistente.
+- **`card_presence_probe` está VIEJO** (ver 6.1). Distinto pecado: su medición era
+  correcta el día que se tomó; el mundo cambió abajo.
+
+La diferencia importa. Lo primero es un error de método (medir un arm intermedio y
+extrapolar). Lo segundo es entropía: nadie se equivocó, y por eso nadie lo vio.
+
+### 6.1 Auditar `card_presence_probe` — punto ciego CONFIRMADO, medición STALE ⚠️
+
+**Confirmado sin correr nada** (`rg` sobre el archivo): no importa `is_hard_query`
+ni `build_stuffed_chunks` → no modela routing. Es MENOS ciego que lo que era
+`retrieval_probe`: sí usa `_assemble_context` + `tagged_lookup`, así que le falta
+una puerta, no tres.
+
+**El timeline es lo que cambia el diagnóstico:**
+- `card_presence_probe.py` creado **2026-06-29** (`bbc6653`)
+- hard-query routing shippeado **2026-07-12** (`a2e98e7`)
+
+La medición "**9/12 cartas nombradas AUSENTES del contexto en el bucket hard**" —
+citada textualmente en `pipeline.py:240` como justificación de los auto card tags —
+se tomó **2 semanas ANTES de que el routing existiera**. No era falsa: era
+verdadera y quedó vieja. Y quedó vieja justo donde más duele, porque el bucket
+hard es exactamente el que hoy rutea: `build_stuffed_chunks` pone las secciones de
+carta detectadas PRIMERO en el contexto stuffeado.
+
+- [ ] **Re-medir con routing modelado.** Mismo fix que 6.1 de `retrieval_probe`:
+      resolver el camino real por pregunta antes de medir presencia. Determinista,
+      cero cuota.
+- [ ] **Gate pre-comprometido (fijado ANTES de correr):**
+  - Si el 9/12 **sobrevive** con routing modelado → los auto card tags siguen
+    justificados por su propia evidencia. Se actualiza la cita de `pipeline.py:240`
+    con la medición nueva y se cierra.
+  - Si el 9/12 **colapsa** (como colapsó el gap 383) → la justificación citada está
+    vieja. **NO se toca la feature**: los auto card tags tienen evidencia
+    independiente que NO depende de este probe (eval-029 e2e, `correct`/conf=1.0
+    con el fix del posesivo). Lo que se hace es corregir la cita y abrir la
+    pregunta honesta: ¿el scan de ~960 patrones por query se paga hoy con lo que
+    aporta al contexto de las NO-ruteadas, o solo con el `card_count` que alimenta
+    la decisión de routing? Eso es un ítem aparte, con su propio gate.
+
+**Trampa a evitar:** que el 9/12 colapse NO prueba que la feature sobre. Para las
+ruteadas el contexto de `_retrieve` se descarta entero (`chunks = stuffed`), pero
+el scan sigue haciendo falta para `card_count` → la decisión de routing. La
+pregunta correcta no es "¿sirve?" sino "¿para qué población sirve, y cuánto cuesta
+la que no?".
+
+### 6.2 Arm FTS: 0% en todos los k — confirmar o matar
+
+El probe arreglado reporta `fts 0% @5/@10/@15` sobre las 26 evaluables. Está
+dormido en prod por diseño (`fts_search` existe y no se usa en el path real), y
+3.6 lo mató como lever quirúrgico por evidencia. Pero un arm entero devolviendo
+cero en TODA la eval merece una línea explícita en vez de un encogimiento de
+hombros.
+
+- [ ] Confirmar que el 0% es la consecuencia esperada de 3.6 y no un bug del arm
+      (p.ej. tsquery mal armado). Cero cuota, media hora.
+      **Gate: si es esperado → documentarlo en el docstring de `fts_search` y
+      cerrar. Si es un bug → NO revivir 3.6 por eso solo; 3.6 murió por un
+      mecanismo distinto (los términos ganadores no están en la pregunta).**
+
+### 6.3 Deuda del review del probe (no bloqueante)
+
+Del review de `d4af51a`, diferido a conciencia:
+
+- [ ] `_retrieve` corre `hybrid_search` internamente y `run_probe` lo vuelve a
+      correr para los ranks diagnósticos → round-trip duplicado por pregunta
+      no-ruteada.
+- [ ] `_NoHydeProvider` implementa solo `hyde()` y `run_probe` no tiene test
+      unitario → si mañana el path de retrieval llama a otro método del provider,
+      el probe explota en runtime con CI en verde. Es la herramienta que más
+      confiable tiene que ser justo cuando estás debuggeando otra cosa.
+
+### 6.4 Regla de la casa (nueva, sale de esta fase)
+
+Un probe que no modela el camino real de producción no es un probe: es una
+opinión con formato de tabla. **Antes de creerle un número a cualquier probe,
+verificar que su modelo del pipeline siga siendo el pipeline.** El costo de no
+hacerlo ya está medido: un día de diagnóstico sobre un gap inexistente.
 
 ---
 
