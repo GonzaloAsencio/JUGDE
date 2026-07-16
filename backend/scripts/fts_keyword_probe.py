@@ -13,7 +13,8 @@ app/rag/retrieval.py in Phase 2.
 Usage (from backend/):
     python -m scripts.fts_keyword_probe
 
-Requires DATABASE_URL + ingested corpus. Does NOT require GEMINI_API_KEY.
+Requires DATABASE_URL + ingested corpus. Never SPENDS Gemini quota, but the key
+must be PRESENT — Settings() fails closed without it. Zero quota, not zero config.
 """
 import re
 import sys

@@ -93,7 +93,45 @@ def test_missing_refs_all_absent():
 
 
 def test_missing_refs_empty_map():
+    # Correct for what THIS function asks ("which refs are missing?"): none are.
+    # Note it deliberately does NOT mean "everything is covered" — that is
+    # fully_covered's question, and it answers False for {} on purpose. diagnose
+    # must not conflate the two; an unparseable rule_reference is guarded there.
     assert missing_refs({}) == []
+
+
+# ---------------------------------------------------------------------------
+# classify_miss — the precondition it used to carry unenforced
+#
+# The old diagnose() filtered `first_covering_rank(refs, top) is not None ->
+# continue`, which GUARANTEED top_chunks never covered the ref. That filter was
+# removed (it hid partial-coverage gaps) but the classifier that depended on it
+# was not updated: absence is now judged against the production context (top_k=5)
+# while classification still runs against vector top-15. A gold reachable at
+# rank 12 but absent from a 5-chunk context therefore hit classify_miss with a
+# top that COVERS it, and A:granularity fired off the gold ITSELF rather than a
+# sibling — sending the project down the chunk-lineage lever for what is really
+# a ranking problem. Measured latent on corpus v2.2.1 (no absent ref is covered
+# in top-15), which is luck, not construction. The classifier is now total.
+# ---------------------------------------------------------------------------
+
+def test_classify_reports_ranking_when_top_actually_covers_the_ref():
+    # Gold IS retrievable — it just didn't survive into the production context.
+    # That is a RANKING problem; calling it granularity picks the wrong lever.
+    top = [_chunk("365.1. Deflect only applies to Permanents.")]
+    assert classify_miss(["365.1"], top) == "C:ranking"
+
+
+def test_classify_prefers_ranking_over_granularity_when_both_could_match():
+    # A sibling (365.2) AND the gold itself (365.1) are present. Granularity
+    # would fire on the shared 3-digit base; coverage is the stronger fact.
+    top = [_chunk("365.2. Sibling text."), _chunk("365.1. The gold rule itself.")]
+    assert classify_miss(["365.1"], top) == "C:ranking"
+
+
+def test_classify_still_reports_granularity_when_only_a_sibling_is_present():
+    top = [_chunk("383.4.d. A sibling that does not cover the gold.")]
+    assert classify_miss(["383.4.e"], top) == "A:granularity"
 
 
 def test_classify_single_missing_ref_is_not_rescued_by_another_family():

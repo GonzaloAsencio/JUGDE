@@ -38,11 +38,15 @@ questions. Non-routed coverage is therefore a FLOOR, not an exact prediction.
 Usage (from backend/):
     python -m scripts.retrieval_probe
 
-Requires: DATABASE_URL + corpus ingestado. Does NOT require GEMINI_API_KEY.
+Requires: DATABASE_URL + corpus ingestado. Never SPENDS Gemini quota — but the
+key must still be PRESENT: Settings() fails closed without it (llm_provider
+defaults to gemini, and hard_query_routing=True demands gemini_api_key), so the
+probe dies at construction, not at a call site. Zero quota, not zero config.
 """
 import json
 import sys
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -221,6 +225,87 @@ def routing_decision(*, card_count: int, keyword_count: int, routing_enabled: bo
     )
 
 
+@dataclass(frozen=True)
+class ProductionContext:
+    """What production would ACTUALLY feed the generator, and how it got there.
+
+    *stuffing_unavailable* is the loud bit: it means the question SHOULD have
+    routed but build_stuffed_chunks returned None (never-raise: a missing or
+    corrupt rulebook.md logs a structlog warning the probe's stdout never
+    shows). Every report must shout about it, because the alternative is a
+    probe printing a healthy figure for a bucket it never measured.
+    """
+    chunks: list
+    routed: bool
+    entities: object
+    card_count: int
+    keyword_count: int
+    embedding: list
+    base_question: str
+    stuffing_unavailable: bool
+
+
+def resolve_production_context(
+    question, embedder, pool, provider, settings, corpus_version, query_id,
+    *, routing_enabled: bool,
+) -> ProductionContext:
+    """THE single copy of "what context would production build for this question?".
+
+    This resolution used to live in three probes as three hand-copies, and the
+    third drifted: miss_diagnosis kept routed=True through the degrade path, so
+    a ref absent from a 5-chunk RAG context was reported as absent from the FULL
+    rulebook — the strongest possible claim from the weakest measurement.
+    Re-syncing copies is what this branch did elsewhere; it does not stop the
+    fourth copy. One function means the probes cannot disagree by construction.
+
+    Mirrors production exactly (pipeline.py:641-709):
+      * entities + keywords are read off the TAG-STRIPPED question, because that
+        is what production feeds the gate;
+      * routed -> context = build_stuffed_chunks (the full rulebook);
+      * stuffing unavailable -> production sets routed=True ONLY when stuffed is
+        not None, so we degrade to the RAG path AND clear the label;
+      * otherwise -> context = _retrieve's real assembly, HyDE off.
+    """
+    clean_question, _ = _extract_tags(question)
+    base_question = clean_question or question
+    embedding = embedder.encode(base_question)
+
+    entities = _detect_entities(base_question, pool, corpus_version, query_id)
+    card_count = entities.card_count([])
+    keyword_count = len(_detect_keywords(base_question))
+    routed = routing_decision(
+        card_count=card_count,
+        keyword_count=keyword_count,
+        routing_enabled=routing_enabled,
+    )
+
+    chunks = None
+    stuffing_unavailable = False
+    if routed:
+        chunks = build_stuffed_chunks(base_question, known_keywords=_KNOWN_KEYWORDS)
+        if chunks is None:
+            routed = False
+            stuffing_unavailable = True
+
+    if chunks is None:
+        # _retrieve takes the RAW question — it strips tags itself.
+        chunks, _, _, _, _ = _retrieve(
+            question, embedder, pool, provider, settings, None, corpus_version,
+            query_id, question_embedding=embedding, entities=entities, skip_hyde=True,
+        )
+
+    return ProductionContext(
+        chunks=chunks,
+        routed=routed,
+        entities=entities,
+        card_count=card_count,
+        keyword_count=keyword_count,
+        embedding=embedding,
+        base_question=base_question,
+        stuffing_unavailable=stuffing_unavailable,
+    )
+
+
 def split_by_route(results: list[dict]) -> tuple[list[dict], list[dict]]:
     """Partition probe results into (routed, retrieved).
 
@@ -287,40 +372,16 @@ def run_probe(
         refs = _parse_refs(q["rule_reference"])
         question = q["question"]
 
-        # Production detects entities and keywords on the TAG-STRIPPED question
-        # (pipeline.py:377-383), so the probe must too — an @tag in a question
-        # would otherwise skew card_count and flip the routing verdict away
-        # from production's.
-        clean_question, _ = _extract_tags(question)
-        base_question = clean_question or question
-        embedding = embedder.encode(base_question)
-
-        entities = _detect_entities(base_question, pool, corpus_version, "probe")
-        card_count = entities.card_count([])
-        keyword_count = len(_detect_keywords(base_question))
-        routed = routing_decision(
-            card_count=card_count,
-            keyword_count=keyword_count,
+        resolved = resolve_production_context(
+            question, embedder, pool, provider, settings, corpus_version, "probe",
             routing_enabled=routing_enabled,
         )
-
-        # Mirror production's degrade path exactly (pipeline.py:698): when
-        # stuffing is unavailable the query is NOT routed, it falls back to the
-        # RAG context. Reporting an empty context here would invent a gap
-        # production never has — the same drift this probe exists to kill.
-        context = None
-        if routed:
-            stuffed = build_stuffed_chunks(base_question, known_keywords=_KNOWN_KEYWORDS)
-            if stuffed is not None:
-                context = stuffed
-            else:
-                routed = False
-        if context is None:
-            # _retrieve takes the RAW question — it strips tags itself.
-            context, _, _, _, _ = _retrieve(
-                question, embedder, pool, provider, settings, None, corpus_version,
-                "probe", question_embedding=embedding, entities=entities, skip_hyde=True,
-            )
+        context = resolved.chunks
+        routed = resolved.routed
+        base_question = resolved.base_question
+        embedding = resolved.embedding
+        card_count = resolved.card_count
+        keyword_count = resolved.keyword_count
 
         # Yes, _retrieve above already ran a hybrid_search, and this runs another.
         # They are NOT the same query and deduplicating them would cost the
@@ -346,6 +407,7 @@ def run_probe(
             "id": q.get("id", "?"),
             "rule_reference": q["rule_reference"],
             "routed": routed,
+            "stuffing_unavailable": resolved.stuffing_unavailable,
             "card_count": card_count,
             "keyword_count": keyword_count,
             "context_per_ref": per_ref_ranks(refs, context),
@@ -370,6 +432,20 @@ def _print_report(results: list[dict], *, routing_enabled: bool) -> None:
     print(f"  Evaluable questions : {total}")
     print(f"  hard_query_routing  : {'ON' if routing_enabled else 'OFF'}")
     print(f"  routed (stuffed ctx): {len(routed)}   retrieved (RAG ctx): {len(retrieved)}")
+
+    # Never let a degraded run pass for a healthy one: build_stuffed_chunks is
+    # never-raise, so a missing/corrupt rulebook.md silently sends every routed
+    # question down the RAG path. Without this the report would print a fine
+    # number for a bucket it never measured.
+    degraded = [r["id"] for r in results if r["stuffing_unavailable"]]
+    if degraded:
+        print(f"\n  *** WARNING: stuffing UNAVAILABLE for {len(degraded)} question(s) "
+              f"that should have routed.")
+        print("      build_stuffed_chunks returned None (missing/corrupt "
+              "data/processed/rulebook.md?).")
+        print("      They were measured on the RAG path instead. The routed "
+              "bucket below is NOT a full measurement.")
+        print(f"      Affected: {', '.join(degraded)}")
 
     # THE headline: is every gold rule in the context production would build?
     # Everything below this is diagnosis of the misses.

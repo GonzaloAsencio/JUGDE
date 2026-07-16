@@ -50,19 +50,15 @@ from app.config import Settings
 from app.db import close_pool, get_conn, init_pool
 from app.rag.card_detect import load_card_names
 from app.rag.embedder import Embedder
-from app.rag.pipeline import (
-    _KNOWN_KEYWORDS,
-    _detect_entities,
-    _detect_keywords,
-    _extract_tags,
-    _retrieve,
-)
 from app.rag.retrieval import _CARD_NAME_RE, _VARIANT_SUFFIX_RE
-from app.rag.routing import build_stuffed_chunks
-# Reuse rather than redefine: "would production route this?" must have exactly ONE
-# answer in this repo, or the two probes drift apart and we are back where we
-# started. Same for the bucket split.
-from scripts.retrieval_probe import _NoHydeProvider, routing_decision, split_by_route
+# Reuse rather than redefine: "would production route this, and what context
+# would it build?" must have exactly ONE answer in this repo, or the probes
+# drift apart and we are back where we started. Same for the bucket split.
+from scripts.retrieval_probe import (
+    _NoHydeProvider,
+    resolve_production_context,
+    split_by_route,
+)
 
 _EVAL_SET = Path(__file__).parent.parent / "data" / "eval_set.json"
 
@@ -147,44 +143,23 @@ def _resolve_corpus_version(pool, settings: Settings) -> str:
 def reproduce_context(question, embedder, pool, settings, corpus_version, *, routing_enabled):
     """Build the context production would ACTUALLY give the generator.
 
-    Resolves the real path (routed vs not) through the same gate production
-    uses, then defers to the real pipeline for the context itself — no local
-    copy of the assembly, because that copy is what drifted last time.
-    Returns (detected_card_tags, context_chunks, routed).
+    Delegates the whole resolution to resolve_production_context — the ONE copy.
+    This function used to hold its own, and holding your own is precisely how
+    miss_diagnosis ended up reporting routed=True for a RAG measurement.
+    Returns (detected_card_tags, context_chunks, routed, stuffing_unavailable).
     """
-    # Production detects on the tag-stripped question (pipeline.py:377-383).
-    clean_question, _ = _extract_tags(question)
-    base_question = clean_question or question
-
-    entities = _detect_entities(base_question, pool, corpus_version, "probe")
-    detected_tags = list(dict.fromkeys(entities.auto_card_tags))
-    routed = routing_decision(
-        card_count=entities.card_count([]),
-        keyword_count=len(_detect_keywords(base_question)),
+    resolved = resolve_production_context(
+        question, embedder, pool, _NoHydeProvider(), settings, corpus_version, "probe",
         routing_enabled=routing_enabled,
     )
-
-    if routed:
-        stuffed = build_stuffed_chunks(base_question, known_keywords=_KNOWN_KEYWORDS)
-        if stuffed is not None:
-            return detected_tags, stuffed, True
-        # Stuffing unavailable -> production degrades to the RAG path
-        # (pipeline.py:698), so the probe must too.
-        routed = False
-
-    # _retrieve takes the RAW question — it strips tags itself.
-    context, _, _, _, _ = _retrieve(
-        question, embedder, pool, _NoHydeProvider(), settings, None, corpus_version,
-        "probe", question_embedding=embedder.encode(base_question), entities=entities,
-        skip_hyde=True,
-    )
-    return detected_tags, context, routed
+    detected_tags = list(dict.fromkeys(resolved.entities.auto_card_tags))
+    return detected_tags, resolved.chunks, resolved.routed, resolved.stuffing_unavailable
 
 
 def run_probe(questions, embedder, pool, settings, corpus_version, *, routing_enabled) -> list[dict]:
     records = []
     for q in questions:
-        detected_tags, ctx, routed = reproduce_context(
+        detected_tags, ctx, routed, stuffing_unavailable = reproduce_context(
             q["question"], embedder, pool, settings, corpus_version,
             routing_enabled=routing_enabled,
         )
@@ -196,6 +171,7 @@ def run_probe(questions, embedder, pool, settings, corpus_version, *, routing_en
         records.append({
             "id": q.get("id", "?"),
             "routed": routed,
+            "stuffing_unavailable": stuffing_unavailable,
             "detected": detected_tags,
             "present": present,
             "retrieved_cards": retrieved,
@@ -214,6 +190,20 @@ def _print_report(records: list[dict], difficulty: str | None, top_k: int,
     print(f"  difficulty filter : {difficulty or 'ALL'}    TOP_K={top_k}")
     print(f"  hard_query_routing: {'ON' if routing_enabled else 'OFF'}")
     print(f"  questions         : {len(records)}")
+
+    # A degraded run must never read as a healthy one. build_stuffed_chunks is
+    # never-raise: a missing/corrupt rulebook.md sends every routed question
+    # down the RAG path, and the delivery rate below would then describe a
+    # bucket that was never measured.
+    degraded = [r["id"] for r in records if r["stuffing_unavailable"]]
+    if degraded:
+        print(f"\n  *** WARNING: stuffing UNAVAILABLE for {len(degraded)} question(s) "
+              f"that should have routed.")
+        print("      build_stuffed_chunks returned None (missing/corrupt "
+              "data/processed/rulebook.md?).")
+        print("      They fell to the RAG path. The delivery rate below does "
+              "NOT describe the routed path.")
+        print(f"      Affected: {', '.join(degraded)}\n")
     print(f"  cards detected    : {agg['detected']}")
     print(f"  cards delivered   : {agg['present']}  (in final context)")
     print(f"  DELIVERY RATE     : {agg['rate']:.0%}  (detected cards that landed in context)")

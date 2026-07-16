@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.rag.provider import LLMProvider
+from scripts import retrieval_probe as rp
 from scripts.retrieval_probe import (
     _NoHydeProvider,
     chunk_covers_refs,
@@ -190,6 +191,77 @@ def test_routing_decision_false_below_threshold():
 def test_routing_decision_false_when_routing_disabled():
     # flag off -> production uses retrieval for everything, so must the probe
     assert routing_decision(card_count=3, keyword_count=5, routing_enabled=False) is False
+
+
+# ---------------------------------------------------------------------------
+# resolve_production_context — ONE copy of "what context would production build?"
+#
+# Why this exists: this resolution lived in three probes (retrieval_probe,
+# card_presence_probe, miss_diagnosis) as three hand-copies, and the third
+# drifted. miss_diagnosis kept routed=True through the degrade path, so a ref
+# absent from a 5-chunk RAG context got reported as absent from the FULL
+# rulebook — the strongest possible claim derived from the weakest measurement.
+#
+# Re-syncing the copies is what the rest of this branch did, and it is not
+# enough: nothing stops the fourth copy. These tests pin the ONE function all
+# three now call, so the buckets cannot disagree by construction.
+# ---------------------------------------------------------------------------
+
+def _fake_entities(card_count: int = 0):
+    return SimpleNamespace(auto_card_tags=[], card_count=lambda _tags: card_count)
+
+
+def _patch_resolution(monkeypatch, *, stuffed, rag):
+    """Stub the two production calls resolve_production_context delegates to."""
+    monkeypatch.setattr(rp, "build_stuffed_chunks", lambda *a, **k: stuffed)
+    monkeypatch.setattr(rp, "_retrieve", lambda *a, **k: (rag, "", 0.0, False, 0))
+    monkeypatch.setattr(rp, "_detect_entities", lambda *a, **k: _fake_entities(2))
+    monkeypatch.setattr(rp, "_detect_keywords", lambda _q: ["kw1", "kw2"])
+
+
+def _resolve(**kwargs):
+    return rp.resolve_production_context(
+        "q", SimpleNamespace(encode=lambda _q: [0.1]), None, _NoHydeProvider(),
+        SimpleNamespace(), "v1", "test", **kwargs,
+    )
+
+
+def test_resolve_uses_the_stuffed_rulebook_when_routed(monkeypatch):
+    stuffed = [_chunk("383.3.d text")]
+    _patch_resolution(monkeypatch, stuffed=stuffed, rag=[_chunk("rag")])
+    got = _resolve(routing_enabled=True)
+    assert got.chunks is stuffed
+    assert got.routed is True
+    assert got.stuffing_unavailable is False
+
+
+def test_resolve_clears_routed_when_stuffing_is_unavailable(monkeypatch):
+    # THE miss_diagnosis bug: build_stuffed_chunks is never-raise and returns
+    # None on a missing/corrupt rulebook.md. Production degrades to the RAG path
+    # (pipeline.py:707 only sets routed=True when stuffed is not None), so a
+    # probe that keeps routed=True is claiming it measured the full rulebook
+    # when it measured 5 RAG chunks.
+    rag = [_chunk("rag")]
+    _patch_resolution(monkeypatch, stuffed=None, rag=rag)
+    got = _resolve(routing_enabled=True)
+    assert got.chunks is rag
+    assert got.routed is False, "degrading to RAG must clear the routed label"
+
+
+def test_resolve_flags_stuffing_unavailable_so_the_report_can_shout(monkeypatch):
+    # Degrading silently is how '15 routed questions' becomes 'DELIVERY RATE:
+    # 100%' over a bucket nobody measured. The flag is the loud signal.
+    _patch_resolution(monkeypatch, stuffed=None, rag=[_chunk("rag")])
+    assert _resolve(routing_enabled=True).stuffing_unavailable is True
+
+
+def test_resolve_uses_rag_when_not_routed(monkeypatch):
+    rag = [_chunk("rag")]
+    _patch_resolution(monkeypatch, stuffed=[_chunk("never")], rag=rag)
+    got = _resolve(routing_enabled=False)
+    assert got.chunks is rag
+    assert got.routed is False
+    assert got.stuffing_unavailable is False, "not routed -> stuffing was never wanted"
 
 
 # ---------------------------------------------------------------------------
