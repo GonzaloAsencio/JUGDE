@@ -310,13 +310,22 @@ tratarlos como una familia sería repetir el error del "gap 383":
       100% (problema de vocabulario/embedding, otro animal). Cero código.
       **Gate: si el triage no encuentra mecanismo común, se atacan por separado y
       cada uno se gatea solo. Prohibido inventar una "familia".**
-- [ ] **3.11.1 eval-020** — dos caminos ya identificados, medibles sin cuota:
+- [ ] **3.11.1 eval-020** — TRES caminos, todos medibles sin cuota:
       (a) ampliar el umbral de `is_hard_query` para que rutee (barato, pero mueve
       el routing de más preguntas → medir el blast radius sobre las otras 25);
       (b) family injection sin compuerta vía `family_lookup` + mapa
       keyword→sección (mapa nuevo = superficie de mantenimiento sin fallback
-      difuso). **Gate: gana el que sume 020 sin sacar ningún gold ref a las otras
-      25. Empate → no se shippea ninguno.**
+      difuso);
+      (c) **arm FTS sobre keywords extraídos** — el lead de 6.2: FTS con
+      `"triggered abilities"` devuelve un chunk con `383.3.d.1`, que cubre por
+      lineage el `383.3.d` que falta. **El eslabón NO medido es la extracción**:
+      ¿produce el término desde "...when Temporary *triggers*?"? Así murió 3.6 —
+      el mecanismo servía y la extracción no llegaba. Medir eso PRIMERO, con cero
+      código de producto; si la extracción no lo produce, (c) está muerto y no se
+      escribe una línea.
+      **Gate (para los tres): gana el que sume 020 sin sacar ningún gold ref a las
+      otras 25. Empate → no se shippea ninguno.** Para (c), gate previo: si la
+      extracción determinística no produce el término desde la pregunta, muere ahí.
 - [ ] **3.11.2 eval-030 / 037 / 039** — pendientes del triage 3.11.0.
 
 **Nota de método:** el número a mover es *presencia del gold en el contexto*, NO
@@ -564,19 +573,48 @@ tiene evidencia independiente (eval-029 e2e, `correct`/conf=1.0). Y el scan de
 rompería la decisión, no solo el contexto. Anotado en el docstring para el que
 venga.
 
-### 6.2 Arm FTS: 0% en todos los k — confirmar o matar
+### 6.2 ✅ Arm FTS: el 0% es ESPERADO, no un bug — HECHO (2026-07-16)
 
-El probe arreglado reporta `fts 0% @5/@10/@15` sobre las 26 evaluables. Está
-dormido en prod por diseño (`fts_search` existe y no se usa en el path real), y
-3.6 lo mató como lever quirúrgico por evidencia. Pero un arm entero devolviendo
-cero en TODA la eval merece una línea explícita en vez de un encogimiento de
-hombros.
+**Medido:** `plainto_tsquery` **ANDea todos los términos**. Una pregunta natural de
+20 palabras exige un chunk que contenga las 20 → matchea nada. Por eso todo probe
+reporta `fts 0%` en todos los k. Es la consecuencia esperada de cómo se lo llama.
 
-- [ ] Confirmar que el 0% es la consecuencia esperada de 3.6 y no un bug del arm
-      (p.ej. tsquery mal armado). Cero cuota, media hora.
-      **Gate: si es esperado → documentarlo en el docstring de `fts_search` y
-      cerrar. Si es un bug → NO revivir 3.6 por eso solo; 3.6 murió por un
-      mecanismo distinto (los términos ganadores no están en la pregunta).**
+**El arm FUNCIONA** — se verificó contra la DB real, y esto es lo que importa:
+
+| Query | Resultado |
+|---|---|
+| `banish` | `427. Banish` |
+| `triggered abilities` | `506. Triggered Abilities`, **`383. Triggered Abilities`** |
+| pregunta entera de eval-020 | 0 hits |
+
+Confirmado además que en prod el arm está dormido **a propósito**:
+`_hybrid_search_impl` fusiona contra una lista FTS **vacía** (nunca llama a
+`fts_search`), porque vector-only @5 (47%) medía POR ENCIMA de vector+FTS (41%) —
+la pregunta entera diluía el RRF. Rationale ya escrito en `retrieval.py:245-252`.
+
+Gate cumplido (era esperado) → documentado en el docstring de `fts_search`, con la
+trampa explícita para el que venga: *antes de concluir que este arm está muerto,
+fijate qué le estás dando de comer*. Cerrado.
+
+**⚠️ LEAD INCIDENTAL para 3.11.1 — es un LEAD, NO un resultado.** Mientras se
+confirmaba el 0%, salió esto: FTS con `"triggered abilities"` devuelve la sección
+`383. Triggered Abilities`, y uno de esos chunks lista **`383.3.d.1`** — que por
+lineage padre-hijo **CUBRE el `383.3.d` que le falta a eval-020** (verificado:
+`_rule_codes_cover('383.3.d', {'383.3.d.1'}) → True`). El sub-rule catalogado como
+"ni en vector top-50" es recuperable con una query de DOS palabras.
+
+Por qué esto NO contradice a 3.6 ni resucita nada por decreto:
+- 3.6 murió sobre **eval-014/019** con sus términos, no sobre eval-020.
+- Lo de ayer mató `"trigger"` como **keyword para `_complete_keyword_families`** —
+  mecanismo distinto: esa compuerta exige un chunk de la familia sobreviviente al
+  retrieval. **Un arm FTS no necesita compuerta.**
+- Falta lo esencial y no está medido: que la extracción determinística produzca
+  el término desde la pregunta de eval-020 ("...when Temporary **triggers**?").
+  Ese es justo el modo en que murió 3.6 (los términos ganadores no estaban en la
+  pregunta). **Acá sí está la palabra** — pero eso hay que MEDIRLO, no asumirlo.
+
+Se ataca en 3.11.1 con su gate, no acá. Anotado porque el hallazgo es real y se
+pierde si no se escribe.
 
 ### 6.3 Deuda del review del probe (no bloqueante)
 
