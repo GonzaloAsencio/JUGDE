@@ -348,24 +348,53 @@ la familia 347/348. Causa: **la pregunta dice "pass priority", la regla dice
 probablemente tampoco lo salve**. Antes de construir nada para los B, medir si
 existe algún término extraíble de la pregunta que alcance el gold. Si no existe,
 los B son puente de vocabulario (HyDE / fine-tuning 3.9), no keyword.
-- [ ] **3.11.1 eval-020 (clase A: lineage)** — el triage 3.11.0 reordenó los
-      candidatos. Favorito ahora:
-      **(d) completar la familia de una sección de regla YA presente en el
-      contexto, sin compuerta de keyword.** Es el lever que el triage señala: la
-      sección `383. Triggered Abilities` ya entra en rank 4 y 6, solo falta su
-      hermano con `383.3.d`. Reusa `family_lookup` + `_complete_keyword_families`
-      (contrato append-only ya shippeado con `keyword_family_extra=8`); el cambio
-      es de QUÉ nomina la familia: hoy `kw_sections` (keywords tageados), la
-      propuesta es las secciones de regla del contexto. **Blast radius a medir: es
-      MÁS ancho que el actual — completa familias de toda pregunta con una sección
-      de regla en contexto. Ese es el riesgo real y hay que medirlo sobre las 25.**
-      Alternativas si (d) pierde:
-      (a) ampliar el umbral de `is_hard_query` para que rutee (barato, blast radius
-      ancho sobre routing);
-      (c) arm FTS sobre keywords extraídos (el lead de 6.2 — sigue vivo, pero el
-      triage lo desplaza: para 020 el lineage es más directo y más barato).
-      **Gate: gana el que sume 020 sin sacar ningún gold ref a las otras 25.
-      Empate → no se shippea ninguno.**
+### 3.11.1 eval-020 (clase A: lineage)
+
+#### (d) ~~Nominar la familia desde las secciones de regla del contexto~~ ❌ MUERTA POR GATE (2026-07-16, cero código de producto)
+
+El triage la señalaba como favorita: `383. Triggered Abilities` ya entra en rank
+4 y 6, solo falta el hermano con `383.3.d`. Se gateó con
+`scripts/family_nomination_probe.py` (CONTROL = producción hoy; TREATMENT = misma
+completion pero nominada por las secciones de regla del contexto). Ambos brazos
+usan `_retrieve`, `family_lookup` y `_complete_keyword_families` REALES; el
+TREATMENT se arma sobre un contexto con la completion APAGADA y se completa UNA
+sola vez al mismo cap, para no apilar dos colas y inflar el resultado.
+
+**Resultado: PIERDE 1W/1L.**
+
+| | |
+|---|---|
+| GANA | eval-020 suma `383.3.d` ✅ |
+| **PIERDE** | **eval-030 pierde `809.1` Y `809.1.a`** ❌ |
+| Costo | contexto 152 → **247 chunks (+62%)**, creció en **14/14** preguntas |
+
+**La trampa que el gate cazó y el titular tapaba:** la métrica principal MEJORA
+(22/26 → 23/26), porque eval-030 ya estaba rota por `365.1` y perder dos refs más
+no le mueve el `fully_covered`. **Gateando sobre el neto, esto pasaba como
+victoria y shippeaba una regresión.** El gate decía "sin sacar ningún gold ref a
+las otras 25", no "mejora el neto". Por eso existe.
+
+**Mecanismo de la pérdida — NO es el append-only roto:** es **dilución del cap**.
+Al nominar varias familias, todas compiten por los mismos 8 slots, y `_FAMILY_SQL`
+ordena `BY content` a través de TODAS las secciones: `"### 365..."` ordena antes
+que `"### 809..."`, así que las familias de número bajo se comen el presupuesto y
+Deflect queda afuera. En CONTROL la nominación era solo Deflect y sus 3 chunks
+entraban cómodos. **Ensanchar la nominación sin ensanchar el presupuesto es un
+juego de suma cero.**
+
+**Por qué no se barren umbrales (regla de 3.8):** con 26 preguntas, probar caps
+hasta que uno gane es fitear ruido. Y el costo lo condena igual: **+62% de
+contexto en TODAS las preguntas para ganar UNA**. Aunque se arreglara la dilución
+(cap por familia, round-robin), el trade sigue siendo malo.
+
+- [ ] **Alternativas vivas para eval-020:**
+      **(a)** ampliar el umbral de `is_hard_query` para que rutee — las 12 ruteadas
+      tienen cobertura 12/12, así que el mecanismo funciona; el costo es que manda
+      más preguntas al modelo thinking (latencia + cuota) y mueve el routing de
+      otras. Medible sin cuota sobre el blast radius de routing.
+      **(c)** arm FTS sobre keywords extraídos (lead de 6.2). Requiere el gate
+      previo: ¿la extracción produce el término desde la pregunta?
+      **Gate (para las dos): suma 020 sin sacar ningún gold ref a las otras 25.**
 - [ ] **3.11.2 eval-030 / 037 / 039 (clase B: puente de vocabulario)** — los 5 refs
       B NO son un problema de keyword hasta que se demuestre lo contrario.
       **Gate previo, antes de escribir una línea:** para cada ref B, ¿existe algún
