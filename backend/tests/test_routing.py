@@ -149,7 +149,7 @@ def test_settings_default_routing_on(monkeypatch):
 
     assert s.hard_query_routing is True
     assert s.hard_gemini_model == "gemini-3.5-flash"
-    assert s.hard_timeout_s == 60.0
+    assert s.hard_timeout_s == 90.0
     assert s.hard_max_output_tokens == 8192
 
 

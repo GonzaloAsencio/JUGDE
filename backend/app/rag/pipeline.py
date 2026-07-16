@@ -16,10 +16,10 @@ from app.rag.generation import (
     strip_citation_markers,
 )
 from app.rag.provider import LLMProvider
-from app.rag.card_detect import detect_card_mentions, load_card_names
+from app.rag.card_detect import detect_card_mentions, detect_champion_mentions, load_card_names
 from app.rag.reranker import rerank
 from app.rag.retrieval import family_lookup, fuse_results, hybrid_search, tagged_lookup
-from app.rag.routing import RULEBOOK_CHUNK_ID, build_stuffed_chunks, is_hard_query
+from app.rag.routing import RULEBOOK_CHUNK_ID, build_stuffed_chunks, is_hard_query, load_champion_tag_index
 from app.rag.rules import extract_rule_codes
 from app.rag.schemas import Citation, QueryResponse
 
@@ -237,12 +237,23 @@ def _retrieve(
     # Best-effort: a vocabulary-load failure must never break query answering, so
     # the feature degrades to the prior behaviour instead of raising.
     auto_card_tags: list[str] = []
+    ambiguous_champion_count = 0
     try:
         card_vocab = load_card_names(db_pool, corpus_version)
         auto_card_tags = [
             c.lower()
             for c in detect_card_mentions(base_question, card_vocab, known_keywords=_KNOWN_KEYWORDS)
         ]
+        # Bare champion mentions ("a Vi") the vocabulary above can't see (it
+        # only holds full printed names). Unambiguous tags resolve to their
+        # one card and join auto_card_tags like any other exact match;
+        # ambiguous ones (e.g. "Vi" has 7 printed variants) resolve to
+        # nothing here but still count as a distinct entity below — see
+        # card_detect.detect_champion_mentions for why we never guess.
+        resolved_champions, ambiguous_champion_count = detect_champion_mentions(
+            base_question, load_champion_tag_index(), known_keywords=_KNOWN_KEYWORDS
+        )
+        auto_card_tags += [c.lower() for c in resolved_champions if c.lower() not in auto_card_tags]
     except Exception as e:  # pragma: no cover - defensive: never fail a query on detection
         logger.warning("card_detect.failed", query_id=query_id, error=str(e))
 
@@ -336,7 +347,10 @@ def _retrieve(
     # reasoning scaffold triggers on 2+ distinct cards regardless of whether
     # they survived into the final context (an under-retrieved card is still
     # a multi-card question that needs the enumerate/resolve/conclude guidance).
-    card_count = len(card_match_tags)
+    # ambiguous_champion_count adds bare champion mentions that couldn't
+    # resolve to one printed card ("a Vi") — still a distinct entity for
+    # routing purposes even though no specific card text was attached.
+    card_count = len(card_match_tags) + ambiguous_champion_count
 
     return chunks, clean_question, semantic_confidence, has_exact_card_match, card_count
 
