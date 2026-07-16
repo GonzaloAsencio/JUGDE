@@ -6,7 +6,11 @@ rule was retrieved, at what rank, and which sources dominate.
 """
 from types import SimpleNamespace
 
+import pytest
+
+from app.rag.provider import LLMProvider
 from scripts.retrieval_probe import (
+    _NoHydeProvider,
     chunk_covers_refs,
     first_covering_rank,
     fully_covered,
@@ -119,6 +123,42 @@ def test_source_distribution_counts_by_type():
 
 def test_source_distribution_empty():
     assert source_distribution([]) == {}
+
+
+# ---------------------------------------------------------------------------
+# _NoHydeProvider — the probe's zero-quota stand-in must honour the real contract
+#
+# Why these exist (plan 6.3): the stub used to be a bare class implementing only
+# hyde(). The probes are not unit-tested end-to-end (they need a DB), so if the
+# retrieval path ever called another provider method, the probe would die of
+# AttributeError at runtime — with CI green, at the exact moment you're
+# debugging something else and trusting the tool least critically.
+#
+# Subclassing the LLMProvider ABC moves that failure to construction time, and
+# test_stub_can_be_constructed turns it into a CI failure: add a new abstract
+# method to LLMProvider and this test breaks immediately, instead of the probe
+# breaking silently weeks later.
+# ---------------------------------------------------------------------------
+
+def test_stub_is_a_real_provider():
+    assert isinstance(_NoHydeProvider(), LLMProvider)
+
+
+def test_stub_can_be_constructed():
+    # Guards the ABC contract: a new abstractmethod on LLMProvider makes this
+    # raise TypeError here, in CI, rather than in the probe at 2am.
+    _NoHydeProvider()
+
+
+def test_stub_hyde_returns_empty_so_no_llm_call_happens():
+    assert _NoHydeProvider().hyde("anything") == ""
+
+
+def test_stub_generate_raises_a_named_error_not_attribute_error():
+    # If the retrieval path ever reaches generate(), the probe must say WHY —
+    # a bare AttributeError would send the next person hunting the wrong bug.
+    with pytest.raises(NotImplementedError, match="probe"):
+        _NoHydeProvider().generate("q", [])
 
 
 # ---------------------------------------------------------------------------

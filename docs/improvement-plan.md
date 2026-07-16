@@ -662,17 +662,27 @@ Por qué esto NO contradice a 3.6 ni resucita nada por decreto:
 Se ataca en 3.11.1 con su gate, no acá. Anotado porque el hallazgo es real y se
 pierde si no se escribe.
 
-### 6.3 Deuda del review del probe (no bloqueante)
+### 6.3 ✅ Deuda del review del probe — HECHA (2026-07-16)
 
-Del review de `d4af51a`, diferido a conciencia:
-
-- [ ] `_retrieve` corre `hybrid_search` internamente y `run_probe` lo vuelve a
-      correr para los ranks diagnósticos → round-trip duplicado por pregunta
-      no-ruteada.
-- [ ] `_NoHydeProvider` implementa solo `hyde()` y `run_probe` no tiene test
-      unitario → si mañana el path de retrieval llama a otro método del provider,
-      el probe explota en runtime con CI en verde. Es la herramienta que más
-      confiable tiene que ser justo cuando estás debuggeando otra cosa.
+- [x] **`_NoHydeProvider` frágil → ARREGLADO.** Era una clase pelada con solo
+      `hyde()`. Los probes no se pueden testear end-to-end (necesitan DB), así que
+      un método nuevo en el provider habría aparecido como `AttributeError` en una
+      corrida manual, con CI en verde — justo cuando estás debuggeando otra cosa y
+      confiando en la herramienta sin mirarla. Ahora **subclasea el ABC real**
+      (`LLMProvider`), lo que mueve la falla a tiempo de construcción, y 4 tests
+      la convierten en falla de CI: agregás un `@abstractmethod` a `LLMProvider` y
+      `test_stub_can_be_constructed` rompe al instante. `generate()` levanta
+      `NotImplementedError` con el motivo escrito, no un `AttributeError` mudo que
+      mande al próximo a cazar el bug equivocado.
+- [x] **`hybrid_search` "duplicado" → WON'T FIX, y el review se apuró (era mío).**
+      Los parámetros NO coinciden: `_retrieve` fetchea a `top_k_fetch=15` y shippea
+      `top_k=5`; el diagnóstico va a **15/30 a propósito**, y esa profundidad extra
+      es justo lo que le permite separar "el gold está en rank 12" (problema de
+      ranking) de "el gold no está en ningún lado" (problema de chunking) — el
+      split para el que el diagnóstico existe. Deduplicarlo exigiría achicar el
+      diagnóstico o hacer que `_retrieve` exponga sus internals para servir a un
+      probe. Una query extra en una herramienta manual es el trade barato.
+      Motivo escrito en el código para que el próximo review no lo re-levante.
 
 ### 6.4 Regla de la casa (nueva, sale de esta fase)
 

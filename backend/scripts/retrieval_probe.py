@@ -59,13 +59,14 @@ from app.rag.pipeline import (
     _extract_tags,
     _retrieve,
 )
+from app.rag.provider import LLMProvider
 from app.rag.retrieval import fts_search, hybrid_search, vector_search
 from app.rag.routing import build_stuffed_chunks, is_hard_query
 from app.rag.rules import extract_rule_codes
 from scripts.eval_judge import _parse_refs, _rule_codes_cover
 
 
-class _NoHydeProvider:
+class _NoHydeProvider(LLMProvider):
     """Zero-quota stand-in for the LLM provider.
 
     _retrieve only touches the provider for its HyDE arm. The probe's whole
@@ -74,7 +75,21 @@ class _NoHydeProvider:
     repo uses. Consequence to keep in mind when reading the numbers: for
     NON-routed questions production also fuses a HyDE arm, so the assembled
     context measured here is production's minus HyDE (a floor, not a lie).
+
+    Subclasses the real ABC on purpose rather than duck-typing hyde(): the
+    probes can't be unit-tested end-to-end (they need a DB), so a new
+    abstractmethod on LLMProvider would otherwise surface as an AttributeError
+    during a manual run, with CI green. Inheriting moves that to construction
+    time, where tests/test_retrieval_probe.py catches it.
     """
+
+    def generate(self, question: str, chunks, *, extra_system: str = "") -> str:
+        raise NotImplementedError(
+            "This probe is deterministic and must never spend LLM quota — "
+            "generate() was reached, which means the retrieval path now calls "
+            "the provider for something beyond HyDE. Fix the probe to model "
+            "that, don't wire a real provider in here."
+        )
 
     def hyde(self, question: str) -> str:
         return ""
@@ -307,6 +322,15 @@ def run_probe(
                 "probe", question_embedding=embedding, entities=entities, skip_hyde=True,
             )
 
+        # Yes, _retrieve above already ran a hybrid_search, and this runs another.
+        # They are NOT the same query and deduplicating them would cost the
+        # signal this one exists for: production fetches at top_k_fetch=15 and
+        # ships top_k=5, while the diagnostic deliberately goes deeper
+        # (15/30) to separate "gold sits at rank 12" (ranking problem) from
+        # "gold is nowhere" (chunking problem). Collapsing them would either
+        # shallow the diagnostic or force _retrieve to expose its internals for
+        # a probe's benefit. One extra query in a manual tool is the cheaper
+        # trade. (Raised in the 6.3 review; kept on purpose.)
         hybrid = hybrid_search(
             pool, embedding, base_question, corpus_version,
             top_k=TOP_K, top_k_fetch=TOP_K_FETCH,
