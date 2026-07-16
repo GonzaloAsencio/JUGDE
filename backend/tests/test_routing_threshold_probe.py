@@ -53,3 +53,22 @@ def test_relaxed_differs_only_on_the_one_card_one_keyword_cell():
         != is_hard_query_relaxed(card_count=c, keyword_count=k)
     ]
     assert diffs == [(1, 1)]
+
+
+def test_treatment_is_productions_relaxed_branch():
+    """The probe must measure the predicate production actually ships.
+
+    is_hard_query_relaxed was hand-written when this probe was the gate that
+    justified the parameter — routing.py had no relaxed branch yet. The grid
+    test above compares the probe against production's DEFAULT, which cannot
+    catch a retune of the relaxed branch: routing.py and the probe would
+    diverge silently and the next run would report a 3W/0L belonging to a
+    predicate production no longer uses. This is what pins them.
+    """
+    from app.rag.routing import is_hard_query
+
+    for c in range(5):
+        for k in range(5):
+            assert is_hard_query_relaxed(card_count=c, keyword_count=k) == is_hard_query(
+                card_count=c, keyword_count=k, relaxed=True
+            ), f"probe treatment diverged from production at ({c} cards, {k} keywords)"

@@ -628,6 +628,16 @@ def answer_question(
     # else's cache.
     if settings.concise_reasoning:
         cache_prompt_version += "+concise"
+    # Same reasoning again for 3.11.1a, and it earns the suffix more than the two
+    # above: hard_routing_relaxed moves the (1 card, 1 keyword) cell into the
+    # routed bucket, which changes the CONTEXT (stuffed rulebook) *and* the MODEL
+    # (thinking provider). Without this, flipping the flag serves up to
+    # cache_ttl_s of pre-flip non-routed answers for precisely the questions the
+    # flag exists to route — and the flip's own verification would read the old
+    # mode. The semantic cache rides the same namespace (_try_semantic_response
+    # and remember both take cache_prompt_version), so this covers it too.
+    if settings.hard_routing_relaxed:
+        cache_prompt_version += "+relaxed"
     cache_key = make_cache_key(question, corpus_version, card_mentions, cache_prompt_version)
 
     cached = _try_cached_response(cache_key, settings, query_id, t0)

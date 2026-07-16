@@ -348,6 +348,11 @@ def _fake_settings(routing_on: bool):
     s.semantic_cache_enabled = False
     s.skip_hyde_when_routed = False
     s.concise_reasoning = False
+    # 3.11.1a. Without this the pipeline tests below run with relaxed
+    # EFFECTIVELY ON (truthy MagicMock), so the branch's headline claim —
+    # "flag off is byte-identical" — would be asserted in the one configuration
+    # that does not test it.
+    s.hard_routing_relaxed = False
     return s
 
 
@@ -476,3 +481,43 @@ def test_routed_rulebook_citation_carries_no_rule_codes():
     assert rulebook_cites, "routed response must cite the stuffed rulebook chunk"
     assert rulebook_cites[0].rule_codes == []
     assert len(rulebook_cites[0].content_preview) <= 200
+
+
+def test_cache_namespace_is_keyed_on_the_relaxed_flag():
+    """Same rule as the routing flag above, for the same reason.
+
+    hard_routing_relaxed moves the (1 card, 1 keyword) cell into the routed
+    bucket: those questions get a different CONTEXT (the stuffed rulebook) and a
+    different MODEL (the thinking provider). That is a strictly larger delta
+    than concise_reasoning, which already earns its own suffix. Without one, the
+    two-step flip serves up to cache_ttl_s of pre-flip, non-routed answers for
+    exactly the questions the flag exists to route — and the flip's own
+    verification would be reading the old mode.
+    """
+    from tests.conftest import FakeEmbedder
+
+    captured = {}
+
+    def _capture(question, cv, mentions, pv):
+        captured.setdefault("pvs", []).append(pv)
+        return f"key-{pv}"
+
+    provider = _RecordingProvider()
+    for relaxed in (False, True):
+        settings = _fake_settings(routing_on=True)
+        settings.hard_routing_relaxed = relaxed
+        with patch("app.rag.pipeline.make_cache_key", side_effect=_capture):
+            with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
+                with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
+                    with patch("app.rag.pipeline.get_cached", return_value=None):
+                        with patch("app.rag.pipeline.set_cached"):
+                            from app.rag.pipeline import answer_question
+                            answer_question(
+                                _EASY_QUESTION, FakeEmbedder(), MagicMock(), provider,
+                                settings,
+                            )
+
+    pv_off, pv_on = captured["pvs"]
+    assert pv_off == "v6+hard-routing"   # relaxed off: key unchanged from 4.2/4.3
+    assert pv_on == "v6+hard-routing+relaxed"
+    assert pv_off != pv_on

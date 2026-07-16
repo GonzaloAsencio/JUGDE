@@ -70,13 +70,20 @@ _EVAL_SET = Path(__file__).parent.parent / "data" / "eval_set.json"
 # ---------------------------------------------------------------------------
 
 def is_hard_query_relaxed(*, card_count: int, keyword_count: int) -> bool:
-    """TREATMENT's classifier: the card+keyword branch needs only ONE keyword.
+    """TREATMENT's classifier: production's is_hard_query with relaxed=True.
 
-    The `card_count >= 1` requirement is deliberately kept — see the module
-    docstring and routing.py: the keyword vocabulary is full of everyday words,
-    so dropping the card is how you accidentally route "when do I draw?".
+    This was a hand-written copy when the probe was the GATE that justified the
+    parameter — routing.py had no relaxed branch to call yet. Now that it does,
+    keeping the copy would mean measuring a treatment production may no longer
+    implement (retune the branch in routing.py and the probe would happily keep
+    reporting the old predicate's 3W/0L). Pinned by
+    tests/test_routing_threshold_probe.py::test_treatment_is_productions_relaxed_branch.
+
+    The `card_count >= 1` requirement lives in routing.py and is deliberate: the
+    keyword vocabulary is full of everyday words, so dropping the card is how you
+    accidentally route "when do I draw?".
     """
-    return card_count >= 2 or (card_count >= 1 and keyword_count >= 1)
+    return is_hard_query(card_count=card_count, keyword_count=keyword_count, relaxed=True)
 
 
 # ---------------------------------------------------------------------------
