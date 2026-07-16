@@ -50,8 +50,12 @@ def test_keywords_without_a_card_are_not_hard():
 def test_one_card_one_keyword_is_not_hard():
     from app.rag.routing import is_hard_query
 
-    # eval-030 shape: answered correctly today by keyword family completion —
-    # routing it would spend thinking-model quota for nothing.
+    # eval-020/030/037 shape. The original note here said eval-030 was "answered
+    # correctly today by keyword family completion", so routing it would spend
+    # quota for nothing — that was WRONG, and measured so on 2026-07-16: family
+    # completion brings 809.1/809.1.a but NOT 365.1, so eval-030 is missing a
+    # gold rule. This cell is exactly what `relaxed=True` opens (plan 3.11.1a);
+    # the default stays False until the generation gate says otherwise.
     assert is_hard_query(card_count=1, keyword_count=1) is False
 
 
@@ -59,6 +63,53 @@ def test_no_signals_is_not_hard():
     from app.rag.routing import is_hard_query
 
     assert is_hard_query(card_count=0, keyword_count=0) is False
+
+
+# ---------------------------------------------------------------------------
+# relaxed=True — plan 3.11.1 lever (a), flag OFF by default
+#
+# Probed 3W/0L before any of this was written (scripts/routing_threshold_probe):
+# opening the (1 card, 1 keyword) cell brings eval-020's 383.3.d, eval-030's
+# 365.1 and eval-037's 131.4+425 into the context, and costs no gold ref
+# anywhere. Coverage 22/26 -> 25/26. The generation gate still owes a real eval
+# run, so the flag ships OFF.
+# ---------------------------------------------------------------------------
+
+def test_relaxed_routes_one_card_one_keyword():
+    from app.rag.routing import is_hard_query
+
+    assert is_hard_query(card_count=1, keyword_count=1, relaxed=True) is True
+
+
+def test_relaxed_still_requires_a_card():
+    from app.rag.routing import is_hard_query
+
+    # The card requirement is what keeps "when do I draw and when do I discard?"
+    # off the thinking model — the keyword vocabulary is full of everyday words.
+    # Relaxing the keyword count must never relax this.
+    assert is_hard_query(card_count=0, keyword_count=1, relaxed=True) is False
+    assert is_hard_query(card_count=0, keyword_count=5, relaxed=True) is False
+
+
+def test_relaxed_defaults_to_off():
+    from app.rag.routing import is_hard_query
+
+    # The regression guarantee: callers that don't opt in are byte-identical.
+    assert is_hard_query(card_count=1, keyword_count=1) is False
+
+
+def test_relaxed_only_moves_the_one_card_one_keyword_cell():
+    from app.rag.routing import is_hard_query
+
+    # Pins the blast radius to a single cell. Anything else flipping means the
+    # flag changes more than it was measured to change.
+    diffs = [
+        (c, k)
+        for c in range(5) for k in range(5)
+        if is_hard_query(card_count=c, keyword_count=k)
+        != is_hard_query(card_count=c, keyword_count=k, relaxed=True)
+    ]
+    assert diffs == [(1, 1)]
 
 
 # ---------------------------------------------------------------------------

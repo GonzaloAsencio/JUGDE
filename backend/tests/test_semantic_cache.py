@@ -47,6 +47,29 @@ def test_plain_rules_question_is_cacheable():
     assert _semantic_cache_is_safe(card_count=0, keyword_count=1) is True
 
 
+def test_cache_gate_ignores_the_routing_relaxation():
+    """The cache gate must NOT follow hard_routing_relaxed (plan 3.11.1a).
+
+    Both gates call is_hard_query, but for unrelated reasons: routing asks "does
+    this need the whole rulebook?", the cache asks "can two near-identical
+    phrasings have opposite rulings?" — a question settled by its OWN
+    measurement (the 0.763 ceiling vs 0.874 floor documented above). The
+    relaxation was justified by CONTEXT COVERAGE, which says nothing about cache
+    safety, so it stops at the routing call site.
+
+    Coupling them wouldn't be unsafe (relaxed marks MORE questions hard, so the
+    cacheable set only shrinks — a subset of a measured-safe set stays safe) but
+    it would silently cost cache hits for a reason that has nothing to do with
+    the cache. This test exists so a future "simplification" that threads the
+    flag through here fails loudly instead.
+    """
+    from app.rag.pipeline import _semantic_cache_is_safe
+
+    # eval-020's shape: relaxed routing sends it to the thinking model, but it
+    # stays cacheable, exactly as before the flag existed.
+    assert _semantic_cache_is_safe(card_count=1, keyword_count=1) is True
+
+
 # ---------------------------------------------------------------------------
 # directive_key — the namespace that keeps a hit from crossing a boundary
 # ---------------------------------------------------------------------------

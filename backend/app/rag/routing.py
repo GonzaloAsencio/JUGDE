@@ -32,7 +32,7 @@ _TYPE_LEGEND_RE = re.compile(r"^\*\*Type\*\*:\s*Legend\b", re.MULTILINE)
 _TAGS_LINE_RE = re.compile(r"^\*\*Tags\*\*:\s*(.+)$", re.MULTILINE)
 
 
-def is_hard_query(*, card_count: int, keyword_count: int) -> bool:
+def is_hard_query(*, card_count: int, keyword_count: int, relaxed: bool = False) -> bool:
     """Deterministic hard classifier — no LLM, no I/O.
 
     Thresholds calibrated on the annotated eval set (2026-07-12): cards >= 2
@@ -44,8 +44,29 @@ def is_hard_query(*, card_count: int, keyword_count: int) -> bool:
     model — and on the eval set every 0-card question has at most 1 keyword,
     so requiring the card costs no target coverage. Question length was also
     evaluated and rejected (no additional targets, more over-routing).
+
+    *relaxed* (plan 3.11.1a, flag OFF by default) opens the single
+    (1 card, 1 keyword) cell. Probed 3W/0L with zero product code before this
+    parameter existed: it brings eval-020's 383.3.d, eval-030's 365.1 and
+    eval-037's 131.4+425 into the context and costs no gold ref anywhere
+    (coverage 22/26 -> 25/26). The newly routed questions carry keywords like
+    'temporary', 'deflect', 'showdown' — real mechanics, so "one card + one
+    mechanic" reads as a genuine interaction question. The card requirement is
+    untouched, for the everyday-vocabulary reason above.
+
+    Cost, unresolved on purpose: it moves routing 21/40 -> 27/40 on the eval
+    set, and gemini-3.5-flash is ~20 req/day. The eval set is enriched with
+    hard questions, so that ratio does NOT predict production traffic. The flag
+    stays off until a real eval run proves the extra context also produces
+    better ANSWERS — presence in context is not correctness.
+
+    Callers must opt in deliberately: _semantic_cache_is_safe shares this
+    classifier for an unrelated reason (adversarial near-duplicates) settled by
+    its own measurement, so it does NOT pass relaxed. See
+    tests/test_semantic_cache.py::test_cache_gate_ignores_the_routing_relaxation.
     """
-    return card_count >= 2 or (card_count >= 1 and keyword_count >= 2)
+    keyword_floor = 1 if relaxed else 2
+    return card_count >= 2 or (card_count >= 1 and keyword_count >= keyword_floor)
 
 
 @lru_cache(maxsize=1)

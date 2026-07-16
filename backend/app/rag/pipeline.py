@@ -658,6 +658,7 @@ def answer_question(
         is_hard = is_hard_query(
             card_count=entities.card_count(mention_tags),
             keyword_count=len(_detect_keywords(base_question)),
+            relaxed=settings.hard_routing_relaxed,
         )
         # Predicts the routing decision made below. The only way they can
         # disagree is build_stuffed_chunks returning None (a missing data file),
@@ -697,7 +698,8 @@ def answer_question(
     # normal path stays byte-identical.
     routed = False
     if hard_provider is not None and settings.hard_query_routing and is_hard_query(
-        card_count=card_count, keyword_count=len(_detect_keywords(resolved_question))
+        card_count=card_count, keyword_count=len(_detect_keywords(resolved_question)),
+        relaxed=settings.hard_routing_relaxed,
     ):
         stuffed = build_stuffed_chunks(
             resolved_question,
