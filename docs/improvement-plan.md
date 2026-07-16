@@ -431,18 +431,52 @@ gate de generación, que necesita cuota.
 
 - [ ] **Siguiente paso (two-step, método de la casa):** implementar flag-off →
       correr eval de las 3 preguntas al resetear cuota → flipear solo si ganan.
-- [ ] **(c)** arm FTS sobre keywords extraídos (lead de 6.2) — queda como
-      alternativa si (a) muere en el gate de generación o si el costo de cuota lo
-      hace inviable.
-- [ ] **eval-039** sigue sin lever: no rutea (perfil de vocabulario puro,
-      "pass priority" vs regla que dice "Focus"). Es 3.11.2.
-- [ ] **3.11.2 eval-030 / 037 / 039 (clase B: puente de vocabulario)** — los 5 refs
-      B NO son un problema de keyword hasta que se demuestre lo contrario.
-      **Gate previo, antes de escribir una línea:** para cada ref B, ¿existe algún
-      término EXTRAÍBLE de la pregunta que traiga el gold por FTS? eval-039 sugiere
-      que no ("pass priority" vs regla que dice "Focus") — mismo perfil que mató a
-      3.6. **Si no existe término extraíble → los B son puente de vocabulario
-      (HyDE / 3.9 fine-tuning), y (c) muere para ellos también.** Cero cuota.
+- [x] **(c)** arm FTS sobre keywords extraídos (lead de 6.2) — ❌ **MUERTO POR
+      GATE** para eval-039, ver 3.11.2. Sigue sin probar para 030/037.
+
+### 3.11.2 ~~eval-039 (clase B: ¿existe término extraíble?)~~ ❌ MUERTO POR GATE (2026-07-16, cero código)
+
+La única clase B que el lever (a) NO cierra (no nombra carta → `is_hard_query`
+no la rutea ni con `relaxed=True`). Gate pre-comprometido y predicción
+registrada ANTES de correr; ambos respetados con resultado negativo.
+
+**La hipótesis de entrada era FALSA.** Se sospechaba "dice *pass priority*, la
+regla dice *Focus* → no hay término extraíble". Leído del rulebook, la regla
+gold 348 dice literal: *"If all players **pass** **Focus** without playing a
+**spell**..."*. `pass` y `spell` **están** en la pregunta. Los keywords que
+`extract_keywords` produce son `attack, pass, priority, passes, cast, spells,
+afterward`, y los dos chunks gold matchean por exactamente **UN** término:
+`pass`. El mecanismo real no es "no hay solapamiento" sino **el solapamiento no
+DISCRIMINA**: `pass`/`attack`/`priority` están por todo el rulebook y
+`ts_rank_cd` entierra un chunk gold corto que carga un solo término común. Es
+el mismo mecanismo que mató a 3.6 ("chunks gold chicos pierden por densidad"),
+no el que suponíamos.
+
+**Confound medido y descartado:** `_FTS_OR_SQL` usa `to_tsvector('simple')` y
+`simple` NO stemea → `spells` (pregunta) no matchea `spell` (gold). Con
+`english` el gold pasaría de 1 a 2 términos. Se probó. No alcanza.
+
+| config | FTS rank del gold | fused | regresiones (vector@5 perdidos) |
+|---|---|---|---|
+| `simple` | **None** | 9 | eval-002, eval-007, eval-008 |
+| `english` | **None** | None | eval-002, eval-008, eval-027 |
+
+**Muere dos veces**, y la segunda importa más que la primera:
+1. El arm FTS **nunca** trae el gold al top-15, en ninguna config.
+2. Bajo `simple` el arm **FUSIONADO** sí lo trae a rank 9 — pero **cuesta 3
+   preguntas** que el vector hoy acierta @5. Es la forma exacta del lever (d):
+   el titular mejora y esconde la regresión. Gatear sobre el neto habría
+   shippeado una pérdida por segunda vez.
+
+**Conclusión:** eval-039 es **puente de vocabulario** (`priority`→`Focus`,
+`attack`→`Showdown`). El lever (c) muere para ella. Munición restante: HyDE /
+3.9 fine-tuning.
+
+- [ ] **3.11.2b eval-030 / 037 (los otros 4 refs B)** — el lever (a) SÍ los
+      cierra (3W/0L en presencia), así que su gate real es el de generación de
+      #74, no éste. Si (a) muere ahí, correr este mismo pre-gate para sus refs
+      antes de tocar (c): el resultado de eval-039 hace sospechar que el perfil
+      se repite, pero **sospechar no es medir**.
 
 **Nota de método:** el número a mover es *presencia del gold en el contexto*, NO
 recall@k del arm. El arm sub-reporta a propósito (producción le suma cartas
