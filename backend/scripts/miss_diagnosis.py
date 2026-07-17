@@ -165,7 +165,6 @@ def diagnose(questions, embedder, pool, corpus_version, all_chunks, settings) ->
     """
     provider = _NoHydeProvider()
     routing_enabled = settings.hard_query_routing
-    relaxed = settings.hard_routing_relaxed
     misses = []
     for q in questions:
         refs = _parse_refs(q["rule_reference"])
@@ -183,7 +182,7 @@ def diagnose(questions, embedder, pool, corpus_version, all_chunks, settings) ->
 
         resolved = resolve_production_context(
             question, embedder, pool, provider, settings, corpus_version, "diag",
-            routing_enabled=routing_enabled, relaxed=relaxed,
+            routing_enabled=routing_enabled,
         )
 
         absent = missing_refs(per_ref_ranks(refs, resolved.chunks))

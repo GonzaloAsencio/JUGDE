@@ -57,8 +57,28 @@ def test_shallow_health_has_required_fields(health_client: TestClient):
 # model is free (no I/O, keeps /health shallow).
 # ---------------------------------------------------------------------------
 
-def test_shallow_health_reports_the_running_models(health_client: TestClient):
-    body = health_client.get("/health").json()
+def test_shallow_health_reports_the_running_models():
+    """Pin the provider config explicitly: conftest._fake_settings() reads the
+    developer's .env for unset fields (no _env_file=None), so asserting a model
+    the fixture didn't pin means asserting whatever the dev's machine runs —
+    this test originally did exactly that and broke the day the .env changed
+    provider. The models below are CHOSEN here, not inherited."""
+    from app.main import app
+
+    settings = _fake_settings()
+    settings.llm_provider = "gemini"
+    settings.llm_model = None
+    settings.gemini_model = "gemini-flash-lite-latest"
+    with (
+        patch("app.main.init_pool", return_value=MagicMock()),
+        patch("app.main.close_pool"),
+        patch("app.main.Embedder.load", return_value=MagicMock()),
+        patch("app.main.genai.Client", return_value=MagicMock()),
+        patch("app.main.get_settings", return_value=settings),
+    ):
+        with TestClient(app) as c:
+            body = c.get("/health").json()
+
     assert "models" in body, "operators must be able to curl the live model"
     # Read off the provider objects, so this cannot report a model that isn't
     # the one answering.

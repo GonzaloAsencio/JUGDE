@@ -170,53 +170,30 @@ def test_stub_generate_raises_a_named_error_not_attribute_error():
 # Why this exists: without it the probe measures hybrid_search for EVERY
 # question, including the ones production never answers from hybrid_search. That
 # blind spot produced a false "383-family systemic gap" diagnosis on 2026-07-15
-# (4 of the 5 questions route and answer correctly). Mirrors the production
-# routing gate in pipeline.py::answer_question — routing_enabled AND
-# is_hard_query, with the SAME arguments.
+# (4 of the 5 questions route and answer correctly). routing_decision IS
+# routing.should_route — the same object production calls, see the identity
+# test below.
 # ---------------------------------------------------------------------------
 
 def test_routing_decision_matches_production_threshold_on_cards():
     # cards >= 2 routes on its own (routing.py::is_hard_query)
-    assert routing_decision(
-        card_count=2, keyword_count=0, routing_enabled=True, relaxed=False
-    ) is True
+    assert routing_decision(card_count=2, keyword_count=0, routing_enabled=True) is True
 
 
 def test_routing_decision_matches_production_threshold_on_card_plus_keywords():
     # one card needs >= 2 keywords to clear the bar
-    assert routing_decision(
-        card_count=1, keyword_count=2, routing_enabled=True, relaxed=False
-    ) is True
+    assert routing_decision(card_count=1, keyword_count=2, routing_enabled=True) is True
 
 
 def test_routing_decision_false_below_threshold():
-    # eval-020's exact shape: 1 card, 1 keyword -> NOT routed under the strict
-    # classifier, so its retrieval recall is a real production signal.
-    assert routing_decision(
-        card_count=1, keyword_count=1, routing_enabled=True, relaxed=False
-    ) is False
+    # eval-020's exact shape: 1 card, 1 keyword -> NOT routed, so its retrieval
+    # recall is a real production signal.
+    assert routing_decision(card_count=1, keyword_count=1, routing_enabled=True) is False
 
 
 def test_routing_decision_false_when_routing_disabled():
     # flag off -> production uses retrieval for everything, so must the probe
-    assert routing_decision(
-        card_count=3, keyword_count=5, routing_enabled=False, relaxed=False
-    ) is False
-
-
-def test_routing_decision_follows_the_relaxed_flag():
-    # THE drift: production passes relaxed=settings.hard_routing_relaxed
-    # (pipeline.py::answer_question), and routing_decision did not forward it —
-    # it hard-coded the strict classifier. Harmless while the flag is off
-    # (relaxed=False is is_hard_query's default, same answer), and a silent lie
-    # the moment it flips: every probe would report the (1 card, 1 keyword) cell
-    # as NOT routed while production routes it. That cell is the whole point of
-    # the flag — eval-020, eval-030, eval-037 — so the probes would diagnose the
-    # RAG bucket for questions production answers from the stuffed rulebook.
-    # Same shape as the phantom 383 gap this function exists to prevent.
-    assert routing_decision(
-        card_count=1, keyword_count=1, routing_enabled=True, relaxed=True
-    ) is True
+    assert routing_decision(card_count=3, keyword_count=5, routing_enabled=False) is False
 
 
 def test_routing_decision_forwards_every_is_hard_query_knob():
@@ -225,12 +202,10 @@ def test_routing_decision_forwards_every_is_hard_query_knob():
     The four tests above pin VALUES, so they can only fail for knobs that already
     exist — a new argument on is_hard_query keeps them green while every probe
     silently classifies the new cell the old way. This one fails the moment the
-    classifier grows a knob routing_decision does not forward.
-
-    It cannot anchor the gate's full SHAPE: the gate is an inline boolean in
-    answer_question, not an importable predicate, so the `hard_provider is not
-    None and settings.hard_query_routing` half is still mirrored by hand as
-    `routing_enabled`. Extracting the gate is the fix that would close that.
+    classifier grows a knob the gate does not forward. (It caught exactly that
+    on 2026-07-17: `relaxed` arrived on is_hard_query with a dead lever and the
+    probes' mirror never followed. Both the lever and the knob are gone now, but
+    the guard stays for the next one.)
     """
     gate_knobs = set(inspect.signature(is_hard_query).parameters)
     forwarded = set(inspect.signature(routing_decision).parameters)
@@ -240,6 +215,27 @@ def test_routing_decision_forwards_every_is_hard_query_knob():
         "it; routing_decision must forward it too, or all four probes "
         "(retrieval, family_nomination, card_presence, miss_diagnosis) report a "
         "routing verdict production does not make."
+    )
+
+
+def test_routing_decision_is_productions_gate_by_construction():
+    """The other half of the same debt, closed by extraction instead of mirror.
+
+    routing_decision used to MIRROR the gate (same flag, same classifier, copied
+    by hand) — and a mirror is exactly what drifted when the classifier grew
+    `relaxed`. Now routing.py owns should_route, pipeline.answer_question calls
+    it, and routing_decision IS it: identity, not equality. There is no second
+    copy left to drift.
+    """
+    from app.rag import pipeline
+    from app.rag.routing import should_route
+
+    assert routing_decision is should_route, (
+        "routing_decision must BE routing.should_route — a wrapper or copy "
+        "reopens the drift the extraction closed"
+    )
+    assert pipeline.should_route is should_route, (
+        "pipeline must route through the same should_route object the probes use"
     )
 
 
@@ -273,7 +269,6 @@ def _resolve(**kwargs):
     """Settings is a SimpleNamespace, NOT a MagicMock, on purpose: an unpinned
     attribute must raise here, not evaluate truthy and quietly run these
     assertions under a flag configuration nobody chose."""
-    kwargs.setdefault("relaxed", False)
     return rp.resolve_production_context(
         "q", SimpleNamespace(encode=lambda _q: [0.1]), None, _NoHydeProvider(),
         SimpleNamespace(), "v1", "test", **kwargs,

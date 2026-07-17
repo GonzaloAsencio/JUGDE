@@ -110,7 +110,6 @@ def gained_refs(control_per_ref: dict, treatment_per_ref: dict) -> list[str]:
 def run_probe(questions, embedder, pool, corpus_version, settings) -> list[dict]:
     provider = _NoHydeProvider()
     routing_enabled = settings.hard_query_routing
-    relaxed = settings.hard_routing_relaxed
     cap = settings.keyword_family_extra
     # TREATMENT's base must carry NO completion, so the single cap below models
     # production's future behaviour instead of stacking two tails.
@@ -129,7 +128,6 @@ def run_probe(questions, embedder, pool, corpus_version, settings) -> list[dict]
             card_count=entities.card_count([]),
             keyword_count=len(_detect_keywords(base_question)),
             routing_enabled=routing_enabled,
-            relaxed=relaxed,
         )
         if routed:
             # A routed question never sees this code path — its context is the
