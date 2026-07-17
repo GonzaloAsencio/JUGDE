@@ -182,9 +182,28 @@ lo obvio. Se tomó la variante que el propio plan sugería como alternativa
 - [x] Namespace de cache propio (`+concise`, como `+hard-routing`): una respuesta
       concisa y una verbosa nunca colisionan. Sufijar en vez de bumpear
       `prompt_version` deja la key flag-off byte-idéntica.
-- [ ] **El flag más riesgoso de la Fase 2** — el único que cambia lo que se le
-      PIDE al modelo. Gate: tokens de salida ↓ **y** bucket hard sin moverse.
-      Si el hard cae, muere.
+- [x] **GATE DE FLIP CORRIDO (2026-07-17): ❌ EL FLAG MUERE.** Regla
+      pre-comprometida: cero regresiones de veredicto en el subconjunto estable
+      Y longitud de respuesta abajo. Universo: las 13 que el flag MUEVE
+      (determinista: 21 ruteadas nunca ven el cap, 6 scaffoldeadas las gana el
+      scaffold — ambos por construcción testeada). Brazos OFF/ON hoy, config de
+      prod (gpt-oss-120b/8192), mismo judge.
+      - Longitud: mediana **856 → 588 (-31%)** ✅ — el ahorro es real.
+      - Veredictos: **eval-001 regresó correct→partial y es REAL** (correct 3/3
+        en OFF por protocolo de estabilidad). Mecanismo: el judge señala que
+        OMITIÓ el límite del Chosen Champion — el cap recortó contenido de la
+        RESPUESTA pese a que el prompt lo prohíbe explícitamente. El riesgo
+        anotado arriba, materializado.
+      - eval-030 también cayó pero flippeó en las re-corridas OFF → INESTABLE,
+        excluida (la lista de inestables crece a eval-016/018/030 — 3 de las 13
+        movidas).
+      - Predicción registrada antes de correr: longitud baja (✅ alta
+        confianza); "si algo cae será eval-005 o eval-030" — eval-030 cayó pero
+        resultó inestable; eval-001 NO estaba en la lista. Media predicción.
+      **Queda espacio para un v2** (el mecanismo es prompt-fixeable: reforzar la
+      protección del Answer), pero es un lever NUEVO con su propio gate. El flag
+      actual muere; strip pendiente como PR chico (regla de cero código muerto,
+      mismo trato que 3.11.1a).
 
 ---
 
