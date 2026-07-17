@@ -631,6 +631,27 @@ preciso y más lento, no más preciso y más rápido.
 - **Los límites de cada tier**, que era el motivo original del switcheo. Eje
   operativo, no lo mide el eval. Dato suelto: Cerebras throttleó a los ~19
   requests en ráfaga.
+
+> **RESPONDIDO (2026-07-17, post-merge de la pila).** Primer curl a
+> `/health` del Space con `f0c8b94` deployado:
+>
+> ```json
+> "models": {"main": "llama-3.3-70b-versatile", "hard": "gemini-3.5-flash"}
+> ```
+>
+> **El main de prod es `llama-3.3-70b-versatile`** (Groq, vía openai_compat) —
+> un TERCER modelo que ninguno de los dos brazos de 3.12 midió. Ni la hipótesis
+> "prod corre flash-lite" ni la creencia "lo cambié a gpt-oss-120b" eran
+> ciertas: el env del Space difiere del `.env` local. Consecuencias:
+> - El 4W/0L de gpt-oss-120b es contra flash-lite, **no contra el main real de
+>   prod**. Decidir un cambio del main de prod requiere el tercer brazo:
+>   `llama-3.3-70b-versatile` sobre las mismas 19.
+> - El CONTROL del gate 3.11.1a (flash-lite) tampoco es el main de prod. El
+>   veredicto del gate (no flipear `relaxed`) se sostiene igual — perdió contra
+>   SU propio control y el default seguro coincide — pero su baseline no
+>   describe prod.
+> - Los comentarios del repo ("prod runs Groq/openai_compat as main") tenían
+>   razón; el `.env` local era el desviado.
 - [x] **(c)** arm FTS sobre keywords extraídos (lead de 6.2) — ❌ **MUERTO POR
       GATE** para eval-039, ver 3.11.2. Sigue sin probar para 030/037.
 
