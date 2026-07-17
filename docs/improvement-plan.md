@@ -576,6 +576,61 @@ también `llm_model='gpt-oss-120b'` y `llm_base_url='https://api.cerebras.ai/v1'
 seteados — los dos últimos solo los usa `openai_compat`. Parece un switch a medio
 hacer. Determina qué modelo mide el eval, así que decidir cuál es el main real
 antes del próximo gate.
+
+### 3.12 Modelo MAIN: `flash-lite` vs `gpt-oss-120b` (2026-07-17)
+
+**gpt-oss-120b gana 4W / 0L. 11/19 → 15/19 correctas.**
+
+Primera medición cabeza a cabeza de los dos main en este repo. Ninguna corrida
+anterior sirve de baseline: todas están atribuidas a un modelo que se infirió de
+un log que mentía (ver bug de telemetría arriba, arreglado en `f0c8b94`).
+
+**Universo: las 19 que el MAIN sirve.** Calculadas con `routing_decision`
+(`routing_enabled=True`, `relaxed=False`) → 21 ruteadas / 19 no. Coincide exacto
+con el 21/40 que el plan venía citando. Las 21 ruteadas no entran: las sirve
+`gemini-3.5-flash` y el main no las toca.
+
+Los dos brazos verificados vía `create_provider(s).model` ANTES de gastar, no vía
+log — la lección del día.
+
+| | flash-lite | gpt-oss-120b |
+|---|---|---|
+| correct | 11 | **15** |
+| partial | 3 | 1 |
+| wrong | 5 | 3 |
+
+Sobre las 17 comparables a presupuesto igual: **B gana 4 (eval-005, eval-008,
+eval-012, eval-032), pierde 0.** Cuatro victorias sin regresión sobre 17 supera
+el umbral de ruido fijado antes de mirar (1-2 preguntas sobre 19 = no
+distinguible; el judge es no determinista).
+
+**⚠️ REQUISITO DE DEPLOY, no un tune opcional: `gpt-oss-120b` es un modelo de
+RAZONAMIENTO.** Con `max_output_tokens=1024` devolvió **null content en 2/19**
+(eval-016, eval-037) — el mismo `"1024 strangles them"` que `config.py` advierte
+para el modelo hard. Con 8192 las dos contestan (mal las dos, igual que
+flash-lite, así que el 4W/0L no se mueve). Ojo: `max_output_tokens` es COMPARTIDO
+entre los dos providers ("Applies to both providers"), así que subirlo para
+gpt-oss también se lo sube a flash-lite — no medido.
+
+**Artefacto descartado, NO es del modelo:** el brazo B promedió 18.5s vs 7.5s,
+con cuatro preguntas clavadas en ~60s. **Era throttling de Cerebras por tirarle
+19 requests seguidos**, no el modelo razonando. Corrida sola, eval-003 tarda
+**11.9s** contra los 56.5s de la ráfaga. La latencia real es ~2x flash-lite
+(11.9s vs 5.3s), no 2.5x. El retry de `_completion_with_retry` solo cubre 429 con
+backoff acotado, y ese backoff es lo que infló el promedio.
+
+**Predicción fallida (mía):** se predijo latencia "mucho menor" en B porque
+Cerebras es rápido. **Al revés: gpt-oss-120b es ~2x MÁS LENTO por request.** Más
+preciso y más lento, no más preciso y más rápido.
+
+**Lo que esta medición NO contesta:**
+- **Qué corre en prod.** Sigue invisible hasta deployar `f0c8b94` y curlear
+  `/health`. Si prod es `llm_provider=gemini` + `llm_model=gpt-oss-120b`, prod
+  corre **flash-lite** y gpt-oss-120b NUNCA corrió ahí — el switch no toma efecto
+  porque `create_provider` ignora `llm_model` bajo gemini.
+- **Los límites de cada tier**, que era el motivo original del switcheo. Eje
+  operativo, no lo mide el eval. Dato suelto: Cerebras throttleó a los ~19
+  requests en ráfaga.
 - [x] **(c)** arm FTS sobre keywords extraídos (lead de 6.2) — ❌ **MUERTO POR
       GATE** para eval-039, ver 3.11.2. Sigue sin probar para 030/037.
 
