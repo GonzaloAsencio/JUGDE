@@ -85,6 +85,19 @@ def fts_search(
     Returns Chunks ordered by ts_rank_cd desc. similarity is set to 0.0 because
     FTS rank is not comparable to cosine similarity. Empty query_text or zero
     matches returns [] without raising.
+
+    NOT wired into the production path: _hybrid_search_impl fuses against an
+    EMPTY fts list on purpose (see the rationale there). Kept for the future
+    re-evaluation named in that comment — keyword-extracted queries.
+
+    Reading its output correctly (measured 2026-07-16, plan 6.2 — this trips
+    people up): **plainto_tsquery ANDs every term**, so a full natural-language
+    question demands a chunk containing ALL of its words and matches nothing.
+    That is why probes report fts recall 0% at every k over the eval set, and it
+    is EXPECTED — not a broken arm. The arm itself works: short keyword queries
+    return well-targeted rule sections ('banish' -> '427. Banish',
+    'triggered abilities' -> '383. Triggered Abilities'). Before concluding this
+    arm is dead, check what you fed it.
     """
     clause, clause_params = _set_clause(set_filter)
     sql = _FTS_SQL.format(set_clause=clause)

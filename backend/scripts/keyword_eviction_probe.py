@@ -13,7 +13,8 @@ _assemble_context) and counts evicted card chunks.
 Usage (from backend/):
     python -m scripts.keyword_eviction_probe
 
-Requires: DATABASE_URL + corpus ingestado. Does NOT require GEMINI_API_KEY.
+Requires: DATABASE_URL + corpus ingestado. Never SPENDS Gemini quota, but the key
+must be PRESENT — Settings() fails closed without it. Zero quota, not zero config.
 """
 import json
 import sys

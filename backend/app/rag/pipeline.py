@@ -241,6 +241,15 @@ def _detect_entities(
     bucket. Detected names join the user-directed tags so tagged_lookup pulls
     them into reserved slots (see _assemble_context).
 
+    Re-verified 2026-07-16 with routing modelled (card_presence_probe, hard
+    bucket): delivery is 29/29 — 25/25 on the 15 routed questions (stuffing
+    detects and prepends its own card sections) and 4/4 on the 6 that still go
+    through the RAG assembly. Note the 9/12 above is the PRE-FIX diagnosis that
+    motivated this code, not a live figure.
+
+    This scan is also load-bearing for a second consumer: card_count feeds
+    is_hard_query, so it decides ROUTING (answer_question), not just context.
+
     Best-effort: a vocabulary-load failure must never break query answering, so
     the feature degrades to the prior behaviour instead of raising.
     """

@@ -289,6 +289,96 @@ corpus_ab_probe pareado + matcher estricto contra v2.2.1. Dos variantes:
       sentence-transformers. Gratis en plata, caro en tiempo. Solo si 3.1–3.8 no
       alcanzan.
 
+### 3.11 Los 4 gaps reales de contexto (2026-07-16, post-arreglo del probe)
+
+Con `retrieval_probe` midiendo el contexto que producción ARMA (ver Fase 6.1), el
+baseline honesto es **22/26 (85%)** de las evaluables con TODOS sus gold refs en
+el contexto de generación. El bucket ruteado está limpio (**12/12**). Los 4 gaps
+reales están todos en el bucket **no-ruteado**, y no comparten causa conocida —
+tratarlos como una familia sería repetir el error del "gap 383":
+
+| Pregunta | Falta | Perfil |
+|---|---|---|
+| eval-020 | `383.3.d` | 1 de 2 refs. `816` entra en rank 1 y lo tapaba |
+| eval-030 | `365.1` | 1 de 3 refs. `809.1.a` llega por family completion |
+| eval-037 | `131.4`, `425` | 2 de 3 refs |
+| eval-039 | `347.3`, `348` | 2 de 2 refs — contexto sin NADA del gold |
+
+- [x] **3.11.0 ✅ Triage — HECHO (2026-07-16). VEREDICTO: NO comparten mecanismo.**
+
+**Primero hubo que arreglar la herramienta de triage** (no se pudo cumplir el
+"cero código"): `miss_diagnosis.py` filtraba con `first_covering_rank` (regla
+ANY-ref) y hacía `continue` si CUALQUIER ref se recuperaba → **eval-020 (`816` en
+rank 1) y eval-030 (`809.1` en rank 12) NUNCA fueron diagnosticadas**. La
+herramienta cuyo trabajo es elegir el lever era ciega a 2 de los 4 gaps. Tercer
+instrumento con la misma mentira. Ahora diagnostica **por REF FALTANTE** (la
+unidad correcta) contra el contexto real, y clasifica cada ref por separado — un
+hermano de OTRO gold ref ya no rescata el veredicto de éste.
+
+**Resultado: 6 refs faltantes en 4 preguntas. Los 6 chunks gold ESTÁN en el corpus
+→ los 6 son gaps de retrieval, ninguno de corpus.**
+
+| Pregunta | Ref | Clase | Lever |
+|---|---|---|---|
+| eval-020 | `383.3.d` | **A: granularidad** | chunk lineage |
+| eval-030 | `365.1` | B: gap semántico | puente de vocabulario |
+| eval-037 | `131.4`, `425` | B: gap semántico | puente de vocabulario |
+| eval-039 | `347.3`, `348` | B: gap semántico | puente de vocabulario |
+
+**1 A + 5 B → se atacan por separado.** Confirmado el gate: no hay familia que
+inventar.
+
+**eval-020 (A) — el hallazgo que cambia su lever.** Su vector top-15 trae
+`[1] 816. Temporary` y **`[4]` y `[6]` de `383. Triggered Abilities`**. La familia
+383 YA ESTÁ EN EL CONTEXTO; lo que falta es el chunk hermano que lleva
+`383.3.d` — y vive en la MISMA sección. No es gap semántico: es lineage. Y explica
+por qué "trigger" como keyword murió ayer: `_complete_keyword_families` exige que
+la familia la nomine un **keyword TAGEADO** (`kw_sections` sale de `auto_chunks` =
+`tagged_lookup`), no le alcanza con que la familia esté en contexto por el arm
+vectorial. **La compuerta pide la puerta equivocada.** → El lever de 020 es
+completar la familia de una sección de regla YA presente en el contexto, sin
+compuerta de keyword. **Esto DESPLAZA al lead FTS de 6.2 para esta pregunta**
+(seguía sirviendo, pero el lineage es más directo y de menor blast radius).
+
+**eval-039 (B) — el perfil opuesto, y una advertencia.** Gold en `341. Showdowns`;
+se recupera `649. Conceding`, `339. Step 3: Pass`, `338. Step 2: Execute` — nada de
+la familia 347/348. Causa: **la pregunta dice "pass priority", la regla dice
+"Focus"**. Desajuste de vocabulario puro. Es EXACTAMENTE el perfil por el que murió
+3.6 ("los términos ganadores NO están en la pregunta") → **el arm FTS-keyword
+probablemente tampoco lo salve**. Antes de construir nada para los B, medir si
+existe algún término extraíble de la pregunta que alcance el gold. Si no existe,
+los B son puente de vocabulario (HyDE / fine-tuning 3.9), no keyword.
+- [ ] **3.11.1 eval-020 (clase A: lineage)** — el triage 3.11.0 reordenó los
+      candidatos. Favorito ahora:
+      **(d) completar la familia de una sección de regla YA presente en el
+      contexto, sin compuerta de keyword.** Es el lever que el triage señala: la
+      sección `383. Triggered Abilities` ya entra en rank 4 y 6, solo falta su
+      hermano con `383.3.d`. Reusa `family_lookup` + `_complete_keyword_families`
+      (contrato append-only ya shippeado con `keyword_family_extra=8`); el cambio
+      es de QUÉ nomina la familia: hoy `kw_sections` (keywords tageados), la
+      propuesta es las secciones de regla del contexto. **Blast radius a medir: es
+      MÁS ancho que el actual — completa familias de toda pregunta con una sección
+      de regla en contexto. Ese es el riesgo real y hay que medirlo sobre las 25.**
+      Alternativas si (d) pierde:
+      (a) ampliar el umbral de `is_hard_query` para que rutee (barato, blast radius
+      ancho sobre routing);
+      (c) arm FTS sobre keywords extraídos (el lead de 6.2 — sigue vivo, pero el
+      triage lo desplaza: para 020 el lineage es más directo y más barato).
+      **Gate: gana el que sume 020 sin sacar ningún gold ref a las otras 25.
+      Empate → no se shippea ninguno.**
+- [ ] **3.11.2 eval-030 / 037 / 039 (clase B: puente de vocabulario)** — los 5 refs
+      B NO son un problema de keyword hasta que se demuestre lo contrario.
+      **Gate previo, antes de escribir una línea:** para cada ref B, ¿existe algún
+      término EXTRAÍBLE de la pregunta que traiga el gold por FTS? eval-039 sugiere
+      que no ("pass priority" vs regla que dice "Focus") — mismo perfil que mató a
+      3.6. **Si no existe término extraíble → los B son puente de vocabulario
+      (HyDE / 3.9 fine-tuning), y (c) muere para ellos también.** Cero cuota.
+
+**Nota de método:** el número a mover es *presencia del gold en el contexto*, NO
+recall@k del arm. El arm sub-reporta a propósito (producción le suma cartas
+tagueadas y family completion encima). Y ojo con el piso: el probe corre HyDE off
+y producción fusiona un arm HyDE en las no-ruteadas.
+
 ### 3.10 Detección de cartas: fix del posesivo + desambiguación (2026-07-15)
 
 Sesión de re-eval sobre `feat/concise-reasoning`. El "57% correct" del primer run
@@ -461,6 +551,145 @@ en un hipotético futuro pagarían los usuarios. Diseño acordado:
 - [ ] Futuro pago real: Stripe metered billing SOBRE el mismo ledger de 5.3.
       El ledger es el punto en común de todos los caminos — por eso se
       construye primero.
+
+---
+
+## Fase 6 — Confiabilidad del instrumental (2026-07-16)
+
+**Por qué existe esta fase.** Todo probe es una AFIRMACIÓN SOBRE PRODUCCIÓN. Cuando
+producción cambia, el probe no se rompe: sigue corriendo, sigue imprimiendo
+números, y esos números se vuelven mentira en silencio. Pasó dos veces:
+
+- **`retrieval_probe` MINTIÓ** (arreglado, `d4af51a`). Medía `hybrid_search` y lo
+  llamaba "el contexto". Produjo el "gap sistémico familia 383" — 5 preguntas —
+  cuando 4 de las 5 rutean y contestan bien citando `383.3.d`. Una sola estaba
+  rota. Casi arrancamos un SDD para arreglar un problema inexistente.
+- **`card_presence_probe` tenía un AGUJERO DE COBERTURA** (arreglado, ver 6.1).
+  Distinto pecado: no mentía sobre su número, pero lo medía sobre la población
+  equivocada — 15 de 21 preguntas hard rutean y él miraba el contexto que esas 15
+  descartan. Un guard que dice "todo OK" sin mirar el path real.
+
+La diferencia importa. Lo primero es un error de método (medir un arm intermedio y
+extrapolar). Lo segundo es entropía: la feature se movió abajo del guard y el
+guard no se rompió — siguió imprimiendo un 100% verdadero-por-casualidad. Nadie se
+equivocó, y por eso nadie lo vio.
+
+### 6.1 ✅ Auditar `card_presence_probe` — HECHO (2026-07-16). Agujero de cobertura cerrado; el guard NO encontró bug
+
+**Corrección primero: la hipótesis con la que se abrió este ítem era equivocada.**
+Se escribió que la medición "9/12 cartas ausentes" citada en `pipeline.py:240`
+estaba *stale*. **No lo está.** Leída completa, la cita dice: *"a deterministic
+probe found 9/12 named cards ABSENT... Detected names join the user-directed tags
+so tagged_lookup pulls them into reserved slots"* — el 9/12 es el diagnóstico
+**PREVIO al fix**, el que MOTIVÓ construir los auto card tags. Es historia, y la
+historia no queda vieja: pasó. El error fue citar de memoria en vez de leer.
+
+**El punto ciego SÍ era real, pero por otro motivo — y peor.** El probe es el
+*guard* del fix (su docstring: "a delivery rate below ~100% means the
+assembly/budget regressed"). Medido: **15 de las 21 preguntas hard RUTEAN**, y una
+query ruteada descarta el contexto recuperado entero (`chunks = stuffed`,
+pipeline.py:699). O sea que para el **71% de su propio bucket** el guard medía un
+contexto que producción tira, y era **ciego a regresiones en el path que esas 15
+realmente usan** (el stuffing). Reportaba un 100% confiado mirando la puerta
+equivocada.
+
+**Fix aplicado**: resuelve el camino real por pregunta y difiere al pipeline de
+verdad (`build_stuffed_chunks` si rutea, `_retrieve` si no) en vez de re-implementar
+la assembly — la copia local es exactamente lo que había derivado. Reutiliza
+`routing_decision`/`split_by_route` de `retrieval_probe` (una sola definición de
+"¿producción rutea esto?", o los dos probes vuelven a divergir).
+
+**Resultado del gate: el 100% SOBREVIVE. No había bug.**
+
+| Path | Delivery | Preguntas |
+|---|---|---|
+| routed (stuffed) | **25/25 (100%)** | 15 |
+| rag (assembly) | **4/4 (100%)** | 6 |
+
+Lo que cambió no es el número, es su naturaleza: antes era 100% **por casualidad**
+(midiendo contexto descartado), ahora es 100% **medido sobre el contexto real**. Y
+quedó medido algo que nunca lo había estado: **el stuffing entrega 25/25**. Cita de
+`pipeline.py:240` actualizada con la medición nueva y con la aclaración de que el
+9/12 es pre-fix.
+
+**Lo que NO se hace (y por qué):** no se toca la feature. Aparte de este probe
+tiene evidencia independiente (eval-029 e2e, `correct`/conf=1.0). Y el scan de
+~960 patrones **no es opcional aunque el contexto de las ruteadas se descarte**:
+`card_count` alimenta `is_hard_query` → **decide el routing mismo**. Sacarlo
+rompería la decisión, no solo el contexto. Anotado en el docstring para el que
+venga.
+
+### 6.2 ✅ Arm FTS: el 0% es ESPERADO, no un bug — HECHO (2026-07-16)
+
+**Medido:** `plainto_tsquery` **ANDea todos los términos**. Una pregunta natural de
+20 palabras exige un chunk que contenga las 20 → matchea nada. Por eso todo probe
+reporta `fts 0%` en todos los k. Es la consecuencia esperada de cómo se lo llama.
+
+**El arm FUNCIONA** — se verificó contra la DB real, y esto es lo que importa:
+
+| Query | Resultado |
+|---|---|
+| `banish` | `427. Banish` |
+| `triggered abilities` | `506. Triggered Abilities`, **`383. Triggered Abilities`** |
+| pregunta entera de eval-020 | 0 hits |
+
+Confirmado además que en prod el arm está dormido **a propósito**:
+`_hybrid_search_impl` fusiona contra una lista FTS **vacía** (nunca llama a
+`fts_search`), porque vector-only @5 (47%) medía POR ENCIMA de vector+FTS (41%) —
+la pregunta entera diluía el RRF. Rationale ya escrito en `retrieval.py:245-252`.
+
+Gate cumplido (era esperado) → documentado en el docstring de `fts_search`, con la
+trampa explícita para el que venga: *antes de concluir que este arm está muerto,
+fijate qué le estás dando de comer*. Cerrado.
+
+**⚠️ LEAD INCIDENTAL para 3.11.1 — es un LEAD, NO un resultado.** Mientras se
+confirmaba el 0%, salió esto: FTS con `"triggered abilities"` devuelve la sección
+`383. Triggered Abilities`, y uno de esos chunks lista **`383.3.d.1`** — que por
+lineage padre-hijo **CUBRE el `383.3.d` que le falta a eval-020** (verificado:
+`_rule_codes_cover('383.3.d', {'383.3.d.1'}) → True`). El sub-rule catalogado como
+"ni en vector top-50" es recuperable con una query de DOS palabras.
+
+Por qué esto NO contradice a 3.6 ni resucita nada por decreto:
+- 3.6 murió sobre **eval-014/019** con sus términos, no sobre eval-020.
+- Lo de ayer mató `"trigger"` como **keyword para `_complete_keyword_families`** —
+  mecanismo distinto: esa compuerta exige un chunk de la familia sobreviviente al
+  retrieval. **Un arm FTS no necesita compuerta.**
+- Falta lo esencial y no está medido: que la extracción determinística produzca
+  el término desde la pregunta de eval-020 ("...when Temporary **triggers**?").
+  Ese es justo el modo en que murió 3.6 (los términos ganadores no estaban en la
+  pregunta). **Acá sí está la palabra** — pero eso hay que MEDIRLO, no asumirlo.
+
+Se ataca en 3.11.1 con su gate, no acá. Anotado porque el hallazgo es real y se
+pierde si no se escribe.
+
+### 6.3 ✅ Deuda del review del probe — HECHA (2026-07-16)
+
+- [x] **`_NoHydeProvider` frágil → ARREGLADO.** Era una clase pelada con solo
+      `hyde()`. Los probes no se pueden testear end-to-end (necesitan DB), así que
+      un método nuevo en el provider habría aparecido como `AttributeError` en una
+      corrida manual, con CI en verde — justo cuando estás debuggeando otra cosa y
+      confiando en la herramienta sin mirarla. Ahora **subclasea el ABC real**
+      (`LLMProvider`), lo que mueve la falla a tiempo de construcción, y 4 tests
+      la convierten en falla de CI: agregás un `@abstractmethod` a `LLMProvider` y
+      `test_stub_can_be_constructed` rompe al instante. `generate()` levanta
+      `NotImplementedError` con el motivo escrito, no un `AttributeError` mudo que
+      mande al próximo a cazar el bug equivocado.
+- [x] **`hybrid_search` "duplicado" → WON'T FIX, y el review se apuró (era mío).**
+      Los parámetros NO coinciden: `_retrieve` fetchea a `top_k_fetch=15` y shippea
+      `top_k=5`; el diagnóstico va a **15/30 a propósito**, y esa profundidad extra
+      es justo lo que le permite separar "el gold está en rank 12" (problema de
+      ranking) de "el gold no está en ningún lado" (problema de chunking) — el
+      split para el que el diagnóstico existe. Deduplicarlo exigiría achicar el
+      diagnóstico o hacer que `_retrieve` exponga sus internals para servir a un
+      probe. Una query extra en una herramienta manual es el trade barato.
+      Motivo escrito en el código para que el próximo review no lo re-levante.
+
+### 6.4 Regla de la casa (nueva, sale de esta fase)
+
+Un probe que no modela el camino real de producción no es un probe: es una
+opinión con formato de tabla. **Antes de creerle un número a cualquier probe,
+verificar que su modelo del pipeline siga siendo el pipeline.** El costo de no
+hacerlo ya está medido: un día de diagnóstico sobre un gap inexistente.
 
 ---
 

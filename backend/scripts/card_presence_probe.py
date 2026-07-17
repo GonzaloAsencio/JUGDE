@@ -5,11 +5,30 @@ must land in the final context the generator sees.
 Why this exists: multi-card interaction questions embed poorly (the scenario prose
 dominates the cosine), so named cards rarely surface in semantic retrieval. The fix
 auto-detects card names and feeds them to tagged_lookup with reserved slots. This
-probe reproduces the production retrieval path WITHOUT the LLM (it skips the HyDE
-arm — neutral, and would only ADD cards) and reports, per question, which detected
-cards made it into context. A delivery rate below ~100% means the assembly/budget
-regressed. It also prints the cards actually retrieved so a human can eyeball
-detector MISSES (cards named but not detected) without a hand-maintained gold map.
+probe reports, per question, which detected cards made it into context. A delivery
+rate below ~100% means the assembly/budget regressed. It also prints the cards
+actually retrieved so a human can eyeball detector MISSES (cards named but not
+detected) without a hand-maintained gold map.
+
+Routing awareness (2026-07-16 — the guard had a coverage hole): this probe used to
+re-implement the retrieval path and, in doing so, never modelled hard-query
+routing. 15 of the 21 hard questions ROUTE, and a routed query throws the whole
+retrieved context away (`chunks = stuffed`, pipeline.py:699). So for 71% of its
+own bucket the guard was measuring a context production discards, and was blind to
+whether the path those questions actually use — the stuffed context — delivers the
+cards at all. It reported a confident 100% while watching the wrong door.
+
+It now resolves the real path per question and measures presence in the context
+production would ACTUALLY build:
+
+  * routed     -> build_stuffed_chunks (which does its own card detection and
+                  puts the detected card sections FIRST)
+  * not routed -> _retrieve (the real assembly, HyDE off)
+
+Calling the pipeline instead of re-implementing it is the point: the previous
+version drifted from production precisely because it kept its own copy of the
+assembly. Same lesson as scripts/retrieval_probe.py — see docs/improvement-plan.md
+Fase 6.
 
 Usage (from backend/):
     PYTHONPATH=. TOP_K=10 python -m scripts.card_presence_probe
@@ -29,10 +48,17 @@ load_dotenv()
 
 from app.config import Settings
 from app.db import close_pool, get_conn, init_pool
-from app.rag.card_detect import detect_card_mentions, load_card_names
+from app.rag.card_detect import load_card_names
 from app.rag.embedder import Embedder
-from app.rag.pipeline import _KNOWN_KEYWORDS, _assemble_context, _detect_keywords
-from app.rag.retrieval import _CARD_NAME_RE, _VARIANT_SUFFIX_RE, hybrid_search, tagged_lookup
+from app.rag.retrieval import _CARD_NAME_RE, _VARIANT_SUFFIX_RE
+# Reuse rather than redefine: "would production route this, and what context
+# would it build?" must have exactly ONE answer in this repo, or the probes
+# drift apart and we are back where we started. Same for the bucket split.
+from scripts.retrieval_probe import (
+    _NoHydeProvider,
+    resolve_production_context,
+    split_by_route,
+)
 
 _EVAL_SET = Path(__file__).parent.parent / "data" / "eval_set.json"
 
@@ -114,32 +140,28 @@ def _resolve_corpus_version(pool, settings: Settings) -> str:
     return row[0]
 
 
-def reproduce_context(question, embedder, pool, settings, corpus_version, vocab):
-    """Rebuild the final context the generator would see, deterministically —
-    mirrors pipeline.answer_question MINUS the HyDE arm (which calls the LLM).
-    Returns (detected_card_tags, context_chunks)."""
-    auto_card_tags = [
-        c.lower() for c in detect_card_mentions(question, vocab, known_keywords=_KNOWN_KEYWORDS)
-    ]
-    directed_tags = list(dict.fromkeys(auto_card_tags))
-    auto_tags = _detect_keywords(question)
-    auto_only_tags = [t for t in auto_tags if t not in directed_tags]
+def reproduce_context(question, embedder, pool, settings, corpus_version, *, routing_enabled):
+    """Build the context production would ACTUALLY give the generator.
 
-    semantic = hybrid_search(
-        pool, embedder.encode(question), question, corpus_version,
-        top_k=settings.top_k, top_k_fetch=settings.top_k_fetch, rrf_k=settings.rrf_k,
+    Delegates the whole resolution to resolve_production_context — the ONE copy.
+    This function used to hold its own, and holding your own is precisely how
+    miss_diagnosis ended up reporting routed=True for a RAG measurement.
+    Returns (detected_card_tags, context_chunks, routed, stuffing_unavailable).
+    """
+    resolved = resolve_production_context(
+        question, embedder, pool, _NoHydeProvider(), settings, corpus_version, "probe",
+        routing_enabled=routing_enabled,
     )
-    explicit_chunks = tagged_lookup(pool, directed_tags, corpus_version) if directed_tags else []
-    auto_chunks = tagged_lookup(pool, auto_only_tags, corpus_version) if auto_only_tags else []
-    context = _assemble_context(explicit_chunks, semantic, auto_chunks, settings.top_k)
-    return directed_tags, context
+    detected_tags = list(dict.fromkeys(resolved.entities.auto_card_tags))
+    return detected_tags, resolved.chunks, resolved.routed, resolved.stuffing_unavailable
 
 
-def run_probe(questions, embedder, pool, settings, corpus_version, vocab) -> list[dict]:
+def run_probe(questions, embedder, pool, settings, corpus_version, *, routing_enabled) -> list[dict]:
     records = []
     for q in questions:
-        detected_tags, ctx = reproduce_context(
-            q["question"], embedder, pool, settings, corpus_version, vocab
+        detected_tags, ctx, routed, stuffing_unavailable = reproduce_context(
+            q["question"], embedder, pool, settings, corpus_version,
+            routing_enabled=routing_enabled,
         )
         present = [t for t in detected_tags if card_present(t, ctx)]
         retrieved = [n for n in (card_name_of(c) for c in ctx) if n]
@@ -148,6 +170,8 @@ def run_probe(questions, embedder, pool, settings, corpus_version, vocab) -> lis
             kinds[c.source_type] = kinds.get(c.source_type, 0) + 1
         records.append({
             "id": q.get("id", "?"),
+            "routed": routed,
+            "stuffing_unavailable": stuffing_unavailable,
             "detected": detected_tags,
             "present": present,
             "retrieved_cards": retrieved,
@@ -156,25 +180,57 @@ def run_probe(questions, embedder, pool, settings, corpus_version, vocab) -> lis
     return records
 
 
-def _print_report(records: list[dict], difficulty: str | None, top_k: int) -> None:
+def _print_report(records: list[dict], difficulty: str | None, top_k: int,
+                  *, routing_enabled: bool) -> None:
     agg = delivery_rate(records)
+    routed, retrieved_bucket = split_by_route(records)
     print("\n" + "=" * 64)
-    print("CARD-PRESENCE PROBE (deterministic — no LLM)")
+    print("CARD-PRESENCE PROBE (deterministic — no LLM, HyDE off)")
     print("=" * 64)
     print(f"  difficulty filter : {difficulty or 'ALL'}    TOP_K={top_k}")
+    print(f"  hard_query_routing: {'ON' if routing_enabled else 'OFF'}")
     print(f"  questions         : {len(records)}")
+
+    # A degraded run must never read as a healthy one. build_stuffed_chunks is
+    # never-raise: a missing/corrupt rulebook.md sends every routed question
+    # down the RAG path, and the delivery rate below would then describe a
+    # bucket that was never measured.
+    degraded = [r["id"] for r in records if r["stuffing_unavailable"]]
+    if degraded:
+        print(f"\n  *** WARNING: stuffing UNAVAILABLE for {len(degraded)} question(s) "
+              f"that should have routed.")
+        print("      build_stuffed_chunks returned None (missing/corrupt "
+              "data/processed/rulebook.md?).")
+        print("      They fell to the RAG path. The delivery rate below does "
+              "NOT describe the routed path.")
+        print(f"      Affected: {', '.join(degraded)}\n")
     print(f"  cards detected    : {agg['detected']}")
     print(f"  cards delivered   : {agg['present']}  (in final context)")
     print(f"  DELIVERY RATE     : {agg['rate']:.0%}  (detected cards that landed in context)")
     print(f"  no-card questions : {agg['no_card_questions']}  (named no detectable card)")
+
+    # Split the rate by path. A blended number hides which door is leaking, and
+    # these are two entirely different mechanisms: stuffing detects and prepends
+    # its own card sections; the RAG path relies on tagged_lookup + reserved
+    # slots in _assemble_context. A regression in either must be visible alone.
+    print("\n  --- by production path (the two mechanisms are unrelated) ---")
+    for label, bucket in (("routed  (stuffed)", routed), ("rag     (assembly)", retrieved_bucket)):
+        if not bucket:
+            print(f"  {label}: (none)")
+            continue
+        b = delivery_rate(bucket)
+        print(f"  {label}: {b['present']}/{b['detected']} cards "
+              f"({b['rate']:.0%}) over {len(bucket)} questions")
+
     print("\n  Per-question:")
     for r in records:
+        route = "STUFFED" if r["routed"] else "rag    "
         if not r["detected"]:
-            print(f"    {r['id']:10s} (no cards detected)  ctx={r['kinds']}")
+            print(f"    {r['id']:10s} {route} (no cards detected)  ctx={r['kinds']}")
             continue
         missing = [t for t in r["detected"] if t not in r["present"]]
         flag = "OK " if not missing else "MISS"
-        print(f"    {r['id']:10s} [{flag}] detected={r['detected']} "
+        print(f"    {r['id']:10s} {route} [{flag}] detected={r['detected']} "
               f"missing={missing or '-'}")
         print(f"               retrieved cards: {r['retrieved_cards'] or '(none)'}")
     print("=" * 64)
@@ -205,14 +261,22 @@ def main() -> None:
     print("Loading embedder (takes ~5-10s)...")
     embedder = Embedder.load(settings.model_name)
     vocab = load_card_names(pool, corpus_version)
-    print(f"  Embedder ready. Card vocabulary: {len(vocab)} names.\n")
+    print(f"  Embedder ready. Card vocabulary: {len(vocab)} names.")
+
+    # Read the real flag: the probe must classify questions the way the running
+    # deployment does, not the way we remember it being configured.
+    routing_enabled = settings.hard_query_routing
+    print(f"  hard_query_routing = {routing_enabled}\n")
 
     try:
-        records = run_probe(questions, embedder, pool, settings, corpus_version, vocab)
+        records = run_probe(
+            questions, embedder, pool, settings, corpus_version,
+            routing_enabled=routing_enabled,
+        )
     finally:
         close_pool(pool)
 
-    _print_report(records, difficulty, settings.top_k)
+    _print_report(records, difficulty, settings.top_k, routing_enabled=routing_enabled)
 
 
 if __name__ == "__main__":
