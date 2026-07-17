@@ -291,6 +291,12 @@ def _fake_settings(routing_on: bool):
     s.hard_query_routing = routing_on
     s.llm_model = None
     s.gemini_model = "gemini-flash-lite-latest"
+    # MagicMock attrs are truthy by default — pin the Phase 2 flags to the real
+    # Settings defaults (all off), or they silently enable features these tests
+    # are not about (and, for concise_reasoning, change the cache key).
+    s.semantic_cache_enabled = False
+    s.skip_hyde_when_routed = False
+    s.concise_reasoning = False
     return s
 
 

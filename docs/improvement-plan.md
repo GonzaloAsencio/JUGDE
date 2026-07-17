@@ -92,32 +92,73 @@ infinitos → quota de Gemini quemada).
 
 ## Fase 2 — Costo y latencia (proteger el free tier)
 
-### 2.1 HyDE adaptativo
-HyDE duplica las llamadas LLM en cada query no cacheada. Las preguntas fáciles ya
-recuperan bien con el brazo crudo.
-- [ ] Correr el brazo crudo primero; si el mejor coseno ≥ umbral (~0.75, calibrar
-      con eval set), saltear HyDE.
-- [ ] Medir: recall@5 no debe caer; llamadas LLM/query deben bajar.
+> Construida entera el 2026-07-14 (PRs #69/#70/#71, todas flag-off), después de
+> que **dos corridas de eval agotaran la cuota gratuita de Gemini** — la señal
+> concreta de que el free tier es frágil. Dos ítems del plan murieron por probe
+> ANTES de escribirse: la disciplina de "medir primero" se pagó sola.
 
-### 2.2 Modelo liviano para HyDE
-`GeminiProvider.hyde()` usa el MISMO modelo que la generación para escribir 2-3
-oraciones descartables.
-- [ ] Nuevo setting `hyde_model` (p. ej. flash-lite); default al modelo actual para
-      no romper nada.
+### 2.1 ~~HyDE adaptativo por umbral de coseno~~ ❌ MUERTA POR MEDICIÓN (2026-07-14)
+La idea era: correr el brazo crudo primero y saltear HyDE si el mejor coseno ≥
+~0.75. **El coseno crudo no discrimina si el retrieval encontró la regla gold.**
+Medido sobre el eval set (gratis, sin LLM):
+- eval-037: coseno **0.7007** (2º más alto de 40) → gold **fuera del top-15**.
+- eval-010: coseno **0.5277** (el más bajo) → gold en **rank 1**.
+- Las distribuciones hit/miss se solapan casi por completo (medianas 0.669 vs
+  0.617, ambas en ~0.53-0.75). El máximo absoluto del set es 0.7485.
+- Umbral ≥0.75 (el que proponía el plan) → saltea HyDE en **0/40** preguntas:
+  ahorro cero, la feature sería un no-op. Umbral bajo (~0.65) → le saca HyDE
+  justo a eval-015/017/026/030/037, las que más lo necesitan. No hay corte
+  defendible.
 
-### 2.3 Cache semántico (la mayor palanca de costo)
-El embedder es local (costo cero) y pgvector ya está. El cache exacto SHA-256
-pierde todas las paráfrasis.
-- [ ] Tabla `cached_questions(embedding vector, cache_key text, corpus_version,
-      prompt_version, ts)`.
-- [ ] En cache-miss exacto: ANN sobre preguntas cacheadas, umbral ≥0.95 → devolver
-      la respuesta cacheada.
-- [ ] Métrica: hit rate combinado (exacto + semántico).
+**Reemplazo que SÍ ahorra (implementado, #70, flag off):** una query ruteada
+**descarta su retrieval** (`chunks = stuffed`), así que el brazo HyDE que acaba
+de pagar se tira sin leer. `skip_hyde_when_routed` predice el ruteo ANTES del
+retrieval (posible ahora que `_detect_entities` corre al frente) y no hace la
+llamada. **Una llamada LLM menos por query hard**, sin tocar la respuesta.
+Único costo: `semantic_confidence` de una query ruteada pasa a calcularse solo
+con el brazo crudo (número ya de significado dudoso en ruteadas) — por eso el flag.
 
-### 2.4 Paralelizar los brazos de retrieval
-Hoy: HyDE → embed → search → search → generate, todo secuencial.
-- [ ] `ThreadPoolExecutor(2)`: brazo crudo (embed+search) en paralelo con la
-      llamada HyDE. Ahorra ~1s de p50 sin tocar el modelo de concurrencia.
+### 2.2 Modelo liviano para HyDE — ✅ IMPLEMENTADO (#70, flag off)
+El pasaje HyDE son 2-3 oraciones descartables que sólo se embeben, nunca se
+muestran. No necesita el modelo de respuesta.
+- [x] Setting `hyde_model`; sin setear → cae al modelo principal (byte-idéntico).
+- [x] Test que fija que el modelo barato NO puede filtrarse al camino de respuesta.
+
+### 2.3 Cache semántico — ✅ IMPLEMENTADO, PERO SÓLO PARA QUERIES NO-HARD (#69, flag off)
+El cache exacto es SHA-256, así que toda paráfrasis paga una llamada LLM entera.
+Postgres guarda `embedding → cache_key` (migración 007, HNSW); la RESPUESTA sigue
+en Redis. Un hit semántico = lookup de puntero + GET normal. Cuesta un embed
+local, cero LLM.
+
+**El probe (`scripts/semantic_cache_probe.py`) mató la versión global de la
+feature y le dio forma a la que sobrevivió.** Encontró un par adversarial DENTRO
+del propio eval set:
+- eval-013: *"...juego Tideturner **en el turno de mi oponente**"* → **SÍ**
+- eval-014: *"...juego Tideturner **en mi propio turno**"* → **NO**
+- **Coseno: 0.982.** Dos palabras de diferencia, rulings **opuestos** (383.3.d.1
+  cuelga toda la respuesta de quién es el turn player).
+
+Con techo 0.982 y piso de paráfrasis 0.874, **no existe umbral que sea a la vez
+seguro y útil**: la banda es vacía. Un cache semántico global en este dominio
+sirve rulings equivocados, punto.
+
+Restringido a preguntas **no-hard** el techo se derrumba a **0.763** contra el
+mismo piso 0.874 → banda amplia. No es suerte: las preguntas de reglas se juegan
+en micro-detalles discriminativos (de quién es el turno, qué zona, ready vs
+exhausted) que el embedding aplana — y esos detalles son exactamente lo que hace
+hard a una pregunta. Así que `is_hard_query`, que ya existía para rutear al
+thinking model, **hace de gate de seguridad del cache**: las hard no se sirven
+NI se guardan.
+- [x] Umbral default **0.85**, dentro de una banda MEDIDA, no adivinada.
+- [x] Namespace: el ANN filtra corpus_version + prompt_version + directive_key.
+- [x] Frescura + auto-sanación de punteros que Redis evictó antes de tiempo.
+- [ ] Gate de eval: hit rate ↑ con **cero** falsos positivos leídos a mano.
+
+### 2.4 ~~Paralelizar los brazos de retrieval~~ ❌ DESCARTADA (2026-07-14)
+Mutuamente excluyente con 2.1: paralelizar obliga a llamar SIEMPRE a HyDE
+(ahorra ~1s), mientras que el objetivo real es NO llamarlo (ahorra cuota). La
+cuota es el dolor; ganó 2.1. Reconsiderar sólo si la latencia pasa a ser el
+cuello de botella y la cuota deja de serlo.
 
 ### 2.5 Streaming SSE (latencia percibida)
 Ya identificado en FUTURE_WORK como short-term. Con respuestas que llevan un
@@ -128,11 +169,22 @@ mejora de UX más rentable pendiente.
 - [ ] Resolver la pieza bloqueante ya anotada: las respuestas cacheadas también
       deben "streamear" (no aparecer instantáneas) para no generar un salto de UX.
 
-### 2.6 Acotar el Reasoning en preguntas simples
-El "Reasoning:" obligatorio paga tokens de salida incluso en preguntas triviales.
-- [ ] Probar "máximo 3 bullets de reasoning" en el prompt y correr el harness: si
-      el bucket hard no cae, queda. (Alternativa: exigir reasoning largo solo en
-      queries ruteadas como hard, ver 4.2.)
+### 2.6 Acotar el Reasoning en preguntas simples — ✅ IMPLEMENTADO (#71, flag off)
+El "Reasoning:" obligatorio (regla 7) es lo que levanta el bucket hard, pero en
+un lookup de una sola regla paga tokens de salida — el lado caro — para repetir
+lo obvio. Se tomó la variante que el propio plan sugería como alternativa
+(reasoning largo sólo donde hace falta), no el "máximo 3 bullets" a secas.
+- [x] `_CONCISE_REASONING`: cap de 3 bullets en queries **ni ruteadas ni
+      scaffoldeadas**. ACOTA, nunca elimina — sacar el Reasoning desharía los
+      few-shots de encadenamiento (v6/v7) y rompería el parseo de `Answer:`.
+- [x] Exclusiones fijadas por test: `needs_scaffold()` gana; las ruteadas nunca
+      lo reciben (fueron al thinking model justamente porque necesitan razonar).
+- [x] Namespace de cache propio (`+concise`, como `+hard-routing`): una respuesta
+      concisa y una verbosa nunca colisionan. Sufijar en vez de bumpear
+      `prompt_version` deja la key flag-off byte-idéntica.
+- [ ] **El flag más riesgoso de la Fase 2** — el único que cambia lo que se le
+      PIDE al modelo. Gate: tokens de salida ↓ **y** bucket hard sin moverse.
+      Si el hard cae, muere.
 
 ---
 

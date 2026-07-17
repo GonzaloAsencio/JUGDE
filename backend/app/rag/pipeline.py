@@ -11,6 +11,7 @@ from app.config import Settings
 from app.observability import get_logger
 from app.rag.embedder import Embedder
 from app.rag.generation import (
+    _CONCISE_REASONING,
     _MULTI_CARD_SCAFFOLD,
     _SAFE_FALLBACK,
     has_empty_answer_section,
@@ -611,6 +612,13 @@ def answer_question(
         settings.prompt_version + "+hard-routing"
         if settings.hard_query_routing else settings.prompt_version
     )
+    # Same reasoning for 2.6: concise_reasoning changes what the model is ASKED,
+    # so a verbose answer and a concise one must never share a key. Suffixing
+    # here (rather than bumping prompt_version) keeps the flag-off key
+    # byte-identical, so turning the flag ON is what starts cold — not everyone
+    # else's cache.
+    if settings.concise_reasoning:
+        cache_prompt_version += "+concise"
     cache_key = make_cache_key(question, corpus_version, card_mentions, cache_prompt_version)
 
     cached = _try_cached_response(cache_key, settings, query_id, t0)
@@ -717,7 +725,16 @@ def answer_question(
             confidence=0.0,
         )
 
-    extra_system = _MULTI_CARD_SCAFFOLD if needs_scaffold(resolved_question, card_count) else ""
+    # The scaffold ALWAYS wins: a question that needs it is by definition not the
+    # simple lookup 2.6 targets, so the two are mutually exclusive and can never
+    # both be appended. Routed queries are excluded too — they go to the thinking
+    # model precisely because they need room to reason.
+    if needs_scaffold(resolved_question, card_count):
+        extra_system = _MULTI_CARD_SCAFFOLD
+    elif settings.concise_reasoning and not routed:
+        extra_system = _CONCISE_REASONING
+    else:
+        extra_system = ""
     answer = _generate_guarded(
         hard_provider if routed else provider,
         resolved_question, chunks, query_id, extra_system=extra_system,

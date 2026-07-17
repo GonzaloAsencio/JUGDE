@@ -181,6 +181,20 @@ class Settings(BaseSettings):
     # Bumping invalidates the response cache — the version is part of the key.
     prompt_version: str = "v7"
 
+    # 2.6 concise reasoning: rule 7 makes a Reasoning section mandatory, which is
+    # what lifts the hard bucket — but on a direct one-rule lookup it just pays
+    # output tokens (the expensive side) to restate the obvious. When on, simple
+    # queries (not routed, no multi-card scaffold) get a 3-bullet cap. The
+    # section is CAPPED, never removed: dropping it would undo the v6/v7
+    # chaining gains and break the Reasoning:/Answer: parsing.
+    #
+    # Default OFF, and this is the riskiest flag in Phase 2 — it is the only one
+    # that changes what the model is ASKED, so it can only be judged by the eval
+    # (output tokens down AND the hard bucket unmoved). It carries its own cache
+    # namespace (see pipeline.answer_question) so flipping it never serves
+    # verbose answers as concise ones or vice versa.
+    concise_reasoning: bool = False
+
     # DB connection pool sizing. maxconn must not exceed the database's
     # max_connections; a worker that finds the pool exhausted gets a fast 503
     # (see the query handler) instead of blocking.
