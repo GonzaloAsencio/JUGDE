@@ -42,15 +42,6 @@ class Settings(BaseSettings):
     # 2026-07-13 (eval-014 cites 383.3.d.1, 23.6s, zero Gemini 429s in soak).
     # Gemini-only: requires llm_provider=gemini.
     hard_query_routing: bool = True
-    # 3.11.1a: opens the (1 card, 1 keyword) cell of is_hard_query. Probed
-    # 3W/0L with zero product code (scripts/routing_threshold_probe.py):
-    # brings eval-020/030/037's missing gold rules into the context, costs no
-    # gold ref anywhere, coverage 22/26 -> 25/26. OFF until a real eval proves
-    # the extra context yields better ANSWERS — the probe measures presence,
-    # not correctness. Flipping it moves routing 21/40 -> 27/40 on the eval
-    # set against a ~20 req/day free tier, and the eval set is enriched with
-    # hard questions so that ratio does NOT predict production traffic.
-    hard_routing_relaxed: bool = False
     hard_gemini_model: str = "gemini-3.5-flash"
     # Routed calls carry ~80K prompt tokens and think before answering: the
     # 2026-07-13 probe measured 18-32s on a small sample, but the 2026-07-14

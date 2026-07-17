@@ -23,7 +23,7 @@ from app.rag.provider import LLMProvider
 from app.rag.card_detect import detect_card_mentions, detect_champion_mentions, load_card_names
 from app.rag.reranker import rerank
 from app.rag.retrieval import family_lookup, fuse_results, hybrid_search, tagged_lookup
-from app.rag.routing import RULEBOOK_CHUNK_ID, build_stuffed_chunks, is_hard_query, load_champion_tag_index
+from app.rag.routing import RULEBOOK_CHUNK_ID, build_stuffed_chunks, is_hard_query, load_champion_tag_index, should_route
 from app.rag.rules import extract_rule_codes
 from app.rag.schemas import Citation, QueryResponse
 
@@ -628,16 +628,6 @@ def answer_question(
     # else's cache.
     if settings.concise_reasoning:
         cache_prompt_version += "+concise"
-    # Same reasoning again for 3.11.1a, and it earns the suffix more than the two
-    # above: hard_routing_relaxed moves the (1 card, 1 keyword) cell into the
-    # routed bucket, which changes the CONTEXT (stuffed rulebook) *and* the MODEL
-    # (thinking provider). Without this, flipping the flag serves up to
-    # cache_ttl_s of pre-flip non-routed answers for precisely the questions the
-    # flag exists to route — and the flip's own verification would read the old
-    # mode. The semantic cache rides the same namespace (_try_semantic_response
-    # and remember both take cache_prompt_version), so this covers it too.
-    if settings.hard_routing_relaxed:
-        cache_prompt_version += "+relaxed"
     cache_key = make_cache_key(question, corpus_version, card_mentions, cache_prompt_version)
 
     cached = _try_cached_response(cache_key, settings, query_id, t0)
@@ -665,16 +655,16 @@ def answer_question(
     will_route = False
     if semantic_possible or (settings.skip_hyde_when_routed and routing_possible):
         entities = _detect_entities(base_question, db_pool, corpus_version, query_id)
-        is_hard = is_hard_query(
+        would_route = should_route(
+            routing_enabled=routing_possible,
             card_count=entities.card_count(mention_tags),
             keyword_count=len(_detect_keywords(base_question)),
-            relaxed=settings.hard_routing_relaxed,
         )
         # Predicts the routing decision made below. The only way they can
         # disagree is build_stuffed_chunks returning None (a missing data file),
         # in which case that query degrades to raw-only retrieval — acceptable,
         # since a missing rulebook.md is a broken deploy, not a normal path.
-        will_route = settings.skip_hyde_when_routed and routing_possible and is_hard
+        will_route = settings.skip_hyde_when_routed and would_route
 
         if semantic_possible:
             semantic_eligible = _semantic_cache_is_safe(
@@ -706,10 +696,15 @@ def answer_question(
     # card match), whose meaning doesn't change with the routed context.
     # hard_provider is None whenever the flag is off (see main.py), so the
     # normal path stays byte-identical.
+    # The gate itself lives in routing.should_route — the probes import THAT
+    # function, so what they report and what runs here cannot disagree. The
+    # hard_provider check is the runtime half the probes can't model; it is
+    # redundant with the flag by construction (create_hard_provider returns None
+    # exactly when the flag is off) and stays as a None-safety guard.
     routed = False
-    if hard_provider is not None and settings.hard_query_routing and is_hard_query(
+    if hard_provider is not None and should_route(
+        routing_enabled=settings.hard_query_routing,
         card_count=card_count, keyword_count=len(_detect_keywords(resolved_question)),
-        relaxed=settings.hard_routing_relaxed,
     ):
         stuffed = build_stuffed_chunks(
             resolved_question,

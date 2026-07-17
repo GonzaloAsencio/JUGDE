@@ -88,8 +88,7 @@ def _fake_settings(corpus_version: str = "v1"):
     s.hyde_model = None
     s.concise_reasoning = False
     # Truthy-MagicMock trap: an unpinned flag silently runs these tests with the
-    # feature ON. 3.11.1a's relaxed threshold ships off, so pin it off here.
-    s.hard_routing_relaxed = False
+    # feature ON. Every new Settings flag must be pinned here to its real default.
     return s
 
 

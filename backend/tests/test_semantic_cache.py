@@ -47,26 +47,21 @@ def test_plain_rules_question_is_cacheable():
     assert _semantic_cache_is_safe(card_count=0, keyword_count=1) is True
 
 
-def test_cache_gate_ignores_the_routing_relaxation():
-    """The cache gate must NOT follow hard_routing_relaxed (plan 3.11.1a).
+def test_cache_gate_is_settled_by_its_own_measurement_not_routing_knobs():
+    """The cache gate and the routing gate share is_hard_query for UNRELATED
+    reasons: routing asks "does this need the whole rulebook?", the cache asks
+    "can two near-identical phrasings have opposite rulings?" — settled by its
+    OWN measurement (the 0.763 ceiling vs 0.874 floor documented above).
 
-    Both gates call is_hard_query, but for unrelated reasons: routing asks "does
-    this need the whole rulebook?", the cache asks "can two near-identical
-    phrasings have opposite rulings?" — a question settled by its OWN
-    measurement (the 0.763 ceiling vs 0.874 floor documented above). The
-    relaxation was justified by CONTEXT COVERAGE, which says nothing about cache
-    safety, so it stops at the routing call site.
-
-    Coupling them wouldn't be unsafe (relaxed marks MORE questions hard, so the
-    cacheable set only shrinks — a subset of a measured-safe set stays safe) but
-    it would silently cost cache hits for a reason that has nothing to do with
-    the cache. This test exists so a future "simplification" that threads the
-    flag through here fails loudly instead.
+    A routing knob once existed that widened the routed set (3.11.1a's relaxed
+    threshold, since removed with its lever), and this test pinned that the
+    cache gate did NOT follow it. The pin stays: the (1 card, 1 keyword) cell
+    is cacheable, and any future routing knob that reclassifies it must not
+    silently shrink the cacheable set for a reason that has nothing to do with
+    cache safety.
     """
     from app.rag.pipeline import _semantic_cache_is_safe
 
-    # eval-020's shape: relaxed routing sends it to the thinking model, but it
-    # stays cacheable, exactly as before the flag existed.
     assert _semantic_cache_is_safe(card_count=1, keyword_count=1) is True
 
 

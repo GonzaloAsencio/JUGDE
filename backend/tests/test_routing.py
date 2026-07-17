@@ -50,12 +50,10 @@ def test_keywords_without_a_card_are_not_hard():
 def test_one_card_one_keyword_is_not_hard():
     from app.rag.routing import is_hard_query
 
-    # eval-020/030/037 shape. The original note here said eval-030 was "answered
-    # correctly today by keyword family completion", so routing it would spend
-    # quota for nothing — that was WRONG, and measured so on 2026-07-16: family
-    # completion brings 809.1/809.1.a but NOT 365.1, so eval-030 is missing a
-    # gold rule. This cell is exactly what `relaxed=True` opens (plan 3.11.1a);
-    # the default stays False until the generation gate says otherwise.
+    # eval-020/037 shape. A relaxed variant opened this cell (plan 3.11.1a),
+    # won retrieval 3W/0L, and LOST the generation gate 0W/2L on 2026-07-17 —
+    # the stuffed context turned correct answers into "I don't have enough
+    # information". The knob was removed with the lever; this cell stays out.
     assert is_hard_query(card_count=1, keyword_count=1) is False
 
 
@@ -63,53 +61,6 @@ def test_no_signals_is_not_hard():
     from app.rag.routing import is_hard_query
 
     assert is_hard_query(card_count=0, keyword_count=0) is False
-
-
-# ---------------------------------------------------------------------------
-# relaxed=True — plan 3.11.1 lever (a), flag OFF by default
-#
-# Probed 3W/0L before any of this was written (scripts/routing_threshold_probe):
-# opening the (1 card, 1 keyword) cell brings eval-020's 383.3.d, eval-030's
-# 365.1 and eval-037's 131.4+425 into the context, and costs no gold ref
-# anywhere. Coverage 22/26 -> 25/26. The generation gate still owes a real eval
-# run, so the flag ships OFF.
-# ---------------------------------------------------------------------------
-
-def test_relaxed_routes_one_card_one_keyword():
-    from app.rag.routing import is_hard_query
-
-    assert is_hard_query(card_count=1, keyword_count=1, relaxed=True) is True
-
-
-def test_relaxed_still_requires_a_card():
-    from app.rag.routing import is_hard_query
-
-    # The card requirement is what keeps "when do I draw and when do I discard?"
-    # off the thinking model — the keyword vocabulary is full of everyday words.
-    # Relaxing the keyword count must never relax this.
-    assert is_hard_query(card_count=0, keyword_count=1, relaxed=True) is False
-    assert is_hard_query(card_count=0, keyword_count=5, relaxed=True) is False
-
-
-def test_relaxed_defaults_to_off():
-    from app.rag.routing import is_hard_query
-
-    # The regression guarantee: callers that don't opt in are byte-identical.
-    assert is_hard_query(card_count=1, keyword_count=1) is False
-
-
-def test_relaxed_only_moves_the_one_card_one_keyword_cell():
-    from app.rag.routing import is_hard_query
-
-    # Pins the blast radius to a single cell. Anything else flipping means the
-    # flag changes more than it was measured to change.
-    diffs = [
-        (c, k)
-        for c in range(5) for k in range(5)
-        if is_hard_query(card_count=c, keyword_count=k)
-        != is_hard_query(card_count=c, keyword_count=k, relaxed=True)
-    ]
-    assert diffs == [(1, 1)]
 
 
 # ---------------------------------------------------------------------------
@@ -357,11 +308,6 @@ def _fake_settings(routing_on: bool):
     s.semantic_cache_enabled = False
     s.skip_hyde_when_routed = False
     s.concise_reasoning = False
-    # 3.11.1a. Without this the pipeline tests below run with relaxed
-    # EFFECTIVELY ON (truthy MagicMock), so the branch's headline claim —
-    # "flag off is byte-identical" — would be asserted in the one configuration
-    # that does not test it.
-    s.hard_routing_relaxed = False
     return s
 
 
@@ -492,41 +438,3 @@ def test_routed_rulebook_citation_carries_no_rule_codes():
     assert len(rulebook_cites[0].content_preview) <= 200
 
 
-def test_cache_namespace_is_keyed_on_the_relaxed_flag():
-    """Same rule as the routing flag above, for the same reason.
-
-    hard_routing_relaxed moves the (1 card, 1 keyword) cell into the routed
-    bucket: those questions get a different CONTEXT (the stuffed rulebook) and a
-    different MODEL (the thinking provider). That is a strictly larger delta
-    than concise_reasoning, which already earns its own suffix. Without one, the
-    two-step flip serves up to cache_ttl_s of pre-flip, non-routed answers for
-    exactly the questions the flag exists to route — and the flip's own
-    verification would be reading the old mode.
-    """
-    from tests.conftest import FakeEmbedder
-
-    captured = {}
-
-    def _capture(question, cv, mentions, pv):
-        captured.setdefault("pvs", []).append(pv)
-        return f"key-{pv}"
-
-    provider = _RecordingProvider()
-    for relaxed in (False, True):
-        settings = _fake_settings(routing_on=True)
-        settings.hard_routing_relaxed = relaxed
-        with patch("app.rag.pipeline.make_cache_key", side_effect=_capture):
-            with patch("app.rag.pipeline.hybrid_search", return_value=[_make_chunk()]):
-                with patch("app.rag.pipeline.tagged_lookup", return_value=[]):
-                    with patch("app.rag.pipeline.get_cached", return_value=None):
-                        with patch("app.rag.pipeline.set_cached"):
-                            from app.rag.pipeline import answer_question
-                            answer_question(
-                                _EASY_QUESTION, FakeEmbedder(), MagicMock(), provider,
-                                settings,
-                            )
-
-    pv_off, pv_on = captured["pvs"]
-    assert pv_off == "v6+hard-routing"   # relaxed off: key unchanged from 4.2/4.3
-    assert pv_on == "v6+hard-routing+relaxed"
-    assert pv_off != pv_on

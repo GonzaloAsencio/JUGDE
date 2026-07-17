@@ -140,8 +140,7 @@ def _resolve_corpus_version(pool, settings: Settings) -> str:
     return row[0]
 
 
-def reproduce_context(question, embedder, pool, settings, corpus_version, *,
-                      routing_enabled, relaxed):
+def reproduce_context(question, embedder, pool, settings, corpus_version, *, routing_enabled):
     """Build the context production would ACTUALLY give the generator.
 
     Delegates the whole resolution to resolve_production_context — the ONE copy.
@@ -151,19 +150,18 @@ def reproduce_context(question, embedder, pool, settings, corpus_version, *,
     """
     resolved = resolve_production_context(
         question, embedder, pool, _NoHydeProvider(), settings, corpus_version, "probe",
-        routing_enabled=routing_enabled, relaxed=relaxed,
+        routing_enabled=routing_enabled,
     )
     detected_tags = list(dict.fromkeys(resolved.entities.auto_card_tags))
     return detected_tags, resolved.chunks, resolved.routed, resolved.stuffing_unavailable
 
 
-def run_probe(questions, embedder, pool, settings, corpus_version, *,
-              routing_enabled, relaxed) -> list[dict]:
+def run_probe(questions, embedder, pool, settings, corpus_version, *, routing_enabled) -> list[dict]:
     records = []
     for q in questions:
         detected_tags, ctx, routed, stuffing_unavailable = reproduce_context(
             q["question"], embedder, pool, settings, corpus_version,
-            routing_enabled=routing_enabled, relaxed=relaxed,
+            routing_enabled=routing_enabled,
         )
         present = [t for t in detected_tags if card_present(t, ctx)]
         retrieved = [n for n in (card_name_of(c) for c in ctx) if n]
@@ -183,7 +181,7 @@ def run_probe(questions, embedder, pool, settings, corpus_version, *,
 
 
 def _print_report(records: list[dict], difficulty: str | None, top_k: int,
-                  *, routing_enabled: bool, relaxed: bool) -> None:
+                  *, routing_enabled: bool) -> None:
     agg = delivery_rate(records)
     routed, retrieved_bucket = split_by_route(records)
     print("\n" + "=" * 64)
@@ -191,7 +189,6 @@ def _print_report(records: list[dict], difficulty: str | None, top_k: int,
     print("=" * 64)
     print(f"  difficulty filter : {difficulty or 'ALL'}    TOP_K={top_k}")
     print(f"  hard_query_routing: {'ON' if routing_enabled else 'OFF'}")
-    print(f"  relaxed threshold : {'ON' if relaxed else 'OFF'}")
     print(f"  questions         : {len(records)}")
 
     # A degraded run must never read as a healthy one. build_stuffed_chunks is
@@ -266,23 +263,20 @@ def main() -> None:
     vocab = load_card_names(pool, corpus_version)
     print(f"  Embedder ready. Card vocabulary: {len(vocab)} names.")
 
-    # Read the real flags: the probe must classify questions the way the running
+    # Read the real flag: the probe must classify questions the way the running
     # deployment does, not the way we remember it being configured.
     routing_enabled = settings.hard_query_routing
-    relaxed = settings.hard_routing_relaxed
-    print(f"  hard_query_routing   = {routing_enabled}")
-    print(f"  hard_routing_relaxed = {relaxed}\n")
+    print(f"  hard_query_routing = {routing_enabled}\n")
 
     try:
         records = run_probe(
             questions, embedder, pool, settings, corpus_version,
-            routing_enabled=routing_enabled, relaxed=relaxed,
+            routing_enabled=routing_enabled,
         )
     finally:
         close_pool(pool)
 
-    _print_report(records, difficulty, settings.top_k,
-                  routing_enabled=routing_enabled, relaxed=relaxed)
+    _print_report(records, difficulty, settings.top_k, routing_enabled=routing_enabled)
 
 
 if __name__ == "__main__":

@@ -32,7 +32,7 @@ _TYPE_LEGEND_RE = re.compile(r"^\*\*Type\*\*:\s*Legend\b", re.MULTILINE)
 _TAGS_LINE_RE = re.compile(r"^\*\*Tags\*\*:\s*(.+)$", re.MULTILINE)
 
 
-def is_hard_query(*, card_count: int, keyword_count: int, relaxed: bool = False) -> bool:
+def is_hard_query(*, card_count: int, keyword_count: int) -> bool:
     """Deterministic hard classifier — no LLM, no I/O.
 
     Thresholds calibrated on the annotated eval set (2026-07-12): cards >= 2
@@ -45,28 +45,35 @@ def is_hard_query(*, card_count: int, keyword_count: int, relaxed: bool = False)
     so requiring the card costs no target coverage. Question length was also
     evaluated and rejected (no additional targets, more over-routing).
 
-    *relaxed* (plan 3.11.1a, flag OFF by default) opens the single
-    (1 card, 1 keyword) cell. Probed 3W/0L with zero product code before this
-    parameter existed: it brings eval-020's 383.3.d, eval-030's 365.1 and
-    eval-037's 131.4+425 into the context and costs no gold ref anywhere
-    (coverage 22/26 -> 25/26). The newly routed questions carry keywords like
-    'temporary', 'deflect', 'showdown' — real mechanics, so "one card + one
-    mechanic" reads as a genuine interaction question. The card requirement is
-    untouched, for the everyday-vocabulary reason above.
-
-    Cost, unresolved on purpose: it moves routing 21/40 -> 27/40 on the eval
-    set, and gemini-3.5-flash is ~20 req/day. The eval set is enriched with
-    hard questions, so that ratio does NOT predict production traffic. The flag
-    stays off until a real eval run proves the extra context also produces
-    better ANSWERS — presence in context is not correctness.
-
-    Callers must opt in deliberately: _semantic_cache_is_safe shares this
-    classifier for an unrelated reason (adversarial near-duplicates) settled by
-    its own measurement, so it does NOT pass relaxed. See
-    tests/test_semantic_cache.py::test_cache_gate_ignores_the_routing_relaxation.
+    A relaxed variant that opened the (1 card, 1 keyword) cell existed briefly
+    (plan 3.11.1a): it won the retrieval gate 3W/0L and then LOST the generation
+    gate 0W/2L — the stuffed context turned correct answers into "I don't have
+    enough information". Presence in context is not correctness. The knob was
+    removed with the lever; the plan holds the full record.
     """
-    keyword_floor = 1 if relaxed else 2
-    return card_count >= 2 or (card_count >= 1 and keyword_count >= keyword_floor)
+    return card_count >= 2 or (card_count >= 1 and keyword_count >= 2)
+
+
+def should_route(*, routing_enabled: bool, card_count: int, keyword_count: int) -> bool:
+    """THE routing gate: does this query swap retrieval for the stuffed rulebook?
+
+    Single copy, owned here, called by pipeline.answer_question AND imported as
+    retrieval_probe.routing_decision (identity, not a mirror). It used to be an
+    inline boolean in answer_question with a hand-copied mirror in the probe —
+    and the mirror drifted the first time the classifier grew a knob (2026-07-17,
+    `relaxed`): every probe reported a routing verdict production did not make.
+    Same lesson as resolve_production_context: one function means the two
+    cannot disagree by construction.
+
+    *routing_enabled* is the flag (settings.hard_query_routing). The pipeline
+    additionally requires hard_provider — but create_hard_provider returns None
+    exactly when the flag is off and fail-closes at startup when the flag is on
+    without a key (config._check_provider_fields), so at runtime the flag IS
+    the provider's existence. Probes pass the flag they read from Settings.
+    """
+    return routing_enabled and is_hard_query(
+        card_count=card_count, keyword_count=keyword_count
+    )
 
 
 @lru_cache(maxsize=1)
