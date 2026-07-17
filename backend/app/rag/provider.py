@@ -23,12 +23,17 @@ class GeminiProvider(LLMProvider):
     def __init__(
         self, client, model: str, temperature: float, timeout_s: float,
         max_output_tokens: int = 1024,
+        hyde_model: str | None = None,
     ) -> None:
         self._client = client
         self._model = model
         self._temperature = temperature
         self._timeout_s = timeout_s
         self._max_output_tokens = max_output_tokens
+        # 2.2: HyDE writes 2-3 throwaway sentences that are only ever embedded,
+        # never shown. It does not need the answer model. Defaults to it so an
+        # unset hyde_model is byte-identical to the pre-2.2 behaviour.
+        self._hyde_model = hyde_model or model
 
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_gemini, build_prompt
@@ -44,7 +49,7 @@ class GeminiProvider(LLMProvider):
     def hyde(self, question: str) -> str:
         from app.rag.generation import _hyde_gemini
         try:
-            return _hyde_gemini(self._client, self._model, question)
+            return _hyde_gemini(self._client, self._hyde_model, question)
         except Exception:
             return ""
 
@@ -75,6 +80,7 @@ class OpenAICompatProvider(LLMProvider):
         temperature: float,
         timeout_s: float,
         max_output_tokens: int = 1024,
+        hyde_model: str | None = None,
     ) -> None:
         self._base_url = base_url
         self._api_key = api_key
@@ -82,6 +88,8 @@ class OpenAICompatProvider(LLMProvider):
         self._temperature = temperature
         self._timeout_s = timeout_s
         self._max_output_tokens = max_output_tokens
+        # See GeminiProvider: HyDE output is embedded, never shown.
+        self._hyde_model = hyde_model or model
 
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_openai_compat_raw
@@ -111,7 +119,7 @@ class OpenAICompatProvider(LLMProvider):
             question,
             base_url=self._base_url,
             api_key=self._api_key,
-            model=self._model,
+            model=self._hyde_model,
         )
 
 
@@ -147,6 +155,7 @@ def create_provider(settings, llm_client=None) -> LLMProvider:
             temperature=settings.gemini_temperature,
             timeout_s=settings.gemini_timeout_s,
             max_output_tokens=settings.max_output_tokens,
+            hyde_model=settings.hyde_model,
         )
     return GeminiProvider(
         client=llm_client,
@@ -154,4 +163,5 @@ def create_provider(settings, llm_client=None) -> LLMProvider:
         temperature=settings.gemini_temperature,
         timeout_s=settings.gemini_timeout_s,
         max_output_tokens=settings.max_output_tokens,
+        hyde_model=settings.hyde_model,
     )
