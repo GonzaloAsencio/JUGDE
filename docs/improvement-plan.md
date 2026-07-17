@@ -470,10 +470,18 @@ bajo CONTROL al menos razonaba desde 820, bajo TREATMENT no contestó nada.
 
 **⚠️ CONFOUND — el gate NO identifica el mecanismo.** El TREATMENT cambia DOS
 cosas a la vez: el contexto (RAG → rulebook stuffeado) **y** el modelo
-(`gpt-oss-120b` → `gemini-3.5-flash`). La regresión puede ser del contexto, del
-modelo, o de los dos. El gate responde la pregunta de shipping ("¿flipeamos?" →
-NO, sin ambigüedad) y NADA más. No leer "el rulebook stuffeado diluye" como
-probado: no lo está.
+(`gemini-flash-lite-latest` → `gemini-3.5-flash`). La regresión puede ser del
+contexto, del modelo, o de los dos. El gate responde la pregunta de shipping
+("¿flipeamos?" → NO, sin ambigüedad) y NADA más. No leer "el rulebook stuffeado
+diluye" como probado: no lo está.
+
+> **Corrección (2026-07-17).** La primera redacción de este bloque decía que el
+> CONTROL corrió en `gpt-oss-120b`. **Falso, y leído del log.** Con
+> `llm_provider='gemini'`, `create_provider` devuelve
+> `GeminiProvider(model=settings.gemini_model)` = `gemini-flash-lite-latest`;
+> `gpt-oss-120b` (`llm_model`) NO lo toca ese provider. La telemetría de
+> `pipeline.py` re-deriva el modelo de `settings` en vez de preguntárselo al
+> provider que generó, y miente. Ver "Bug de telemetría" abajo.
 
 **Predicción registrada antes de correr: FALLÓ.** Se predijo que eval-037 ganaba
 (confianza media-alta) con mecanismo identificado: su respuesta razonaba desde
@@ -496,9 +504,78 @@ retrieval, que mide presencia en contexto directo y no vía citations.
 eval ya rutean. Si el camino ruteado puede convertir una respuesta correcta en
 "no tengo información", la pregunta abierta es si el routing YA shippeado está
 lastimando preguntas que se contestaban bien sin él. Medido acá: 2 de 4 correctas
-se rompieron al rutear. **6 preguntas no prueban nada sobre las 21** y el
-confound del modelo sigue sin resolver. Necesita su propio gate: mismo modelo en
-ambos brazos, variando SOLO el contexto.
+se rompieron al rutear. **6 preguntas no prueban nada sobre las 21.**
+
+#### Aislamiento del confound (2026-07-17) — el CONTEXTO es el culpable, al menos una vez
+
+Se corrió la celda faltante: **contexto RAG + el modelo, presupuesto y timeout
+EXACTOS del brazo ruteado**, dejando el contexto como única variable.
+
+| eval-016 | contexto RAG | rulebook stuffeado |
+|---|---|---|
+| `flash-lite`, 1024 tok | correct | — |
+| `gemini-3.5-flash`, 8192 tok, 90s | ✅ **correct** | ❌ **wrong** (`no_info_despite_context`) |
+
+**Mismo modelo, mismo presupuesto de salida, mismo timeout. Solo cambia el
+contexto.** Con RAG acierta; con el rulebook COMPLETO contesta "I don't have
+enough information". **El modelo queda exonerado para eval-016: el rulebook
+stuffeado es lo que rompe.** Es una sola pregunta — no generaliza a las 21 — pero
+el confound está muerto para ella y el mecanismo pasó de hipótesis a observado.
+
+**eval-018 quedó SIN MEDIR:** dos intentos, dos `503 UNAVAILABLE` de Gemini
+("high demand"). Fallo de proveedor, no rate limit. Por la regla del gate, un
+`error` no es resultado. Pendiente.
+
+**⚠️ Trampa metodológica que casi se come este experimento.** El primer intento
+de la celda del medio corrió `gemini-3.5-flash` con `max_output_tokens=1024` (el
+presupuesto del provider MAIN) y dio `partial/partial`, que se leyó como "el
+modelo también degrada". **Era truncamiento, no razonamiento**: el judge dijo
+literal *"the answer begins to cite Evelynn's text but is cut off"*. El propio
+`config.py` lo advierte tres líneas arriba: *"Thinking models spend the output
+budget on thoughts; 1024 strangles them"* — por eso `hard_max_output_tokens=8192`.
+Aislar el contexto exige clonar **todo** lo demás del brazo ruteado (modelo,
+tokens, timeout), no solo el modelo. Un brazo de control a medio clonar fabrica
+el resultado que uno fue a buscar.
+
+**Próximo paso del lead:** mismo aislamiento sobre las que YA rutean hoy (no las
+6 del flag), con `gemini-3.5-flash` estable. Si el patrón se repite, 4.2/4.3
+necesita revisión — está ON en producción.
+
+#### 🐛 Bug de telemetría — `query.complete` reporta un modelo que nunca corrió
+
+Encontrado mientras se diseñaba el aislamiento. **Pre-existente desde `fc8e3ee`
+(2026-07-02), no lo introdujo esta rama.**
+
+`pipeline.py` re-deriva el modelo para el log en vez de preguntárselo al provider
+que generó:
+
+```python
+model = settings.hard_gemini_model if routed else (settings.llm_model or settings.gemini_model)
+...
+answer = _generate_guarded(hard_provider if routed else provider, ...)   # el provider decide
+```
+
+Con `llm_provider='gemini'`, `create_provider` devuelve
+`GeminiProvider(model=settings.gemini_model)` → corre `gemini-flash-lite-latest`.
+Pero la telemetría reporta `llm_model` → **`gpt-oss-120b`**, un modelo que ese
+provider **nunca toca**. Todo log de query no ruteada miente sobre el modelo
+mientras `llm_provider != 'openai_compat'` y `llm_model` esté seteado.
+
+Radio de daño: solo `structlog` (`query.complete`); el schema de respuesta de la
+API no lleva `model`. Pero es exactamente la enfermedad de la casa — el
+instrumento mintiendo — y ya costó una lectura errónea del gate de hoy.
+
+**Fix de raíz:** el provider es la autoridad sobre su propio modelo. Exponer
+`model` en `LLMProvider` y loguear `(hard_provider if routed else provider).model`,
+una sola copia, imposible de driftear. Hoy ninguno de los dos providers lo expone
+(`self._model` es privado) y hay ~10 stubs que tendrían que declararlo — cambio
+chico pero transversal, no se metió en esta rama.
+
+**Config local a revisar (aparte):** `.env` tiene `llm_provider='gemini'` pero
+también `llm_model='gpt-oss-120b'` y `llm_base_url='https://api.cerebras.ai/v1'`
+seteados — los dos últimos solo los usa `openai_compat`. Parece un switch a medio
+hacer. Determina qué modelo mide el eval, así que decidir cuál es el main real
+antes del próximo gate.
 - [x] **(c)** arm FTS sobre keywords extraídos (lead de 6.2) — ❌ **MUERTO POR
       GATE** para eval-039, ver 3.11.2. Sigue sin probar para 030/037.
 
