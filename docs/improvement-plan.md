@@ -653,6 +653,41 @@ preciso y más lento, no más preciso y más rápido.
 > - Los comentarios del repo ("prod runs Groq/openai_compat as main") tenían
 >   razón; el `.env` local era el desviado.
 
+### 3.13 Re-triage de gaps bajo el main nuevo (2026-07-17, cero cuota)
+
+`miss_diagnosis` (determinista, HyDE off) da **idéntico** al pre-flip — 6 refs
+faltantes en 4 preguntas — porque el retrieval no depende del main. Lo que
+cambió es el cruce con los VEREDICTOS de gpt-oss-120b:
+
+| id | veredicto (gpt-oss) | refs faltantes | lectura |
+|---|---|---|---|
+| eval-030 | **correct** | 365.1 (B) | **YA NO ES GAP**: contesta bien sin el ref |
+| eval-039 | **correct** | 347.3, 348 (B) | **YA NO ES GAP**: ídem |
+| eval-020 | partial | 383.3.d (A:granularity) | gap real; el modelo lo subió de wrong a partial |
+| eval-037 | wrong | 131.4, 425 (B:semantic) | **el gap más firme**: faltan refs Y contesta mal |
+| eval-016 | wrong | (sin gold ref) | NO diagnosticable por refs — ver abajo |
+| eval-018 | wrong | (sin gold ref) | ídem |
+
+**El modelo curó dos "gaps de retrieval" sin tocar el retrieval.** eval-030 y
+eval-039 siguen sin sus refs en contexto y contestan bien igual — el pre-gate
+3.11.2b condicionado de ayer ("refs B de eval-030/037") queda re-scopeado a
+**solo eval-037**.
+
+**eval-016 y eval-018 son INESTABLES, no gaps**: bajo flash-lite mismo-config
+flippearon correct→wrong y correct→partial entre la corrida de la mañana y la
+de la tarde. Sin gold refs no hay señal determinista; atacarlas requiere primero
+medir su estabilidad (N corridas) o mejorar sus canonical answers — un lever de
+eval-set, no de retrieval.
+
+Caveat honesto: miss_diagnosis corre HyDE-off, y el brazo HyDE de producción
+ahora escribe pasajes con gpt-oss (el main cambió) — el diagnóstico es un piso,
+no una predicción exacta.
+
+**Cola de ataque resultante**: eval-037 (B:semantic, el "hit de papel" con
+mecanismo conocido) > eval-020 (A:granularity, ya partial) > estabilidad de
+eval-016/018. Los gates de flip de Fase 2 (#69/#71/#70) van antes que cualquier
+lever nuevo.
+
 #### El tercer brazo (2026-07-17, mismo día): `llama-3.3-70b-versatile` — el main REAL de prod — es el PEOR de los tres
 
 Corrido vía Groq con los defaults exactos de prod (1024 tok, 30s), mismas 19,
