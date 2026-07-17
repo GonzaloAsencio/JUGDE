@@ -117,6 +117,15 @@ def test_v2_tokens_split_by_filler_matched():
     assert out == ["Irelia Blade Dancer"]
 
 
+def test_v2_possessive_on_dash_separated_name_matched():
+    # A dash between tokens ("Jhin - Virtuoso") forces the subset pass; a
+    # possessive 's on the last token must not corrupt it. Without stripping the
+    # possessive, _norm_word("Virtuoso's") -> "virtuosos" != "virtuoso" and the
+    # match is lost. Real eval-029 phrasing ("Jhin - Virtuoso's trigger").
+    out = detect_card_mentions("does Jhin - Virtuoso's trigger fire", {"Jhin Virtuoso"})
+    assert out == ["Jhin Virtuoso"]
+
+
 def test_v2_scatter_beyond_window_not_matched():
     # tokens present but far apart -> incidental co-occurrence, must NOT fire
     q = "the Angel flew over the castle while a lone Guardian watched the distant gate"

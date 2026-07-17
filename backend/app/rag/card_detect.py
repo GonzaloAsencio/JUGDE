@@ -44,7 +44,13 @@ def _name_tokens(name: str) -> set[str]:
 
 
 def _norm_word(word: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", word.lower())
+    word = word.lower()
+    # Strip a trailing possessive before dropping punctuation, so "Virtuoso's"
+    # normalises to "virtuoso" (the card token) and not "virtuosos" — otherwise a
+    # card named in the possessive fails the subset-pass token match.
+    if word.endswith("'s"):
+        word = word[:-2]
+    return re.sub(r"[^a-z0-9]+", "", word)
 
 
 def _capitalized_positions(words: list[tuple[str, int]], tokens: set[str]) -> dict[str, list[int]]:
