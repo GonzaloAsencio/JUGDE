@@ -107,6 +107,37 @@ def test_lookup_rejects_below_threshold():
         assert _lookup(pool) is None
 
 
+def test_lookup_logs_the_rejected_near_miss():
+    """The flip gate is "zero false positives, READ BY HAND" — the rejected
+    near-miss is exactly the data that calibrates the threshold in prod, and
+    _LOOKUP_SQL's own comment promises this log. An invisible rejection can't
+    be audited."""
+    pool, _ = _pool_returning(("key-abc", "a different question", 0.84))
+    with (
+        patch("app.semantic_cache.get_conn") as gc,
+        patch("app.semantic_cache.logger") as log,
+    ):
+        gc.return_value.__enter__.return_value = pool.getconn.return_value
+        _lookup(pool)
+    assert log.info.call_args[0][0] == "semantic_cache.near_miss"
+    assert log.info.call_args.kwargs["similarity"] == 0.84
+
+
+def test_remember_refreshes_created_at_on_conflict():
+    """cache_key is deterministic, so a question re-answered after its Redis TTL
+    expired hits ON CONFLICT with its own old row. DO NOTHING would leave the
+    stale created_at, and lookup's freshness filter then excludes that entry
+    FOREVER — the answer gets regenerated and re-cached in Redis, but its
+    semantic pointer stays dead. Every entry would permanently die 24h after its
+    FIRST answer. The conflict must refresh created_at instead."""
+    from app.semantic_cache import _REMEMBER_SQL
+
+    assert "DO UPDATE SET created_at" in _REMEMBER_SQL, (
+        "ON CONFLICT must refresh created_at, or re-answered questions stay "
+        "invisible to the freshness filter forever"
+    )
+
+
 def test_lookup_returns_none_on_empty_table():
     pool, _ = _pool_returning(None)
     with patch("app.semantic_cache.get_conn") as gc:

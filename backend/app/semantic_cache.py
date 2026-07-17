@@ -49,12 +49,18 @@ LIMIT 1;
 """
 
 # ON CONFLICT: cache_key is a hash of (question, corpus, prompt, mentions), so a
-# re-answered question is the SAME row. Ignore instead of duplicating.
+# re-answered question is the SAME row — same question text, same embedding.
+# The conflict must refresh created_at, not ignore: lookup's freshness filter
+# excludes rows older than the Redis TTL, and DO NOTHING would leave the
+# original timestamp in place forever. A question re-answered after expiry
+# would then be regenerated and re-cached in Redis on every miss while its
+# semantic pointer stayed permanently invisible — every entry dead 24h after
+# its FIRST answer, which is the opposite of a cache.
 _REMEMBER_SQL = """
 INSERT INTO cached_questions
   (question, embedding, cache_key, corpus_version, prompt_version, directive_key)
 VALUES (%s, %s::vector, %s, %s, %s, %s)
-ON CONFLICT (cache_key) DO NOTHING;
+ON CONFLICT (cache_key) DO UPDATE SET created_at = NOW();
 """
 
 _FORGET_SQL = "DELETE FROM cached_questions WHERE cache_key = %s;"
@@ -92,6 +98,15 @@ def lookup(
         return None
     cache_key, question, similarity = row[0], row[1], float(row[2])
     if similarity < threshold:
+        # The flip gate is "zero false positives, read by hand" — the rejected
+        # near-miss is the data that calibrates the threshold in prod. This log
+        # is why the threshold is applied here instead of in the SQL.
+        logger.info(
+            "semantic_cache.near_miss",
+            similarity=round(similarity, 4),
+            threshold=threshold,
+            matched_question=question,
+        )
         return None
     return cache_key, question, similarity
 
