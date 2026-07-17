@@ -21,11 +21,18 @@ class FakePool:
 
 
 class FakeLLMProvider(LLMProvider):
+    # The ABC makes doubles name what they impersonate: whatever reports the
+    # model now reads it off the provider object, so a double that cannot say
+    # its model would let a test assert a name nobody set.
+    model = "fake-model"
+
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         return "Fake answer for testing."
 
 
 class FakeLLMProviderTimeout(LLMProvider):
+    model = "fake-model"
+
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         raise GenerationTimeout("timeout")
 

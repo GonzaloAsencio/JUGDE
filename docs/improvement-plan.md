@@ -348,31 +348,335 @@ la familia 347/348. Causa: **la pregunta dice "pass priority", la regla dice
 probablemente tampoco lo salve**. Antes de construir nada para los B, medir si
 existe algún término extraíble de la pregunta que alcance el gold. Si no existe,
 los B son puente de vocabulario (HyDE / fine-tuning 3.9), no keyword.
-- [ ] **3.11.1 eval-020 (clase A: lineage)** — el triage 3.11.0 reordenó los
-      candidatos. Favorito ahora:
-      **(d) completar la familia de una sección de regla YA presente en el
-      contexto, sin compuerta de keyword.** Es el lever que el triage señala: la
-      sección `383. Triggered Abilities` ya entra en rank 4 y 6, solo falta su
-      hermano con `383.3.d`. Reusa `family_lookup` + `_complete_keyword_families`
-      (contrato append-only ya shippeado con `keyword_family_extra=8`); el cambio
-      es de QUÉ nomina la familia: hoy `kw_sections` (keywords tageados), la
-      propuesta es las secciones de regla del contexto. **Blast radius a medir: es
-      MÁS ancho que el actual — completa familias de toda pregunta con una sección
-      de regla en contexto. Ese es el riesgo real y hay que medirlo sobre las 25.**
-      Alternativas si (d) pierde:
-      (a) ampliar el umbral de `is_hard_query` para que rutee (barato, blast radius
-      ancho sobre routing);
-      (c) arm FTS sobre keywords extraídos (el lead de 6.2 — sigue vivo, pero el
-      triage lo desplaza: para 020 el lineage es más directo y más barato).
-      **Gate: gana el que sume 020 sin sacar ningún gold ref a las otras 25.
-      Empate → no se shippea ninguno.**
-- [ ] **3.11.2 eval-030 / 037 / 039 (clase B: puente de vocabulario)** — los 5 refs
-      B NO son un problema de keyword hasta que se demuestre lo contrario.
-      **Gate previo, antes de escribir una línea:** para cada ref B, ¿existe algún
-      término EXTRAÍBLE de la pregunta que traiga el gold por FTS? eval-039 sugiere
-      que no ("pass priority" vs regla que dice "Focus") — mismo perfil que mató a
-      3.6. **Si no existe término extraíble → los B son puente de vocabulario
-      (HyDE / 3.9 fine-tuning), y (c) muere para ellos también.** Cero cuota.
+### 3.11.1 eval-020 (clase A: lineage)
+
+#### (d) ~~Nominar la familia desde las secciones de regla del contexto~~ ❌ MUERTA POR GATE (2026-07-16, cero código de producto)
+
+El triage la señalaba como favorita: `383. Triggered Abilities` ya entra en rank
+4 y 6, solo falta el hermano con `383.3.d`. Se gateó con
+`scripts/family_nomination_probe.py` (CONTROL = producción hoy; TREATMENT = misma
+completion pero nominada por las secciones de regla del contexto). Ambos brazos
+usan `_retrieve`, `family_lookup` y `_complete_keyword_families` REALES; el
+TREATMENT se arma sobre un contexto con la completion APAGADA y se completa UNA
+sola vez al mismo cap, para no apilar dos colas y inflar el resultado.
+
+**Resultado: PIERDE 1W/1L.**
+
+| | |
+|---|---|
+| GANA | eval-020 suma `383.3.d` ✅ |
+| **PIERDE** | **eval-030 pierde `809.1` Y `809.1.a`** ❌ |
+| Costo | contexto 152 → **247 chunks (+62%)**, creció en **14/14** preguntas |
+
+**La trampa que el gate cazó y el titular tapaba:** la métrica principal MEJORA
+(22/26 → 23/26), porque eval-030 ya estaba rota por `365.1` y perder dos refs más
+no le mueve el `fully_covered`. **Gateando sobre el neto, esto pasaba como
+victoria y shippeaba una regresión.** El gate decía "sin sacar ningún gold ref a
+las otras 25", no "mejora el neto". Por eso existe.
+
+**Mecanismo de la pérdida — NO es el append-only roto:** es **dilución del cap**.
+Al nominar varias familias, todas compiten por los mismos 8 slots, y `_FAMILY_SQL`
+ordena `BY content` a través de TODAS las secciones: `"### 365..."` ordena antes
+que `"### 809..."`, así que las familias de número bajo se comen el presupuesto y
+Deflect queda afuera. En CONTROL la nominación era solo Deflect y sus 3 chunks
+entraban cómodos. **Ensanchar la nominación sin ensanchar el presupuesto es un
+juego de suma cero.**
+
+**Por qué no se barren umbrales (regla de 3.8):** con 26 preguntas, probar caps
+hasta que uno gane es fitear ruido. Y el costo lo condena igual: **+62% de
+contexto en TODAS las preguntas para ganar UNA**. Aunque se arreglara la dilución
+(cap por familia, round-robin), el trade sigue siendo malo.
+
+#### (a) Relajar el umbral a 1 carta + 1 keyword — ✅ **GANA EL GATE DE RETRIEVAL** (2026-07-16, cero código de producto)
+
+Gateado con `scripts/routing_threshold_probe.py`. CONTROL = `is_hard_query`
+shippeado; TREATMENT = misma función con la rama carta+keyword relajada a
+`keyword_count >= 1`. **La exigencia de carta SE MANTIENE** — `routing.py` es
+explícito: el vocabulario de keywords tiene palabras cotidianas (draw, discard,
+token, combat), así que relajar sin carta mandaría "¿cuándo robo?" al modelo
+thinking. Un test pinea que el delta es EXACTAMENTE la celda (1 carta, 1 keyword)
+y ninguna otra.
+
+**Resultado: 3W / 0L.**
+
+| | |
+|---|---|
+| GANA | eval-020 `383.3.d`, eval-030 `365.1`, eval-037 `131.4`+`425` |
+| PIERDE | **nada** |
+| Cobertura | 22/26 → **25/26** |
+
+**Cierra 3 de los 4 gaps**, no solo el que motivó el ítem. `eval-010` (única con
+gold en errata, que el rulebook stuffeado NO lleva) no se mueve: no detecta
+cartas y el umbral sigue exigiéndola — el riesgo identificado antes de correr no
+se materializó.
+
+Señal de que el mecanismo es sano, no un artefacto: las 6 que empiezan a rutear
+tienen keywords `hidden`, `showdown`, `temporary`, `deflect`, `repeat` — mecánicas
+reales, no palabras cotidianas. "1 carta + 1 mecánica" ES una pregunta de
+interacción.
+
+**COSTO — decisión humana, no auto-ship:**
+- **routing 21/40 → 27/40** (52% → 67% del set). 6 nuevas al modelo thinking.
+- 3 de esas 6 (eval-016/018/032) **no tienen gold ref**: pagan latencia y cuota
+  sin beneficio medible acá.
+- gemini-3.5-flash: **~25-35s** por consulta y **~20 req/día** de free tier. Hoy
+  mismo saltó `llm.rate_limited` con 2 preguntas. Esto empeora ~30% un problema
+  que YA existe a 52%.
+- ⚠️ **El eval NO es tráfico real**: está enriquecido con preguntas hard, así que
+  "67% del eval rutea" ≠ "67% de prod rutea". No extrapolar (lección del día).
+
+**Lo que este gate NO prueba:** mide PRESENCIA EN CONTEXTO, no que el LLM
+responda bien. eval-020 con `383.3.d` en contexto ≠ eval-020 correcta. Falta el
+gate de generación, que necesita cuota.
+
+- [x] **Siguiente paso (two-step, método de la casa):** implementado flag-off →
+      corrido el gate de generación (2026-07-17) → **NO se flipea. Ver abajo.**
+
+#### GATE DE GENERACIÓN — ❌ **EL FLAG MUERE. 0W / 2L** (2026-07-17)
+
+El lever que ganó retrieval 3W/0L **pierde generación 0W/2L**. Flag queda OFF.
+
+**El gate se corrió sobre 6 preguntas, no sobre las 3 del titular.** El flag mueve
+el routing 21/40 → 27/40: las 6 que cruzan son el universo. Gatear sobre las 3
+con gold ref era mirar el recorte que solo puede ganar — la forma exacta del
+lever (d) y del arm fusionado de 3.11.2. Tres de las seis (eval-016/018/032) no
+tienen gold ref pero **sí reciben veredicto del judge**: `rule_reference` gatea
+el recall, no el juicio. Ya estaban correctas: solo podían romperse.
+
+| id | CONTROL (flag OFF) | TREATMENT (flag ON) | |
+|---|---|---|---|
+| eval-020 | wrong | wrong | = |
+| eval-037 | wrong | wrong | = |
+| eval-030 | correct | correct | = |
+| eval-032 | correct | correct | = |
+| **eval-016** | **correct** | **wrong** | ❌ **REGRESIÓN** |
+| **eval-018** | **correct** | **wrong** | ❌ **REGRESIÓN** |
+
+Ambos brazos corridos hoy, mismo código (rama `feat/routing-threshold-relaxed`,
+stack #69→#74, resto de flags OFF), corpus v2.2.1. El baseline del 15/07 NO se
+usó de control: otro stack, dos días viejo.
+
+**Corrección al titular de (a):** el gate de retrieval contaba 3W, pero
+**eval-030 ya se contestaba bien**. Ganar un gold ref en una pregunta que ya
+acertás vale cero en generación. El upside real sobre el eval set eran **dos**
+preguntas (eval-020, eval-037), y no ganó ninguna.
+
+**El mecanismo — el rulebook stuffeado no ayuda, ESTORBA:** eval-016 y eval-037
+dispararon `query.no_info_despite_context` con `confidence=0.0`. Con el rulebook
+COMPLETO en contexto, el modelo contestó *"I don't have enough information"*.
+eval-016 bajo CONTROL citaba `811.1.b` y `811.1.c.3` y acertaba; con todo el
+rulebook adelante, se rindió. eval-037 empeoró incluso quedándose en `wrong`:
+bajo CONTROL al menos razonaba desde 820, bajo TREATMENT no contestó nada.
+
+**⚠️ CONFOUND — el gate NO identifica el mecanismo.** El TREATMENT cambia DOS
+cosas a la vez: el contexto (RAG → rulebook stuffeado) **y** el modelo
+(`gemini-flash-lite-latest` → `gemini-3.5-flash`). La regresión puede ser del
+contexto, del modelo, o de los dos. El gate responde la pregunta de shipping
+("¿flipeamos?" → NO, sin ambigüedad) y NADA más. No leer "el rulebook stuffeado
+diluye" como probado: no lo está.
+
+> **Corrección (2026-07-17).** La primera redacción de este bloque decía que el
+> CONTROL corrió en `gpt-oss-120b`. **Falso, y leído del log.** Con
+> `llm_provider='gemini'`, `create_provider` devuelve
+> `GeminiProvider(model=settings.gemini_model)` = `gemini-flash-lite-latest`;
+> `gpt-oss-120b` (`llm_model`) NO lo toca ese provider. La telemetría de
+> `pipeline.py` re-deriva el modelo de `settings` en vez de preguntárselo al
+> provider que generó, y miente. Ver "Bug de telemetría" abajo.
+
+**Predicción registrada antes de correr: FALLÓ.** Se predijo que eval-037 ganaba
+(confianza media-alta) con mecanismo identificado: su respuesta razonaba desde
+820.1/820.3.a/820.1.d — todo 820 — sin ver 131.4 ni 425, así que meterlas debía
+alcanzar. Con las dos reglas en contexto, contestó "no tengo información
+suficiente". **Presencia en contexto ≠ corrección, y esta vez la presencia
+empeoró la respuesta.** Es la tercera vez en tres días que una métrica proxy
+sana esconde una pérdida real.
+
+**Artefacto descartado, NO es un hallazgo:** el reporte del brazo TREATMENT dice
+`Retrieval recall: 0/3 = 0%` contra 3/3 del CONTROL. No es regresión.
+`_build_citations` deja `rule_codes=[]` para `RULEBOOK_CHUNK_ID` a propósito
+(derivarlos listaría cada código del juego = paper hit garantizado), así que una
+pregunta ruteada **no puede** puntuar recall por construcción. La métrica de
+recall del eval es ciega al bucket ruteado — por eso existe el probe de
+retrieval, que mide presencia en contexto directo y no vía citations.
+
+**🔴 LEAD para 4.2/4.3 — es un LEAD, NO un resultado.** `hard_query_routing` está
+**ON hoy** (default `True`, y `HARD_QUERY_ROUTING=true` en `.env`): 21/40 del
+eval ya rutean. Si el camino ruteado puede convertir una respuesta correcta en
+"no tengo información", la pregunta abierta es si el routing YA shippeado está
+lastimando preguntas que se contestaban bien sin él. Medido acá: 2 de 4 correctas
+se rompieron al rutear. **6 preguntas no prueban nada sobre las 21.**
+
+#### Aislamiento del confound (2026-07-17) — el CONTEXTO es el culpable, al menos una vez
+
+Se corrió la celda faltante: **contexto RAG + el modelo, presupuesto y timeout
+EXACTOS del brazo ruteado**, dejando el contexto como única variable.
+
+| eval-016 | contexto RAG | rulebook stuffeado |
+|---|---|---|
+| `flash-lite`, 1024 tok | correct | — |
+| `gemini-3.5-flash`, 8192 tok, 90s | ✅ **correct** | ❌ **wrong** (`no_info_despite_context`) |
+
+**Mismo modelo, mismo presupuesto de salida, mismo timeout. Solo cambia el
+contexto.** Con RAG acierta; con el rulebook COMPLETO contesta "I don't have
+enough information". **El modelo queda exonerado para eval-016: el rulebook
+stuffeado es lo que rompe.** Es una sola pregunta — no generaliza a las 21 — pero
+el confound está muerto para ella y el mecanismo pasó de hipótesis a observado.
+
+**eval-018 quedó SIN MEDIR:** dos intentos, dos `503 UNAVAILABLE` de Gemini
+("high demand"). Fallo de proveedor, no rate limit. Por la regla del gate, un
+`error` no es resultado. Pendiente.
+
+**⚠️ Trampa metodológica que casi se come este experimento.** El primer intento
+de la celda del medio corrió `gemini-3.5-flash` con `max_output_tokens=1024` (el
+presupuesto del provider MAIN) y dio `partial/partial`, que se leyó como "el
+modelo también degrada". **Era truncamiento, no razonamiento**: el judge dijo
+literal *"the answer begins to cite Evelynn's text but is cut off"*. El propio
+`config.py` lo advierte tres líneas arriba: *"Thinking models spend the output
+budget on thoughts; 1024 strangles them"* — por eso `hard_max_output_tokens=8192`.
+Aislar el contexto exige clonar **todo** lo demás del brazo ruteado (modelo,
+tokens, timeout), no solo el modelo. Un brazo de control a medio clonar fabrica
+el resultado que uno fue a buscar.
+
+**Próximo paso del lead:** mismo aislamiento sobre las que YA rutean hoy (no las
+6 del flag), con `gemini-3.5-flash` estable. Si el patrón se repite, 4.2/4.3
+necesita revisión — está ON en producción.
+
+#### 🐛 Bug de telemetría — `query.complete` reporta un modelo que nunca corrió
+
+Encontrado mientras se diseñaba el aislamiento. **Pre-existente desde `fc8e3ee`
+(2026-07-02), no lo introdujo esta rama.**
+
+`pipeline.py` re-deriva el modelo para el log en vez de preguntárselo al provider
+que generó:
+
+```python
+model = settings.hard_gemini_model if routed else (settings.llm_model or settings.gemini_model)
+...
+answer = _generate_guarded(hard_provider if routed else provider, ...)   # el provider decide
+```
+
+Con `llm_provider='gemini'`, `create_provider` devuelve
+`GeminiProvider(model=settings.gemini_model)` → corre `gemini-flash-lite-latest`.
+Pero la telemetría reporta `llm_model` → **`gpt-oss-120b`**, un modelo que ese
+provider **nunca toca**. Todo log de query no ruteada miente sobre el modelo
+mientras `llm_provider != 'openai_compat'` y `llm_model` esté seteado.
+
+Radio de daño: solo `structlog` (`query.complete`); el schema de respuesta de la
+API no lleva `model`. Pero es exactamente la enfermedad de la casa — el
+instrumento mintiendo — y ya costó una lectura errónea del gate de hoy.
+
+**Fix de raíz:** el provider es la autoridad sobre su propio modelo. Exponer
+`model` en `LLMProvider` y loguear `(hard_provider if routed else provider).model`,
+una sola copia, imposible de driftear. Hoy ninguno de los dos providers lo expone
+(`self._model` es privado) y hay ~10 stubs que tendrían que declararlo — cambio
+chico pero transversal, no se metió en esta rama.
+
+**Config local a revisar (aparte):** `.env` tiene `llm_provider='gemini'` pero
+también `llm_model='gpt-oss-120b'` y `llm_base_url='https://api.cerebras.ai/v1'`
+seteados — los dos últimos solo los usa `openai_compat`. Parece un switch a medio
+hacer. Determina qué modelo mide el eval, así que decidir cuál es el main real
+antes del próximo gate.
+
+### 3.12 Modelo MAIN: `flash-lite` vs `gpt-oss-120b` (2026-07-17)
+
+**gpt-oss-120b gana 4W / 0L. 11/19 → 15/19 correctas.**
+
+Primera medición cabeza a cabeza de los dos main en este repo. Ninguna corrida
+anterior sirve de baseline: todas están atribuidas a un modelo que se infirió de
+un log que mentía (ver bug de telemetría arriba, arreglado en `f0c8b94`).
+
+**Universo: las 19 que el MAIN sirve.** Calculadas con `routing_decision`
+(`routing_enabled=True`, `relaxed=False`) → 21 ruteadas / 19 no. Coincide exacto
+con el 21/40 que el plan venía citando. Las 21 ruteadas no entran: las sirve
+`gemini-3.5-flash` y el main no las toca.
+
+Los dos brazos verificados vía `create_provider(s).model` ANTES de gastar, no vía
+log — la lección del día.
+
+| | flash-lite | gpt-oss-120b |
+|---|---|---|
+| correct | 11 | **15** |
+| partial | 3 | 1 |
+| wrong | 5 | 3 |
+
+Sobre las 17 comparables a presupuesto igual: **B gana 4 (eval-005, eval-008,
+eval-012, eval-032), pierde 0.** Cuatro victorias sin regresión sobre 17 supera
+el umbral de ruido fijado antes de mirar (1-2 preguntas sobre 19 = no
+distinguible; el judge es no determinista).
+
+**⚠️ REQUISITO DE DEPLOY, no un tune opcional: `gpt-oss-120b` es un modelo de
+RAZONAMIENTO.** Con `max_output_tokens=1024` devolvió **null content en 2/19**
+(eval-016, eval-037) — el mismo `"1024 strangles them"` que `config.py` advierte
+para el modelo hard. Con 8192 las dos contestan (mal las dos, igual que
+flash-lite, así que el 4W/0L no se mueve). Ojo: `max_output_tokens` es COMPARTIDO
+entre los dos providers ("Applies to both providers"), así que subirlo para
+gpt-oss también se lo sube a flash-lite — no medido.
+
+**Artefacto descartado, NO es del modelo:** el brazo B promedió 18.5s vs 7.5s,
+con cuatro preguntas clavadas en ~60s. **Era throttling de Cerebras por tirarle
+19 requests seguidos**, no el modelo razonando. Corrida sola, eval-003 tarda
+**11.9s** contra los 56.5s de la ráfaga. La latencia real es ~2x flash-lite
+(11.9s vs 5.3s), no 2.5x. El retry de `_completion_with_retry` solo cubre 429 con
+backoff acotado, y ese backoff es lo que infló el promedio.
+
+**Predicción fallida (mía):** se predijo latencia "mucho menor" en B porque
+Cerebras es rápido. **Al revés: gpt-oss-120b es ~2x MÁS LENTO por request.** Más
+preciso y más lento, no más preciso y más rápido.
+
+**Lo que esta medición NO contesta:**
+- **Qué corre en prod.** Sigue invisible hasta deployar `f0c8b94` y curlear
+  `/health`. Si prod es `llm_provider=gemini` + `llm_model=gpt-oss-120b`, prod
+  corre **flash-lite** y gpt-oss-120b NUNCA corrió ahí — el switch no toma efecto
+  porque `create_provider` ignora `llm_model` bajo gemini.
+- **Los límites de cada tier**, que era el motivo original del switcheo. Eje
+  operativo, no lo mide el eval. Dato suelto: Cerebras throttleó a los ~19
+  requests en ráfaga.
+- [x] **(c)** arm FTS sobre keywords extraídos (lead de 6.2) — ❌ **MUERTO POR
+      GATE** para eval-039, ver 3.11.2. Sigue sin probar para 030/037.
+
+### 3.11.2 ~~eval-039 (clase B: ¿existe término extraíble?)~~ ❌ MUERTO POR GATE (2026-07-16, cero código)
+
+La única clase B que el lever (a) NO cierra (no nombra carta → `is_hard_query`
+no la rutea ni con `relaxed=True`). Gate pre-comprometido y predicción
+registrada ANTES de correr; ambos respetados con resultado negativo.
+
+**La hipótesis de entrada era FALSA.** Se sospechaba "dice *pass priority*, la
+regla dice *Focus* → no hay término extraíble". Leído del rulebook, la regla
+gold 348 dice literal: *"If all players **pass** **Focus** without playing a
+**spell**..."*. `pass` y `spell` **están** en la pregunta. Los keywords que
+`extract_keywords` produce son `attack, pass, priority, passes, cast, spells,
+afterward`, y los dos chunks gold matchean por exactamente **UN** término:
+`pass`. El mecanismo real no es "no hay solapamiento" sino **el solapamiento no
+DISCRIMINA**: `pass`/`attack`/`priority` están por todo el rulebook y
+`ts_rank_cd` entierra un chunk gold corto que carga un solo término común. Es
+el mismo mecanismo que mató a 3.6 ("chunks gold chicos pierden por densidad"),
+no el que suponíamos.
+
+**Confound medido y descartado:** `_FTS_OR_SQL` usa `to_tsvector('simple')` y
+`simple` NO stemea → `spells` (pregunta) no matchea `spell` (gold). Con
+`english` el gold pasaría de 1 a 2 términos. Se probó. No alcanza.
+
+| config | FTS rank del gold | fused | regresiones (vector@5 perdidos) |
+|---|---|---|---|
+| `simple` | **None** | 9 | eval-002, eval-007, eval-008 |
+| `english` | **None** | None | eval-002, eval-008, eval-027 |
+
+**Muere dos veces**, y la segunda importa más que la primera:
+1. El arm FTS **nunca** trae el gold al top-15, en ninguna config.
+2. Bajo `simple` el arm **FUSIONADO** sí lo trae a rank 9 — pero **cuesta 3
+   preguntas** que el vector hoy acierta @5. Es la forma exacta del lever (d):
+   el titular mejora y esconde la regresión. Gatear sobre el neto habría
+   shippeado una pérdida por segunda vez.
+
+**Conclusión:** eval-039 es **puente de vocabulario** (`priority`→`Focus`,
+`attack`→`Showdown`). El lever (c) muere para ella. Munición restante: HyDE /
+3.9 fine-tuning.
+
+- [ ] **3.11.2b eval-030 / 037 (los otros 4 refs B)** — el lever (a) SÍ los
+      cierra (3W/0L en presencia), así que su gate real es el de generación de
+      #74, no éste. Si (a) muere ahí, correr este mismo pre-gate para sus refs
+      antes de tocar (c): el resultado de eval-039 hace sospechar que el perfil
+      se repite, pero **sospechar no es medir**.
 
 **Nota de método:** el número a mover es *presencia del gold en el contexto*, NO
 recall@k del arm. El arm sub-reporta a propósito (producción le suma cartas

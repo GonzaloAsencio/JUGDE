@@ -11,14 +11,40 @@ except Exception:
     _VERSION = "0.1.0"
 
 
+def _model_of(provider) -> str | None:
+    """The model a provider on app.state actually calls, or None when absent.
+
+    hard_provider is legitimately None (routing flag off), and app.state may not
+    carry a provider at all during a degraded startup — both report None rather
+    than raising, because /health must answer even when the app is unhealthy.
+    """
+    return getattr(provider, "model", None) if provider is not None else None
+
+
 @router.api_route("/health", methods=["GET", "HEAD"])
 def health_shallow(request: Request) -> dict:
-    """Shallow health check — no I/O, responds in <50ms."""
+    """Shallow health check — no I/O, responds in <50ms.
+
+    Reports the RUNNING models: on 2026-07-17 "which model does prod answer
+    with?" had no answer anywhere — this endpoint carried version and
+    corpus_version, /health/deep carried booleans, and the logs named the model
+    from settings instead of the provider, so they lied whenever the
+    openai_compat knobs were left set under llm_provider='gemini'. An operator
+    swapping providers by rate limit could not tell which one was live. The
+    provider objects are already on app.state, so reading their model costs no
+    I/O and keeps this shallow.
+    """
     corpus_version = getattr(request.app.state, "corpus_version", None)
     return {
         "status": "ok",
         "version": _VERSION,
         "corpus_version": corpus_version,
+        "models": {
+            "main": _model_of(getattr(request.app.state, "llm_provider", None)),
+            # None is the honest answer when routing is off, not an omitted key:
+            # a missing field reads as "unknown", and "no hard model" is a fact.
+            "hard": _model_of(getattr(request.app.state, "hard_provider", None)),
+        },
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

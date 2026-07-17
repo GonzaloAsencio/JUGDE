@@ -628,6 +628,16 @@ def answer_question(
     # else's cache.
     if settings.concise_reasoning:
         cache_prompt_version += "+concise"
+    # Same reasoning again for 3.11.1a, and it earns the suffix more than the two
+    # above: hard_routing_relaxed moves the (1 card, 1 keyword) cell into the
+    # routed bucket, which changes the CONTEXT (stuffed rulebook) *and* the MODEL
+    # (thinking provider). Without this, flipping the flag serves up to
+    # cache_ttl_s of pre-flip non-routed answers for precisely the questions the
+    # flag exists to route — and the flip's own verification would read the old
+    # mode. The semantic cache rides the same namespace (_try_semantic_response
+    # and remember both take cache_prompt_version), so this covers it too.
+    if settings.hard_routing_relaxed:
+        cache_prompt_version += "+relaxed"
     cache_key = make_cache_key(question, corpus_version, card_mentions, cache_prompt_version)
 
     cached = _try_cached_response(cache_key, settings, query_id, t0)
@@ -658,6 +668,7 @@ def answer_question(
         is_hard = is_hard_query(
             card_count=entities.card_count(mention_tags),
             keyword_count=len(_detect_keywords(base_question)),
+            relaxed=settings.hard_routing_relaxed,
         )
         # Predicts the routing decision made below. The only way they can
         # disagree is build_stuffed_chunks returning None (a missing data file),
@@ -697,7 +708,8 @@ def answer_question(
     # normal path stays byte-identical.
     routed = False
     if hard_provider is not None and settings.hard_query_routing and is_hard_query(
-        card_count=card_count, keyword_count=len(_detect_keywords(resolved_question))
+        card_count=card_count, keyword_count=len(_detect_keywords(resolved_question)),
+        relaxed=settings.hard_routing_relaxed,
     ):
         stuffed = build_stuffed_chunks(
             resolved_question,
@@ -714,7 +726,13 @@ def answer_question(
                 stuffed_chunks=len(stuffed),
             )
 
-    model = settings.hard_gemini_model if routed else (settings.llm_model or settings.gemini_model)
+    # The provider that ANSWERS is the authority on the model name. Re-deriving
+    # it from settings (`llm_model or gemini_model`) is how this reported
+    # gpt-oss-120b for two weeks while GeminiProvider(gemini_model) did the
+    # generating: create_provider ignores llm_model under llm_provider='gemini',
+    # and the log did not. Same object, same name, no second copy.
+    answering_provider = hard_provider if routed else provider
+    model = answering_provider.model
 
     if not chunks:
         latency_ms = round((time.time() - t0) * 1000)
@@ -745,7 +763,7 @@ def answer_question(
     else:
         extra_system = ""
     answer = _generate_guarded(
-        hard_provider if routed else provider,
+        answering_provider,
         resolved_question, chunks, query_id, extra_system=extra_system,
     )
     citations = _build_citations(chunks)

@@ -109,6 +109,86 @@ def test_production_with_secret_starts(monkeypatch):
     assert s.proxy_shared_secret == "a-real-secret"
 
 
+# ---------------------------------------------------------------------------
+# Half-applied provider switch: reported, never fatal
+#
+# Swapping the main provider by rate limit means moving FOUR knobs
+# (llm_provider, llm_model, llm_base_url, llm_api_key). Leaving three set while
+# llm_provider lags is not a broken config — it is how you keep both sides ready
+# and flip in one edit. Raising would force commenting out three vars on every
+# 429, so this reports instead: stray_openai_compat_fields() feeds a startup
+# WARNING (main.py), and /health plus LLMProvider.model make the live model
+# observable. The bug was never the stray fields; it was that nothing said which
+# model was answering, which on 2026-07-17 cost a wrong reading of a gate.
+# ---------------------------------------------------------------------------
+
+def test_stray_openai_compat_fields_are_reported_under_gemini():
+    from app.config import Settings
+
+    s = Settings(
+        _env_file=None,
+        database_url="postgresql://fake",
+        gemini_api_key="fake-key",
+        llm_provider="gemini",
+        llm_model="gpt-oss-120b",
+        llm_base_url="https://api.cerebras.ai/v1",
+        llm_api_key="csk-fake",
+    )
+    assert s.stray_openai_compat_fields() == ["llm_base_url", "llm_api_key", "llm_model"]
+
+
+def test_half_switched_config_still_boots():
+    """The exact .env that fooled the 3.11.1a gate must still start: an operator
+    mid-swap gets a warning, not a locked door."""
+    from app.config import Settings
+
+    s = Settings(
+        _env_file=None,
+        database_url="postgresql://fake",
+        gemini_api_key="fake-key",
+        llm_provider="gemini",
+        llm_model="gpt-oss-120b",
+        llm_base_url="https://api.cerebras.ai/v1",
+        llm_api_key="csk-fake",
+    )
+    assert s.llm_provider == "gemini"
+
+
+def test_no_stray_fields_when_openai_compat_is_the_active_provider():
+    """Nothing is inert when the provider actually uses these — no warning."""
+    from app.config import Settings
+
+    s = Settings(
+        _env_file=None,
+        database_url="postgresql://fake",
+        gemini_api_key="fake-key",
+        llm_provider="openai_compat",
+        llm_model="gpt-oss-120b",
+        llm_base_url="https://api.cerebras.ai/v1",
+        llm_api_key="csk-fake",
+    )
+    assert s.stray_openai_compat_fields() == []
+
+
+def test_no_stray_fields_when_gemini_is_configured_alone(monkeypatch):
+    # _env_file=None blocks the .env FILE, not the environment: scripts/eval.py
+    # calls load_dotenv() at import time, so any test that imports it leaks the
+    # developer's .env into os.environ for the rest of the session. Clear the
+    # knobs explicitly or this asserts against whoever ran first.
+    for var in ("LLM_BASE_URL", "LLM_API_KEY", "LLM_MODEL"):
+        monkeypatch.delenv(var, raising=False)
+
+    from app.config import Settings
+
+    s = Settings(
+        _env_file=None,
+        database_url="postgresql://fake",
+        gemini_api_key="fake-key",
+        llm_provider="gemini",
+    )
+    assert s.stray_openai_compat_fields() == []
+
+
 def test_development_without_secret_is_allowed(monkeypatch):
     """Local dev must still boot without a secret (auth disabled)."""
     from app.config import Settings

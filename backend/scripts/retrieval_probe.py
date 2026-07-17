@@ -84,8 +84,14 @@ class _NoHydeProvider(LLMProvider):
     probes can't be unit-tested end-to-end (they need a DB), so a new
     abstractmethod on LLMProvider would otherwise surface as an AttributeError
     during a manual run, with CI green. Inheriting moves that to construction
-    time, where tests/test_retrieval_probe.py catches it.
+    time, where tests/test_retrieval_probe.py catches it. (That is exactly how
+    the `model` property arrived: the ABC broke this class in CI, not mid-probe.)
     """
+
+    # Names no model because it calls none — generate() below raises. A
+    # plausible-looking name here would be a probe reporting a model it never
+    # spent a token on, which is the class of lie this file exists to fight.
+    model = "none (deterministic probe stand-in — never generates)"
 
     def generate(self, question: str, chunks, *, extra_system: str = "") -> str:
         raise NotImplementedError(
@@ -212,16 +218,26 @@ def source_distribution(source_types: list[str]) -> dict:
     return dict(Counter(source_types))
 
 
-def routing_decision(*, card_count: int, keyword_count: int, routing_enabled: bool) -> bool:
+def routing_decision(
+    *, card_count: int, keyword_count: int, routing_enabled: bool, relaxed: bool
+) -> bool:
     """True if production would swap the retrieved context for the stuffed one.
 
-    Mirrors the production gate (pipeline.py:690): the flag AND the same
-    is_hard_query classifier, so the probe's verdict can't drift from the real
-    decision. When routing is off, production retrieves for everything and so
-    must this probe.
+    Mirrors the routing gate in pipeline.py::answer_question: the flag AND the
+    same is_hard_query classifier, called with the SAME arguments, so the
+    probe's verdict can't drift from the real decision. When routing is off,
+    production retrieves for everything and so must this probe.
+
+    *relaxed* has no default ON PURPOSE. It arrived on is_hard_query with plan
+    3.11.1a and this mirror did not follow it — silent while the flag was off
+    (relaxed=False is the classifier's default: same answer, green CI), a lie
+    the moment it flipped. A default here would let the next knob repeat that
+    exactly; requiring it makes every caller name what production would do.
+    See tests/test_retrieval_probe.py::
+    test_routing_decision_forwards_every_is_hard_query_knob.
     """
     return routing_enabled and is_hard_query(
-        card_count=card_count, keyword_count=keyword_count
+        card_count=card_count, keyword_count=keyword_count, relaxed=relaxed
     )
 
 
@@ -247,7 +263,7 @@ class ProductionContext:
 
 def resolve_production_context(
     question, embedder, pool, provider, settings, corpus_version, query_id,
-    *, routing_enabled: bool,
+    *, routing_enabled: bool, relaxed: bool,
 ) -> ProductionContext:
     """THE single copy of "what context would production build for this question?".
 
@@ -258,7 +274,7 @@ def resolve_production_context(
     Re-syncing copies is what this branch did elsewhere; it does not stop the
     fourth copy. One function means the probes cannot disagree by construction.
 
-    Mirrors production exactly (pipeline.py:641-709):
+    Mirrors production exactly (pipeline.py::answer_question):
       * entities + keywords are read off the TAG-STRIPPED question, because that
         is what production feeds the gate;
       * routed -> context = build_stuffed_chunks (the full rulebook);
@@ -277,6 +293,7 @@ def resolve_production_context(
         card_count=card_count,
         keyword_count=keyword_count,
         routing_enabled=routing_enabled,
+        relaxed=relaxed,
     )
 
     chunks = None
@@ -348,7 +365,8 @@ def _strategy_rank(refs, chunks) -> int | None:
 
 
 def run_probe(
-    questions, embedder, pool, corpus_version, settings, *, routing_enabled: bool
+    questions, embedder, pool, corpus_version, settings, *,
+    routing_enabled: bool, relaxed: bool,
 ) -> list[dict]:
     """Measure gold-rule presence in the context production would ACTUALLY build.
 
@@ -374,7 +392,7 @@ def run_probe(
 
         resolved = resolve_production_context(
             question, embedder, pool, provider, settings, corpus_version, "probe",
-            routing_enabled=routing_enabled,
+            routing_enabled=routing_enabled, relaxed=relaxed,
         )
         context = resolved.chunks
         routed = resolved.routed
@@ -422,7 +440,7 @@ def run_probe(
     return results
 
 
-def _print_report(results: list[dict], *, routing_enabled: bool) -> None:
+def _print_report(results: list[dict], *, routing_enabled: bool, relaxed: bool) -> None:
     routed, retrieved = split_by_route(results)
     total = len(results)
 
@@ -430,7 +448,11 @@ def _print_report(results: list[dict], *, routing_enabled: bool) -> None:
     print("RETRIEVAL PROBE (deterministic — no LLM, HyDE off)")
     print("=" * 64)
     print(f"  Evaluable questions : {total}")
+    # Both flags, because both move the routed/retrieved split: relaxed opens the
+    # (1 card, 1 keyword) cell. Two runs that disagree on it are not comparable,
+    # and a header that names only the first makes them look like they are.
     print(f"  hard_query_routing  : {'ON' if routing_enabled else 'OFF'}")
+    print(f"  hard_routing_relaxed: {'ON' if relaxed else 'OFF'}")
     print(f"  routed (stuffed ctx): {len(routed)}   retrieved (RAG ctx): {len(retrieved)}")
 
     # Never let a degraded run pass for a healthy one: build_stuffed_chunks is
@@ -554,20 +576,22 @@ def main() -> None:
     embedder = Embedder.load(settings.model_name)
     print("  Embedder ready.\n")
 
-    # Read the real flag: the probe must classify questions the way the running
+    # Read the real flags: the probe must classify questions the way the running
     # deployment does, not the way we remember it being configured.
     routing_enabled = settings.hard_query_routing
-    print(f"  hard_query_routing = {routing_enabled}\n")
+    relaxed = settings.hard_routing_relaxed
+    print(f"  hard_query_routing   = {routing_enabled}")
+    print(f"  hard_routing_relaxed = {relaxed}\n")
 
     try:
         results = run_probe(
             questions, embedder, pool, corpus_version, settings,
-            routing_enabled=routing_enabled,
+            routing_enabled=routing_enabled, relaxed=relaxed,
         )
     finally:
         close_pool(pool)
 
-    _print_report(results, routing_enabled=routing_enabled)
+    _print_report(results, routing_enabled=routing_enabled, relaxed=relaxed)
 
 
 if __name__ == "__main__":

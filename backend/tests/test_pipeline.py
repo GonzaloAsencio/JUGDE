@@ -87,6 +87,9 @@ def _fake_settings(corpus_version: str = "v1"):
     s.skip_hyde_when_routed = False
     s.hyde_model = None
     s.concise_reasoning = False
+    # Truthy-MagicMock trap: an unpinned flag silently runs these tests with the
+    # feature ON. 3.11.1a's relaxed threshold ships off, so pin it off here.
+    s.hard_routing_relaxed = False
     return s
 
 
@@ -449,6 +452,8 @@ def test_base_provider_hyde_returns_empty():
     from app.rag.provider import LLMProvider
 
     class _Bare(LLMProvider):
+        model = "bare-model"
+
         def generate(self, question, chunks, *, extra_system: str = ""):
             return ""
 
@@ -1039,6 +1044,8 @@ from app.rag.provider import LLMProvider as _LLMProvider
 class _ScriptedProvider(_LLMProvider):
     """Returns a scripted list of answers, one per generate() call."""
 
+    model = "scripted-model"
+
     def __init__(self, answers: list[str]) -> None:
         self._answers = answers
         self.calls = 0
@@ -1366,6 +1373,8 @@ def test_answer_question_forwards_scaffold_extra_system_when_two_cards_mentioned
     generate_calls: list[dict] = []
 
     class _SpyProvider(_LLMProvider):
+        model = "spy-model"
+
         def generate(self, question, chunks, *, extra_system: str = "") -> str:
             generate_calls.append({"question": question, "extra_system": extra_system})
             return _GOOD_ANSWER
@@ -1395,6 +1404,8 @@ def test_answer_question_no_scaffold_for_simple_single_card_question():
     generate_calls: list[dict] = []
 
     class _SpyProvider(_LLMProvider):
+        model = "spy-model"
+
         def generate(self, question, chunks, *, extra_system: str = "") -> str:
             generate_calls.append({"extra_system": extra_system})
             return _GOOD_ANSWER
@@ -1423,6 +1434,8 @@ def test_answer_question_forwards_scaffold_extra_system_on_conditional_language(
     generate_calls: list[dict] = []
 
     class _SpyProvider(_LLMProvider):
+        model = "spy-model"
+
         def generate(self, question, chunks, *, extra_system: str = "") -> str:
             generate_calls.append({"extra_system": extra_system})
             return _GOOD_ANSWER
