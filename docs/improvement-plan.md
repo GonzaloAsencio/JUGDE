@@ -429,8 +429,76 @@ interacción.
 responda bien. eval-020 con `383.3.d` en contexto ≠ eval-020 correcta. Falta el
 gate de generación, que necesita cuota.
 
-- [ ] **Siguiente paso (two-step, método de la casa):** implementar flag-off →
-      correr eval de las 3 preguntas al resetear cuota → flipear solo si ganan.
+- [x] **Siguiente paso (two-step, método de la casa):** implementado flag-off →
+      corrido el gate de generación (2026-07-17) → **NO se flipea. Ver abajo.**
+
+#### GATE DE GENERACIÓN — ❌ **EL FLAG MUERE. 0W / 2L** (2026-07-17)
+
+El lever que ganó retrieval 3W/0L **pierde generación 0W/2L**. Flag queda OFF.
+
+**El gate se corrió sobre 6 preguntas, no sobre las 3 del titular.** El flag mueve
+el routing 21/40 → 27/40: las 6 que cruzan son el universo. Gatear sobre las 3
+con gold ref era mirar el recorte que solo puede ganar — la forma exacta del
+lever (d) y del arm fusionado de 3.11.2. Tres de las seis (eval-016/018/032) no
+tienen gold ref pero **sí reciben veredicto del judge**: `rule_reference` gatea
+el recall, no el juicio. Ya estaban correctas: solo podían romperse.
+
+| id | CONTROL (flag OFF) | TREATMENT (flag ON) | |
+|---|---|---|---|
+| eval-020 | wrong | wrong | = |
+| eval-037 | wrong | wrong | = |
+| eval-030 | correct | correct | = |
+| eval-032 | correct | correct | = |
+| **eval-016** | **correct** | **wrong** | ❌ **REGRESIÓN** |
+| **eval-018** | **correct** | **wrong** | ❌ **REGRESIÓN** |
+
+Ambos brazos corridos hoy, mismo código (rama `feat/routing-threshold-relaxed`,
+stack #69→#74, resto de flags OFF), corpus v2.2.1. El baseline del 15/07 NO se
+usó de control: otro stack, dos días viejo.
+
+**Corrección al titular de (a):** el gate de retrieval contaba 3W, pero
+**eval-030 ya se contestaba bien**. Ganar un gold ref en una pregunta que ya
+acertás vale cero en generación. El upside real sobre el eval set eran **dos**
+preguntas (eval-020, eval-037), y no ganó ninguna.
+
+**El mecanismo — el rulebook stuffeado no ayuda, ESTORBA:** eval-016 y eval-037
+dispararon `query.no_info_despite_context` con `confidence=0.0`. Con el rulebook
+COMPLETO en contexto, el modelo contestó *"I don't have enough information"*.
+eval-016 bajo CONTROL citaba `811.1.b` y `811.1.c.3` y acertaba; con todo el
+rulebook adelante, se rindió. eval-037 empeoró incluso quedándose en `wrong`:
+bajo CONTROL al menos razonaba desde 820, bajo TREATMENT no contestó nada.
+
+**⚠️ CONFOUND — el gate NO identifica el mecanismo.** El TREATMENT cambia DOS
+cosas a la vez: el contexto (RAG → rulebook stuffeado) **y** el modelo
+(`gpt-oss-120b` → `gemini-3.5-flash`). La regresión puede ser del contexto, del
+modelo, o de los dos. El gate responde la pregunta de shipping ("¿flipeamos?" →
+NO, sin ambigüedad) y NADA más. No leer "el rulebook stuffeado diluye" como
+probado: no lo está.
+
+**Predicción registrada antes de correr: FALLÓ.** Se predijo que eval-037 ganaba
+(confianza media-alta) con mecanismo identificado: su respuesta razonaba desde
+820.1/820.3.a/820.1.d — todo 820 — sin ver 131.4 ni 425, así que meterlas debía
+alcanzar. Con las dos reglas en contexto, contestó "no tengo información
+suficiente". **Presencia en contexto ≠ corrección, y esta vez la presencia
+empeoró la respuesta.** Es la tercera vez en tres días que una métrica proxy
+sana esconde una pérdida real.
+
+**Artefacto descartado, NO es un hallazgo:** el reporte del brazo TREATMENT dice
+`Retrieval recall: 0/3 = 0%` contra 3/3 del CONTROL. No es regresión.
+`_build_citations` deja `rule_codes=[]` para `RULEBOOK_CHUNK_ID` a propósito
+(derivarlos listaría cada código del juego = paper hit garantizado), así que una
+pregunta ruteada **no puede** puntuar recall por construcción. La métrica de
+recall del eval es ciega al bucket ruteado — por eso existe el probe de
+retrieval, que mide presencia en contexto directo y no vía citations.
+
+**🔴 LEAD para 4.2/4.3 — es un LEAD, NO un resultado.** `hard_query_routing` está
+**ON hoy** (default `True`, y `HARD_QUERY_ROUTING=true` en `.env`): 21/40 del
+eval ya rutean. Si el camino ruteado puede convertir una respuesta correcta en
+"no tengo información", la pregunta abierta es si el routing YA shippeado está
+lastimando preguntas que se contestaban bien sin él. Medido acá: 2 de 4 correctas
+se rompieron al rutear. **6 preguntas no prueban nada sobre las 21** y el
+confound del modelo sigue sin resolver. Necesita su propio gate: mismo modelo en
+ambos brazos, variando SOLO el contexto.
 - [x] **(c)** arm FTS sobre keywords extraídos (lead de 6.2) — ❌ **MUERTO POR
       GATE** para eval-039, ver 3.11.2. Sigue sin probar para 030/037.
 
