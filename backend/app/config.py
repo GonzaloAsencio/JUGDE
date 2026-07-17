@@ -129,6 +129,28 @@ class Settings(BaseSettings):
 
     # Cache
     cache_ttl_s: int = 86400
+
+    # 2.3 semantic cache: on an exact-key miss, reuse the answer of the nearest
+    # already-answered question (pgvector ANN over cached_questions, migration
+    # 007). The exact key is a SHA-256, so today every paraphrase pays a full
+    # LLM call — that is what exhausts the free tier.
+    #
+    # Default OFF: a false positive here serves the answer to a DIFFERENT
+    # question, so it ships dark and flips only after an eval gate, the same
+    # two-step used by the reranker (#42 -> #46) and hard routing (#58 -> #63).
+    #
+    # HARD queries are never eligible — not out of caution, but because
+    # scripts/semantic_cache_probe.py proved no safe threshold exists for them
+    # (eval-013 vs eval-014: cosine 0.982, OPPOSITE rulings). See
+    # pipeline._semantic_cache_is_safe.
+    semantic_cache_enabled: bool = False
+    # Cosine floor for a match, measured — not guessed — by
+    # scripts/semantic_cache_probe.py on the non-hard subset of the eval set:
+    #   ceiling (most similar DIFFERENT questions) = 0.7633
+    #   floor   (least similar SELF-paraphrase)    = 0.8739
+    # 0.85 sits inside that band: it rejects every different-question pair on the
+    # eval set while still catching the rewordings the cache exists to catch.
+    semantic_cache_threshold: float = 0.85
     # v7: added a third few-shot example teaching chain placement-order vs
     # LIFO resolution-order (383.3.d.1) — the model was inverting these.
     # Bumping invalidates the response cache — the version is part of the key.

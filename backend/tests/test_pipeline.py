@@ -82,6 +82,8 @@ def _fake_settings(corpus_version: str = "v1"):
     s.reranker_model = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     s.rerank_pool_size = 15
     s.keyword_family_extra = 0
+    s.semantic_cache_enabled = False
+    s.semantic_cache_threshold = 0.85
     return s
 
 

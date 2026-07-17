@@ -26,10 +26,41 @@ def close_redis() -> None:
     _redis_client = None
 
 
+def is_enabled() -> bool:
+    """True when a Redis client is live.
+
+    The semantic cache (app/semantic_cache.py) gates its ANN query on this: the
+    ANSWER lives in Redis, so with no Redis there is nothing a semantic hit
+    could return — running the vector search would be pure waste. It also keeps
+    scripts/eval.py byte-identical, since the harness deliberately never calls
+    init_redis (every question must hit generation fresh).
+    """
+    return _redis_client is not None
+
+
+def directive_key(card_mentions: list[str] | None = None, tags: list[str] | None = None) -> str:
+    """Stable text key for the NON-SEMANTIC dimensions of a question: the
+    caller's card_mentions and any @tags embedded in the prose.
+
+    The semantic cache partitions on this so a nearest-neighbour match can never
+    cross a directive boundary. It must stay in lockstep with what
+    make_cache_key hashes: both sort the same inputs, so two questions the exact
+    key treats as distinct can never be merged by the semantic one.
+    """
+    mentions = sorted(card_mentions) if card_mentions else []
+    sorted_tags = sorted(tags) if tags else []
+    return json.dumps({"m": mentions, "t": sorted_tags}, ensure_ascii=False, sort_keys=True)
+
+
 def make_cache_key(question: str, corpus_version: str, card_mentions: list[str] | None = None, prompt_version: str = "v1") -> str:
     """Derive a deterministic cache key.
 
     Key = SHA-256({"q": normalize(question), "cv": corpus_version, "pv": prompt_version, "m": sorted(card_mentions)})
+
+    Note: @tags are not hashed separately — they live inside the raw *question*
+    text, so they already change the key. directive_key() surfaces them
+    explicitly for the semantic cache, which embeds the tag-stripped question
+    and therefore cannot see them any other way.
     """
     normalized = question.strip().lower()
     mentions = sorted(card_mentions) if card_mentions else []
