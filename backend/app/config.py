@@ -123,6 +123,29 @@ class Settings(BaseSettings):
                 raise ValueError(f"openai_compat requires: {missing}")
         return self
 
+    def stray_openai_compat_fields(self) -> list[str]:
+        """openai_compat knobs that are set but inert under the current provider.
+
+        NOT a validation error, deliberately. Operators swap the main provider by
+        rate limit, and keeping all four knobs configured so a single
+        llm_provider flip switches sides is the sane way to do that — raising
+        here would force commenting out three vars on every 429.
+
+        The danger was never the stray fields; it was that nothing said which
+        model was live. Whoever reports the model now asks the provider object
+        (LLMProvider.model, /health), so the ambiguity is observable. This stays
+        as a startup WARNING (main.py): "llm_model is set and ignored" is worth
+        saying out loud, because on 2026-07-17 it cost a wrong reading of the
+        3.11.1a gate — but it is not worth refusing to boot over.
+        """
+        if self.llm_provider == "openai_compat":
+            return []
+        return [name for name, val in [
+            ("llm_base_url", self.llm_base_url),
+            ("llm_api_key", self.llm_api_key),
+            ("llm_model", self.llm_model),
+        ] if val]
+
     @model_validator(mode="after")
     def _require_secret_in_prod(self):
         # Fail-closed: the auth middleware disables itself when

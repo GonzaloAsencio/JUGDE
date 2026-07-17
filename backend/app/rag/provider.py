@@ -4,6 +4,25 @@ from app.rag.retrieval import Chunk
 
 
 class LLMProvider(ABC):
+    @property
+    @abstractmethod
+    def model(self) -> str:
+        """The model this provider actually calls.
+
+        Abstract on purpose. Callers that need to REPORT the model must ask the
+        object that generates, never re-derive it from Settings: with
+        llm_provider='gemini' and the openai_compat knobs left set,
+        create_provider builds GeminiProvider(gemini_model) while
+        `llm_model or gemini_model` names gpt-oss-120b — a model that provider
+        never touches. That mismatch shipped in fc8e3ee (2026-07-02) and made
+        every non-routed query log the wrong model until 2026-07-17, when it
+        produced a wrong reading of a gate. One authority, no second copy.
+
+        Test doubles must declare it too (`model = "fake"` satisfies this):
+        a stub that cannot say what it impersonates is how the pipeline learns
+        to trust a name nobody set.
+        """
+
     @abstractmethod
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str: ...
 
@@ -34,6 +53,10 @@ class GeminiProvider(LLMProvider):
         # never shown. It does not need the answer model. Defaults to it so an
         # unset hyde_model is byte-identical to the pre-2.2 behaviour.
         self._hyde_model = hyde_model or model
+
+    @property
+    def model(self) -> str:
+        return self._model
 
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_gemini, build_prompt
@@ -90,6 +113,10 @@ class OpenAICompatProvider(LLMProvider):
         self._max_output_tokens = max_output_tokens
         # See GeminiProvider: HyDE output is embedded, never shown.
         self._hyde_model = hyde_model or model
+
+    @property
+    def model(self) -> str:
+        return self._model
 
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_openai_compat_raw

@@ -311,11 +311,20 @@ def _make_chunk(section: str = "Some Rule", similarity: float = 0.9) -> Chunk:
 
 
 class _RecordingProvider:
-    """LLM provider double that records what it was asked to generate from."""
+    """LLM provider double that records what it was asked to generate from.
 
-    def __init__(self, answer: str = "Reasoning:\n- r\nAnswer:\nRecorded answer.") -> None:
+    Duck-typed rather than subclassing LLMProvider, so the ABC cannot enforce
+    its shape here — when `model` was added, the other doubles failed at
+    construction and this one failed inside the pipeline instead. Kept
+    duck-typed (it records, it does not impersonate a real provider), but the
+    lesson is why _NoHydeProvider inherits: see scripts/retrieval_probe.py.
+    """
+
+    def __init__(self, answer: str = "Reasoning:\n- r\nAnswer:\nRecorded answer.",
+                 model: str = "recording-model") -> None:
         self.calls: list[dict] = []
         self._answer = answer
+        self.model = model
 
     def generate(self, question, chunks, *, extra_system=""):
         self.calls.append({"question": question, "chunks": chunks, "extra_system": extra_system})

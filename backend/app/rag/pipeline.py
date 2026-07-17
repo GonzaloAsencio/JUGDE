@@ -726,7 +726,13 @@ def answer_question(
                 stuffed_chunks=len(stuffed),
             )
 
-    model = settings.hard_gemini_model if routed else (settings.llm_model or settings.gemini_model)
+    # The provider that ANSWERS is the authority on the model name. Re-deriving
+    # it from settings (`llm_model or gemini_model`) is how this reported
+    # gpt-oss-120b for two weeks while GeminiProvider(gemini_model) did the
+    # generating: create_provider ignores llm_model under llm_provider='gemini',
+    # and the log did not. Same object, same name, no second copy.
+    answering_provider = hard_provider if routed else provider
+    model = answering_provider.model
 
     if not chunks:
         latency_ms = round((time.time() - t0) * 1000)
@@ -757,7 +763,7 @@ def answer_question(
     else:
         extra_system = ""
     answer = _generate_guarded(
-        hard_provider if routed else provider,
+        answering_provider,
         resolved_question, chunks, query_id, extra_system=extra_system,
     )
     citations = _build_citations(chunks)

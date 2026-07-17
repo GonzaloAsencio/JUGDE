@@ -99,6 +99,26 @@ async def lifespan(app: FastAPI):
     app.state.embedder = embedder
     app.state.db_pool = pool
     app.state.llm_provider = create_provider(settings, llm_client)
+    # Say out loud which model actually answers, and which configured knobs are
+    # inert. Swapping providers by rate limit means llm_provider can lag behind
+    # llm_model, and the lag is silent: create_provider ignores llm_model under
+    # gemini. On 2026-07-17 that made a gate measure gemini-flash-lite while
+    # every log line named gpt-oss-120b. Not fatal (keeping both sides
+    # configured is how you flip in one edit) — but never again unsaid.
+    logger.info(
+        "Main LLM provider ready.",
+        provider=settings.llm_provider,
+        model=app.state.llm_provider.model,
+    )
+    stray = settings.stray_openai_compat_fields()
+    if stray:
+        logger.warning(
+            "Ignoring openai_compat settings under the current provider — these do NOTHING "
+            "until llm_provider=openai_compat.",
+            llm_provider=settings.llm_provider,
+            ignored=stray,
+            answering_with=app.state.llm_provider.model,
+        )
     # 4.2+4.3 hard-query routing: a second, Gemini-only provider on the
     # thinking model. Independent of the MAIN provider (prod runs Groq/
     # openai_compat as main) — create_hard_provider builds its own Gemini

@@ -138,6 +138,64 @@ def test_create_provider_passes_max_output_tokens_from_settings():
     assert provider._max_output_tokens == 999
 
 
+# ---------------------------------------------------------------------------
+# provider.model — the provider is the AUTHORITY on what it actually calls
+#
+# Why this exists: pipeline used to re-derive the reported model from settings
+# (`llm_model or gemini_model`) while generation went through the provider
+# OBJECT. With llm_provider='gemini' and llm_model set, create_provider builds
+# GeminiProvider(gemini_model) but query.complete reported llm_model — a model
+# that provider never touches. Two weeks of logs (fc8e3ee, 2026-07-02) named the
+# wrong model, and it produced a wrong reading of the 3.11.1a gate on
+# 2026-07-17. Asking the object that generated is the only version that cannot
+# drift.
+# ---------------------------------------------------------------------------
+
+def test_gemini_provider_reports_the_model_it_calls():
+    from app.rag.provider import GeminiProvider
+
+    provider = GeminiProvider(
+        client=_FakeClient(), model="gemini-flash-lite-latest",
+        temperature=0.1, timeout_s=10.0,
+    )
+    assert provider.model == "gemini-flash-lite-latest"
+
+
+def test_openai_compat_provider_reports_the_model_it_calls():
+    from app.rag.provider import OpenAICompatProvider
+
+    provider = OpenAICompatProvider(
+        base_url="http://x", api_key="k", model="gpt-oss-120b",
+        temperature=0.1, timeout_s=10.0,
+    )
+    assert provider.model == "gpt-oss-120b"
+
+
+def test_gemini_provider_ignores_llm_model_and_reports_gemini_model():
+    """THE bug, at the seam where it was born.
+
+    llm_provider='gemini' + llm_model='gpt-oss-120b' is a real config: the
+    operator swaps providers by rate limit and leaves the openai_compat knobs
+    behind. create_provider correctly ignores llm_model — and the reported model
+    must ignore it too, or it names a provider that never ran.
+    """
+    from unittest.mock import MagicMock
+    from app.rag.provider import create_provider
+
+    settings = MagicMock()
+    settings.llm_provider = "gemini"
+    settings.gemini_model = "gemini-flash-lite-latest"
+    settings.llm_model = "gpt-oss-120b"  # set, and NOT used by this provider
+    settings.gemini_temperature = 0.1
+    settings.gemini_timeout_s = 10.0
+    settings.max_output_tokens = 1024
+
+    provider = create_provider(settings, llm_client=_FakeClient())
+    assert provider.model == "gemini-flash-lite-latest", (
+        "the provider must report what it calls, never settings.llm_model"
+    )
+
+
 def test_fake_llm_provider_accepts_extra_system_kwarg_without_breaking():
     """Fakes in conftest.py must satisfy the extended ABC signature (keyword-only
     extra_system with a default) so the pipeline can always call generate(...,

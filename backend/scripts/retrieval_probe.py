@@ -84,8 +84,14 @@ class _NoHydeProvider(LLMProvider):
     probes can't be unit-tested end-to-end (they need a DB), so a new
     abstractmethod on LLMProvider would otherwise surface as an AttributeError
     during a manual run, with CI green. Inheriting moves that to construction
-    time, where tests/test_retrieval_probe.py catches it.
+    time, where tests/test_retrieval_probe.py catches it. (That is exactly how
+    the `model` property arrived: the ABC broke this class in CI, not mid-probe.)
     """
+
+    # Names no model because it calls none — generate() below raises. A
+    # plausible-looking name here would be a probe reporting a model it never
+    # spent a token on, which is the class of lie this file exists to fight.
+    model = "none (deterministic probe stand-in — never generates)"
 
     def generate(self, question: str, chunks, *, extra_system: str = "") -> str:
         raise NotImplementedError(
