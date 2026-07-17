@@ -522,9 +522,14 @@ enough information". **El modelo queda exonerado para eval-016: el rulebook
 stuffeado es lo que rompe.** Es una sola pregunta — no generaliza a las 21 — pero
 el confound está muerto para ella y el mecanismo pasó de hipótesis a observado.
 
-**eval-018 quedó SIN MEDIR:** dos intentos, dos `503 UNAVAILABLE` de Gemini
-("high demand"). Fallo de proveedor, no rate limit. Por la regla del gate, un
-`error` no es resultado. Pendiente.
+**eval-018 — MEDIDA al tercer intento (mismo día, los 503 eran transitorios):**
+`gemini-3.5-flash` + RAG (8192 tok, 90s) → **"I don't have enough information"**.
+A diferencia de eval-016, acá el contexto NO exonera al modelo: 3.5-flash falla
+eval-018 con CUALQUIER contexto (con RAG se rinde, con el stuffed inventó
+healing), mientras flash-lite la contestaba (inestable: correct/partial entre
+corridas). Mecanismo distinto al de eval-016 — el modelo está implicado.
+Consistente con §3.13: eval-018 es una pregunta inestable/difícil, no un efecto
+puro del stuffing.
 
 **⚠️ Trampa metodológica que casi se come este experimento.** El primer intento
 de la celda del medio corrió `gemini-3.5-flash` con `max_output_tokens=1024` (el
