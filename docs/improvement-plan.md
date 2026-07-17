@@ -652,6 +652,38 @@ preciso y más lento, no más preciso y más rápido.
 >   describe prod.
 > - Los comentarios del repo ("prod runs Groq/openai_compat as main") tenían
 >   razón; el `.env` local era el desviado.
+
+#### El tercer brazo (2026-07-17, mismo día): `llama-3.3-70b-versatile` — el main REAL de prod — es el PEOR de los tres
+
+Corrido vía Groq con los defaults exactos de prod (1024 tok, 30s), mismas 19,
+mismo judge que los otros dos brazos (gpt-oss-120b vía Cerebras — el judge NO se
+cambió a mitad de comparación; caveat de auto-preferencia para el brazo B
+mitigado leyendo los justificativos a mano).
+
+| | flash-lite | gpt-oss-120b | **llama (PROD)** |
+|---|---|---|---|
+| correct | 11 | **15** | **9** |
+| partial | 3 | 1 | 3 |
+| wrong | 5 | 1 (+2 error) | 7 |
+
+**gpt-oss-120b le gana al main de prod 6W/0L** sobre las 17 comparables
+(eval-002/005/012/030/039/040). Cuatro de las seis son contradicciones duras de
+reglas leídas a mano, no estilo: llama afirma que Deflect taxea desde el trash
+(030), que se puede seguir casteando tras doble pass (039), que el conquer de
+Kai'sa triggerea en un battlefield ya scoreado (040). Las 2 inválidas
+(eval-016/037: null content de gpt-oss a 1024 tok) se saben empate-wrong por la
+re-corrida a 8192 — el tally no se mueve.
+
+**Dato incómodo**: eval-030 y eval-039 estaban `correct` en todos los baselines
+del día (flash-lite). Bajo el main que prod REALMENTE corre, están `wrong` hoy.
+
+**Recomendación**: mover el main de prod a `gpt-oss-120b` (Cerebras). Cambio de
+env del Space: `LLM_BASE_URL=https://api.cerebras.ai/v1`, `LLM_API_KEY=csk-...`,
+`LLM_MODEL=gpt-oss-120b`, **más `MAX_OUTPUT_TOKENS=8192`** (requisito, no tune:
+es un modelo de razonamiento; a 1024 devuelve null en 2/19). Verificación
+post-flip: `curl /health` debe decir `"main": "gpt-oss-120b"`. Latencia: ~2x
+flash-lite por request (11.9s suelta); el promedio en ráfaga infla por
+throttling de Cerebras (~19 req).
 - [x] **(c)** arm FTS sobre keywords extraídos (lead de 6.2) — ❌ **MUERTO POR
       GATE** para eval-039, ver 3.11.2. Sigue sin probar para 030/037.
 
