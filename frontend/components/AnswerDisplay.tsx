@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
@@ -10,6 +12,7 @@ import { RuneIcon } from '@/components/RuneIcon';
 import { detectKeywords } from '@/lib/keywordDetection';
 import { detectCards } from '@/lib/cardDetection';
 import { detectRuneTokens } from '@/lib/runeTokens';
+import { useRevealedText } from '@/lib/useRevealedText';
 import ruleAnchors from '@/content/rule-anchors.json';
 import type { Components } from 'react-markdown';
 
@@ -173,10 +176,13 @@ function makeComponents(): Components {
 }
 
 export function AnswerDisplay({ answer, loading }: AnswerDisplayProps) {
-  if (loading) return <AnswerSkeleton />;
+  // Smooths delivery: streamed deltas AND at-once answers (cache hits, burst
+  // providers) reveal at reading pace instead of flashing in. While streaming,
+  // the partial answer renders; the skeleton only shows before the first text.
+  const revealed = useRevealedText(answer);
 
-  if (answer) {
-    const cleaned = answer
+  if (revealed) {
+    const cleaned = revealed
       .replace(CITATION_RE, '')
       .replace(/\brelevant sections?\s*:\s*[,\s]*/gi, '')
       .replace(/\n{3,}/g, '\n\n')
@@ -192,6 +198,8 @@ export function AnswerDisplay({ answer, loading }: AnswerDisplayProps) {
       </ReactMarkdown>
     );
   }
+
+  if (loading) return <AnswerSkeleton />;
 
   return null;
 }

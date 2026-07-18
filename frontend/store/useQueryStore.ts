@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { ApiErrorInstance, pingHealth, postQuery } from '@/lib/api';
+import { ApiErrorInstance, pingHealth } from '@/lib/api';
+import { postQueryStream } from '@/lib/streamQuery';
 import type { ApiError, Citation } from '@/lib/types';
 
 const COLD_START_POLL_MS = 5_000;
@@ -63,24 +64,38 @@ async function runQuery(set: SetState, id: string, question: string): Promise<vo
   const cardMentions = await extractCardMentions(question);
   const apiQuestion = question.replace(/@/g, '');
 
+  const patch = (fields: Partial<Message>) => set(state => ({
+    messages: state.messages.map(m => (m.id === id ? { ...m, ...fields } : m)),
+  }));
+
   try {
-    const data = await postQuery(apiQuestion, cardMentions);
-    set(state => ({
-      messages: state.messages.map(m =>
-        m.id === id
-          ? { ...m, answer: data.answer, citations: data.citations, confidence: data.confidence ?? null, latencyMs: data.latency_ms, loading: false, error: null }
-          : m
-      ),
-    }));
+    // Streaming: tokens append to the message as they arrive (the bubble
+    // renders the partial answer while loading); `restart` drops the partial
+    // text (empty-Answer retry / leak cut backend-side); the resolved value is
+    // the canonical post-validated response and REPLACES whatever streamed.
+    const data = await postQueryStream(apiQuestion, cardMentions, {
+      onToken: (t) => set(state => ({
+        messages: state.messages.map(m =>
+          m.id === id ? { ...m, answer: (m.answer ?? '') + t } : m
+        ),
+      })),
+      onRestart: () => patch({ answer: null }),
+    });
+    patch({
+      answer: data.answer,
+      citations: data.citations,
+      confidence: data.confidence ?? null,
+      latencyMs: data.latency_ms,
+      loading: false,
+      error: null,
+    });
   } catch (err: unknown) {
     const error: ApiError = err instanceof ApiErrorInstance
       ? { type: err.type, message: err.message, retryAfter: err.retryAfter }
       : { type: 'unknown', message: 'Something went wrong.' };
-    set(state => ({
-      messages: state.messages.map(m =>
-        m.id === id ? { ...m, error, loading: false } : m
-      ),
-    }));
+    // answer resets to null: a partial streamed answer must not linger behind
+    // the System Notice or leak into the retry's fresh stream.
+    patch({ answer: null, error, loading: false });
 
     // timeout/network/server are exactly what a sleeping HF Space produces —
     // probe /health to tell a real cold start apart from a one-off blip.

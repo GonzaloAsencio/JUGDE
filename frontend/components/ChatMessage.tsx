@@ -61,7 +61,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
             <div className="flex items-center gap-3 mb-3">
               <div className="w-2 h-2 rounded-full bg-brand-muted-ink" />
               <span className="text-[10px] uppercase tracking-[0.28em] text-brand-muted-ink font-bold">Judge</span>
-              {message.answer && <ConfidenceBadge confidence={message.confidence} />}
+              {/* Confidence arrives with the FINAL event — during streaming the
+                  partial answer has none to show yet. */}
+              {message.answer && !message.loading && <ConfidenceBadge confidence={message.confidence} />}
             </div>
             <AnswerDisplay
               answer={message.answer}
