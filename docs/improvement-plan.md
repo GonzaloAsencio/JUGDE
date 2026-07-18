@@ -141,6 +141,19 @@ divergencia documentada es stuffing roto = deploy roto), ahorro 21/40, deltas
 de confidence chicos (mediana < 0.05, raw-only ≤ fusionado siempre que la
 fusión tome el mejor coseno).
 
+**RESULTADO (2026-07-18, `scripts/hyde_skip_probe.py`): ✅ EL FLAG VIVE — el
+primero de Fase 2 que sobrevive a su gate.**
+- Claim 1: identidad **40/40**, cero mismatches, cero stuffing degradado.
+- Claim 2: ahorro **21/40** (una llamada HyDE menos por query hard).
+- Claim 3: deltas **mediana +0.0000, max +0.0041** (eval-019 y eval-033, los
+  únicos no-cero). El costo que motivó el flag es casi inexistente: el mejor
+  coseno del pool viene casi siempre del brazo crudo. Brazo HyDE real:
+  gpt-oss-120b (config de prod), CERO Gemini gastada.
+- Predicción: 3/3 (identidad, ahorro y magnitud de deltas — todas acertadas).
+- [ ] **FLIP PENDIENTE (acción de usuario)**: `SKIP_HYDE_WHEN_ROUTED=true` en
+  el Space de HF; verificable por logs (`query.routed_hard` sin llamada HyDE
+  previa). El flag queda flip-ready; el gate ya no lo bloquea.
+
 ### 2.2 Modelo liviano para HyDE — ✅ IMPLEMENTADO (#70, flag off)
 El pasaje HyDE son 2-3 oraciones descartables que sólo se embeben, nunca se
 muestran. No necesita el modelo de respuesta.
