@@ -35,15 +35,27 @@ def health_shallow(request: Request) -> dict:
     I/O and keeps this shallow.
     """
     corpus_version = getattr(request.app.state, "corpus_version", None)
+    provider = getattr(request.app.state, "llm_provider", None)
+    settings = getattr(request.app.state, "settings", None)
     return {
         "status": "ok",
         "version": _VERSION,
         "corpus_version": corpus_version,
         "models": {
-            "main": _model_of(getattr(request.app.state, "llm_provider", None)),
+            "main": _model_of(provider),
             # None is the honest answer when routing is off, not an omitted key:
             # a missing field reads as "unknown", and "no hard model" is a fact.
             "hard": _model_of(getattr(request.app.state, "hard_provider", None)),
+        },
+        # The 2.1/2.2 flips are env vars whose failure mode is SILENT (a typo'd
+        # HYDE_MODEL degrades to raw-only retrieval at call time, a missing
+        # SKIP_HYDE_WHEN_ROUTED just spends the call) — so the flip must be
+        # verifiable from outside. hyde model comes from the provider object
+        # (the authority on what it calls, same rule as models above); the skip
+        # flag is pipeline config, so Settings IS its authority.
+        "hyde": {
+            "model": getattr(provider, "hyde_model", None) if provider is not None else None,
+            "skip_when_routed": getattr(settings, "skip_hyde_when_routed", None),
         },
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

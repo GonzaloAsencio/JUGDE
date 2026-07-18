@@ -107,6 +107,59 @@ def test_shallow_health_reports_hard_model_null_when_routing_is_off():
     assert body["models"]["hard"] is None
 
 
+def test_shallow_health_reports_hyde_config():
+    """The 2.1/2.2 flips are env vars whose failure mode is silent (a typo'd
+    HYDE_MODEL degrades to raw-only retrieval at call time), so the flip must
+    be verifiable by curl. hyde.model must come from the PROVIDER object (the
+    authority on what hyde() calls), the skip flag from Settings. Every value
+    below is pinned here — _fake_settings reads the dev's .env for unset
+    fields (see test_shallow_health_reports_the_running_models)."""
+    from app.main import app
+
+    settings = _fake_settings()
+    settings.llm_provider = "openai_compat"
+    settings.llm_base_url = "https://api.example.test/v1"
+    settings.llm_api_key = "fake"
+    settings.llm_model = "big-answer-model"
+    settings.hyde_model = "small-hyde-writer"
+    settings.skip_hyde_when_routed = True
+    with (
+        patch("app.main.init_pool", return_value=MagicMock()),
+        patch("app.main.close_pool"),
+        patch("app.main.Embedder.load", return_value=MagicMock()),
+        patch("app.main.genai.Client", return_value=MagicMock()),
+        patch("app.main.get_settings", return_value=settings),
+    ):
+        with TestClient(app) as c:
+            body = c.get("/health").json()
+
+    assert body["hyde"] == {"model": "small-hyde-writer", "skip_when_routed": True}
+
+
+def test_shallow_health_hyde_model_falls_back_to_the_answer_model():
+    """Unset hyde_model means the main model writes the passages — that is the
+    fact /health must report, not None (None would read as 'HyDE off')."""
+    from app.main import app
+
+    settings = _fake_settings()
+    settings.llm_provider = "gemini"
+    settings.llm_model = None
+    settings.gemini_model = "gemini-flash-lite-latest"
+    settings.hyde_model = None
+    settings.skip_hyde_when_routed = False
+    with (
+        patch("app.main.init_pool", return_value=MagicMock()),
+        patch("app.main.close_pool"),
+        patch("app.main.Embedder.load", return_value=MagicMock()),
+        patch("app.main.genai.Client", return_value=MagicMock()),
+        patch("app.main.get_settings", return_value=settings),
+    ):
+        with TestClient(app) as c:
+            body = c.get("/health").json()
+
+    assert body["hyde"] == {"model": "gemini-flash-lite-latest", "skip_when_routed": False}
+
+
 def test_deep_health_returns_200_when_degraded(health_client: TestClient):
     """Even when Redis is unreachable, /health/deep must return HTTP 200."""
     failing_redis = MagicMock()
