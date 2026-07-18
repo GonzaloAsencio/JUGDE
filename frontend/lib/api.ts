@@ -14,7 +14,8 @@ export class ApiErrorInstance extends Error {
   }
 }
 
-function mapError(res: Response, body: Record<string, unknown>): ApiError {
+// Exported for streamQuery: the SSE client must map HTTP errors identically.
+export function mapError(res: Response, body: Record<string, unknown>): ApiError {
   const message = typeof body.detail === 'string' ? body.detail : 'Something went wrong.';
 
   if (res.status === 429) {
