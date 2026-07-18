@@ -7,23 +7,24 @@
 
 ---
 
-## Estado actual (actualizado 2026-07-12 — post gate 3.8)
+## Estado actual (actualizado 2026-07-18 — Fase 2 saldada)
 
 | Métrica | Valor |
 |---|---|
-| Recall determinístico (eval anotado, 17/20 evaluables) | **12/17 estricto** (matcher honesto post-#55); 14/17 con el matcher viejo que contaba hits de familia |
-| Correct rate (judge) | ⚠️ NO usable como métrica de PR: varianza ±10pp medida (runs idénticos dieron 25–45%) |
-| Modelo (main, prod) | **Groq `llama-3.3-70b-versatile`** vía `openai_compat` (verificado en logs del Space 2026-07-13; el doc decía gemini-flash-lite y estaba desactualizado — Google retiró el free tier de 2.0-flash y prod migró a Groq) |
+| Gaps de contexto (miss_diagnosis, determinista) | 6 refs faltantes en 4 preguntas; tras el re-triage 3.13 los gaps REALES son **eval-037** (B:semantic, wrong) y **eval-020** (A:granularity, partial) — eval-030/039 contestan bien sin sus refs bajo gpt-oss |
+| Correct rate (judge) | ⚠️ la varianza es de la GENERACIÓN, no del judge (6.5: judge quieto 12/13 en rejudge de texto idéntico). 6/13 simples INESTABLES (eval-001/004/016/018/030/037); universo estable congelado en 7. Gates: cobertura determinista o protocolo de estabilidad, nunca single-run |
+| Modelo (main, prod) | **`gpt-oss-120b`** vía Cerebras, `MAX_OUTPUT_TOKENS=8192` (flip 2026-07-17, verificado por `/health`) — le ganó 6W/0L al llama de Groq y 4W al flash-lite |
 | Modelo (hard routing) | `gemini-3.5-flash` (thinking), provider Gemini propio e independiente del main — requiere `GEMINI_API_KEY` (fail-closed al arrancar si falta con el flag on) |
+| HyDE | **`gemma-4-31b`** escribe los pasajes (flip 2026-07-18, gate 2.2 VIVE) y **se saltea en ruteadas** (`skip_hyde_when_routed=true`, gate 2.1 VIVE 3/3) — ambos verificados por `/health` post-#78 |
 | Corpus | **v2.2.1** activo en prod (secciones finas + fix de títulos familia-oración, #54) |
 | Reranker | **ON por default** (+3 hits de recall, 0 pérdidas, cero tokens LLM) |
+| Cache | Solo EXACTO (SHA-256 → Redis). El semántico murió por gate (par adversarial 0.9099) y fue strippeado (#77); migración 008 aplicada (`cached_questions` eliminada, 0 filas) |
 | Costo | $0 (sin cambios) |
 
-Misses de retrieval restantes (3/17, re-verificados 2026-07-11 con A/B pareado):
-eval-014 y eval-015 (ambos 383.3.d.1, regla-cuerpo sin título propio) y
-eval-019 (429.2 — "Add" no es taggeable sin ruido). eval-036 (143.2) YA ES HIT
-en el baseline actual — la lista anterior estaba desactualizada. Necesitan un
-enfoque distinto al de #48.
+Los misses históricos de retrieval (eval-014/015/017/019) los cubre el hard
+routing en prod (stuffing + thinking). La cola de ataque vigente es la de 3.13:
+eval-037 > eval-020 > estabilidad de eval-016/018 (lever de eval-set, no de
+retrieval).
 
 > ⚠️ Hallazgo 2026-07-11: el "recall determinístico" NO es 100% determinístico.
 > `provider.hyde()` falla intermitente y devuelve `''` silencioso (contrato
@@ -150,9 +151,9 @@ primero de Fase 2 que sobrevive a su gate.**
   coseno del pool viene casi siempre del brazo crudo. Brazo HyDE real:
   gpt-oss-120b (config de prod), CERO Gemini gastada.
 - Predicción: 3/3 (identidad, ahorro y magnitud de deltas — todas acertadas).
-- [ ] **FLIP PENDIENTE (acción de usuario)**: `SKIP_HYDE_WHEN_ROUTED=true` en
-  el Space de HF; verificable por logs (`query.routed_hard` sin llamada HyDE
-  previa). El flag queda flip-ready; el gate ya no lo bloquea.
+- [x] **FLIP EJECUTADO Y VERIFICADO (2026-07-18)**: `SKIP_HYDE_WHEN_ROUTED=true`
+  en el Space de HF; `/health` post-deploy de #78 reporta
+  `"hyde": {"skip_when_routed": true}`.
 
 ### 2.2 Modelo liviano para HyDE — ✅ IMPLEMENTADO (#70, flag off)
 El pasaje HyDE son 2-3 oraciones descartables que sólo se embeben, nunca se
@@ -198,10 +199,12 @@ es prosa genérica de 2-3 oraciones — un 31B la escribe igual de bien que un
   del modelo; el 58s de eval-010 en el brazo gemma es el backoff de throttling
   de Cerebras ya conocido, no el modelo). **El valor real del flip es
   capacidad/costo de tokens (31B vs 120B), no latencia.**
-- [ ] **FLIP PENDIENTE (acción de usuario)**: `HYDE_MODEL=gemma-4-31b` en el
-  Space de HF. Con esto y el flip de 2.1, TODOS los flags de Fase 2 quedan
-  resueltos: 2 muertos por gate (2.3, 2.6), 2 vivos flip-ready (2.1, 2.2).
-  Queda 2.5 (streaming SSE), que es feature, no flag.
+- [x] **FLIP EJECUTADO Y VERIFICADO (2026-07-18)**: `HYDE_MODEL=gemma-4-31b` en
+  el Space de HF; `/health` post-deploy de #78 reporta
+  `"hyde": {"model": "gemma-4-31b"}`, main y hard intactos. Con esto TODOS los
+  flags de Fase 2 quedan resueltos: 2 muertos por gate y strippeados (2.3, 2.6),
+  2 vivos y flipeados en prod (2.1, 2.2). Queda 2.5 (streaming SSE), que es
+  feature, no flag.
 
 ### 2.3 ~~Cache semántico~~ ❌ MUERTA POR GATE (2026-07-18)
 El cache exacto es SHA-256, así que toda paráfrasis paga una llamada LLM entera.
@@ -231,7 +234,7 @@ NI se guardan.
 - [x] Umbral default **0.85**, dentro de una banda MEDIDA, no adivinada.
 - [x] Namespace: el ANN filtra corpus_version + prompt_version + directive_key.
 - [x] Frescura + auto-sanación de punteros que Redis evictó antes de tiempo.
-- [ ] Gate de eval: hit rate ↑ con **cero** falsos positivos leídos a mano.
+- [x] Gate de eval corrido (ver abajo): un falso positivo REAL leído a mano → MUERE.
 
 **GATE DE FLIP — regla pre-comprometida (2026-07-18, registrada ANTES de correr):**
 E2E con CERO LLM sobre la infra real compartida (ANN de Supabase + Upstash),
@@ -274,8 +277,12 @@ MUERE — la lectura a mano confirmó ruling distinto en el cross-match.**
   El techo 0.763 era un artefacto del universo de comparación, no del dominio.
 - Predicción: 2/3 (paráfrasis y aislamiento acertadas; los 0 cross-matches NO).
 - Un v2 (detector de preguntas multi-parte, otro embedder) sería un lever
-  NUEVO con gate propio. Strip del flag y su maquinaria: mismo trato que
-  relaxed (#75) y concise (#76).
+  NUEVO con gate propio.
+- **Strip ejecutado (2026-07-18, #77)**: -1240/+36 — `semantic_cache.py`, ambos
+  flags de config, los caminos lookup/remember del pipeline, `directive_key` +
+  `is_enabled` de cache.py (sin callers), ambos probes. Migración 008 aplicada
+  a Supabase: `DROP TABLE cached_questions` (tenía 0 filas — nunca hubo tráfico
+  real). Mismo trato que relaxed (#75) y concise (#76).
 
 ### 2.4 ~~Paralelizar los brazos de retrieval~~ ❌ DESCARTADA (2026-07-14)
 Mutuamente excluyente con 2.1: paralelizar obliga a llamar SIEMPRE a HyDE
@@ -291,6 +298,9 @@ mejora de UX más rentable pendiente.
       consumido en el frontend Next.
 - [ ] Resolver la pieza bloqueante ya anotada: las respuestas cacheadas también
       deben "streamear" (no aparecer instantáneas) para no generar un salto de UX.
+      Nota 2026-07-18: el strip del cache semántico (#77) NO destraba esto — el
+      cache EXACTO (SHA-256 → Redis, `_try_cached_response`) sigue vivo y sirve
+      hits instantáneos; el bloqueo aplica igual.
 
 ### 2.6 ~~Acotar el Reasoning en preguntas simples~~ ❌ MUERTA POR GATE (2026-07-17, strippeada 2026-07-18)
 El "Reasoning:" obligatorio (regla 7) es lo que levanta el bucket hard, pero en
@@ -332,7 +342,7 @@ lo obvio. Se tomó la variante que el propio plan sugería como alternativa
 
 ---
 
-## Fase 3 — Retrieval para el bucket hard (EN CURSO — 2 golpes dados, quedan 3 misses)
+## Fase 3 — Retrieval para el bucket hard (EN CURSO — cola vigente en 3.13: eval-037 > eval-020 > estabilidad 016/018)
 
 Ordenadas por (impacto esperado ÷ esfuerzo). Todas gratis en plata.
 
@@ -1304,25 +1314,28 @@ judgeadas 3 veces (original + rejudge 173921Z + rejudge 174528Z).**
 
 ---
 
-## Orden de ejecución recomendado (actualizado 2026-07-12)
+## Orden de ejecución recomendado (actualizado 2026-07-18)
 
 ```
 Fase 0 ✅ ── split: 6 retrieval / 4 reasoning (0 unknowns)
 Fase 1 ✅ ── 1.1 (#49), 1.2 (#51), 1.3+1.4 (#52) mergeados y deployados
-Fase 4.1 ✅ ── few-shot v6 (#50) mergeado; validado en prod: Deflect-in-trash
-          contesta correcto (2026-07-11)
-Fase 3 ── 3.0 ✅ (#48), 3.3 ✅ (#42/#46), 3.5 ✅ (variante familia, flag);
-          3.1 ❌ 3.2 ❌ 3.6 ❌ 3.7 ❌ 3.8 ❌ muertas por evidencia
-          (probes y gates pareados, matcher estricto)
-Fase 4.2+4.3 ── IMPLEMENTADO COMBINADO (2026-07-12, rama feat/hard-query-routing,
-          flag off): probes probaron que stuffing+thinking cubre los 4 misses
-          residuales (014/015/017/019). 3.5 ya flippeado en prod vía env
-          (KEYWORD_FAMILY_EXTRA=8, validado con eval-030).
+Fase 4.1 ✅ ── few-shot v6 (#50) mergeado; validado en prod (2026-07-11)
+Fase 4.2+4.3 ✅ ── hard routing EN PROD (gemini-3.5-flash, verificado /health);
+          cubre los misses residuales 014/015/017/019
+Fase 2 ✅ SALDADA (2026-07-18) ── 2.1 y 2.2 vivas por gate y FLIPEADAS en prod
+          (verificadas /health post-#78); 2.3 y 2.6 muertas por gate y
+          strippeadas (#77, #76); 2.4 descartada. Solo queda 2.5 (SSE, feature).
+Fase 6 ✅ ── instrumental auditado; 6.5: varianza = generación, no judge;
+          universo estable congelado en 7
+Fase 3 ── 3.0/3.3/3.5 ✅; el resto muerto por evidencia salvo la cola de 3.13:
+          eval-037 (B:semantic) > eval-020 (A:granularity) > estabilidad 016/018
 SIGUIENTE RECOMENDADO:
-PR de 4.2+4.3 → gate targeted por pregunta → flip HARD_QUERY_ROUTING en prod
-          (two-step). Pendientes menores: flip default keyword_family_extra
-          0→8 tras soak; 3.9 (fine-tune) queda como última bala si algo se cae.
-Fase 2 / Fase 5 ── sin cambios, cuando toquen
+2.5 Streaming SSE (la mejora de UX más rentable; resolver el salto del cache
+          exacto) y los restos de Fase 3 con gates DETERMINISTAS de cobertura
+          (per_ref_ranks, como el gate 2.2) — no de veredicto: eval-030/037
+          están en la lista inestable. Pendientes menores: flip default
+          keyword_family_extra 0→8 tras soak; 3.9 (fine-tune) última bala.
+Fase 5 ── metering (portfolio), cuando toque una sesión entera
 ```
 
 ## Criterio de "listo" por fase (revisado tras medir la varianza del judge)
