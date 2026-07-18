@@ -1240,7 +1240,24 @@ quedó CORTA — 6/13 inestables (46%), no 3.**
   3.11.2b) es inestable — su lectura de gate necesita N corridas, no una.
 - **Ítem nuevo (fuente de varianza)**: separar varianza de GENERACIÓN vs de
   JUDGE es barato: `eval.py --rejudge` sobre un mismo results file N veces
-  re-scorea las MISMAS respuestas (cero generación, solo judge). Pendiente.
+  re-scorea las MISMAS respuestas (cero generación, solo judge).
+
+**FUENTE DE VARIANZA MEDIDA (2026-07-18, mismo día): las respuestas de run1
+judgeadas 3 veces (original + rejudge 173921Z + rejudge 174528Z).**
+
+- **El judge está QUIETO en 12/13** — sobre texto idéntico repite veredicto,
+  incluso los incómodos (eval-030 wrong 3/3, eval-037 partial 3/3). La única
+  judge-ruidosa es **eval-001** (partial/correct/partial — respuesta borderline).
+- **Consecuencia: en 5 de las 6 inestables (004/016/018/030/037) el ruido vive
+  en la GENERACIÓN** — el modelo escribe respuestas genuinamente distintas
+  entre corridas, y a veces la variante omite lo que importaba. Mayoría-de-3
+  judgeadas NO arreglaría nada ahí; N generaciones sí es la lectura honesta.
+- eval-001 está doblemente maldita: varianza de generación Y de judge — la
+  "regresión" que mató a concise queda aún más dudosa.
+- Remedios posibles, en orden de invasividad: (a) gates leen N generaciones
+  sobre el universo estable (ya adoptado); (b) bajar temperatura de generación
+  — cambia PROD, decisión aparte con gate propio; (c) judge mayoría-de-3 solo
+  serviría para borderlines tipo eval-001, no para el grueso.
 
 ---
 
