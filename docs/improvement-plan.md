@@ -118,6 +118,29 @@ llamada. **Una llamada LLM menos por query hard**, sin tocar la respuesta.
 Único costo: `semantic_confidence` de una query ruteada pasa a calcularse solo
 con el brazo crudo (número ya de significado dudoso en ruteadas) — por eso el flag.
 
+**GATE DE FLIP — regla pre-comprometida (2026-07-18, registrada ANTES de correr):**
+El flag NO cambia lo que el modelo responde en ninguna query por construcción
+(las ruteadas usan contexto stuffed con o sin HyDE; las no-ruteadas nunca
+saltean), así que un A/B de eval completo solo mediría ruido de judge. Lo que sí
+puede fallar es el MECANISMO, y eso es deterministicamente medible:
+1. **Identidad de predicción** (la claim central): `will_route` pre-retrieval ==
+   decisión real post-retrieval en TODAS las evaluables. **Cualquier divergencia
+   MATA el flag**: un falso positivo le saca el brazo HyDE a una query que SÍ usa
+   su retrieval (degradación de contexto real); un falso negativo prueba que la
+   claim de identidad del diseño es falsa. Cero LLM.
+2. **Ahorro real**: # llamadas HyDE evitadas == # ruteadas (esperado 21/40).
+   **MATA si el ahorro es 0** (no-op). Cero LLM.
+3. **Delta de confidence en ruteadas** (raw-only vs fusionado): requiere el brazo
+   HyDE real → ~21 llamadas al main (Cerebras), CERO Gemini. Sin condición de
+   muerte salvo: **una caída > 0.2 en alguna ruteada** (visible al usuario)
+   manda el hallazgo a decisión humana antes del flip. `confidence == 0.0`
+   (el único umbral conductual: cache-skip) es inalcanzable por esta vía —
+   requiere citations vacías y las citations ruteadas salen del stuffed.
+Predicción registrada: identidad 40/40 (misma función `should_route`; la única
+divergencia documentada es stuffing roto = deploy roto), ahorro 21/40, deltas
+de confidence chicos (mediana < 0.05, raw-only ≤ fusionado siempre que la
+fusión tome el mejor coseno).
+
 ### 2.2 Modelo liviano para HyDE — ✅ IMPLEMENTADO (#70, flag off)
 El pasaje HyDE son 2-3 oraciones descartables que sólo se embeben, nunca se
 muestran. No necesita el modelo de respuesta.
