@@ -1189,6 +1189,27 @@ opinión con formato de tabla. **Antes de creerle un número a cualquier probe,
 verificar que su modelo del pipeline siga siendo el pipeline.** El costo de no
 hacerlo ya está medido: un día de diagnóstico sobre un gap inexistente.
 
+### 6.5 Estabilidad del eval set — medición (2026-07-18, regla registrada ANTES de correr)
+
+Motivo: 3 de las 13 simples (eval-016/018/030) ya flippearon veredicto entre
+corridas idénticas en distintos días — ~23% del bucket. Un gate que lee
+veredictos sobre evals inestables lee ruido. Hay que medir la inestabilidad UNA
+vez y pre-comprometer las exclusiones, en vez de descubrirla gate a gate.
+
+**Universo**: las 13 simples (determinista, ni ruteadas ni scaffoldeadas):
+eval-001, 002, 004, 005, 006, 008, 010, 016, 018, 030, 032, 037, 040.
+**Método**: N=3 corridas idénticas de `scripts/eval.py --ids <las 13>`, config
+de prod (gpt-oss-120b, 8192), judge FIJO (gpt-oss vía Cerebras), mismo corpus.
+Corridas secuenciales el mismo día (el throttling de Cerebras en ráfagas de ~19
+mete latencia, no varianza de veredicto).
+**Regla pre-comprometida**:
+- **Estable** = mismo veredicto en las 3 corridas. **Inestable** = cualquier flip.
+- Las inestables quedan **EXCLUIDAS del universo de lectura de todo gate
+  futuro** hasta que se arregle la fuente de varianza (ítem nuevo si aparece).
+- Las estables son el universo válido; la lista se congela acá y los gates la
+  citan, no la re-deciden.
+**Predicción registrada**: eval-016/018/030 inestables, las otras 10 estables.
+
 ---
 
 ## Orden de ejecución recomendado (actualizado 2026-07-12)
