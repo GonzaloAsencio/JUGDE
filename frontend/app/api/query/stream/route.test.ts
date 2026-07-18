@@ -8,6 +8,10 @@
  * responses.
  */
 
+// Make this file a module: without an export it shares the global script scope
+// with ../route.test.ts and their same-named helpers collide under tsc.
+export {};
+
 const ORIGINAL_ENV = process.env;
 
 const SSE_BODY =
