@@ -183,6 +183,26 @@ el candidato debe vivir en Cerebras. Oferta actual del endpoint (verificada por
 es prosa genérica de 2-3 oraciones — un 31B la escribe igual de bien que un
 120B para efectos de embedding), latencia del brazo gemma claramente menor.
 
+**RESULTADO (2026-07-18, `scripts/hyde_model_probe.py`): ✅ EL FLAG VIVE.**
+- Cobertura: **cero regresiones en 14/14** no-ruteadas evaluables — ni siquiera
+  transitorias (ninguna pregunta necesitó la re-corrida de confirmación). Los
+  gaps preexistentes (eval-020 1/2, eval-030 2/3, eval-037 1/3, eval-039 0-1/2)
+  son IDÉNTICOS bajo ambos brazos: el gap es del retrieval, no del escritor
+  del pasaje.
+- Bonus informacional: **eval-039 con gemma cubrió el ref 348 que el brazo main
+  no cubre** (un pasaje distinto embebe distinto — no es señal para gatear,
+  pero anotado).
+- Confidence: ninguna caída supera 0.2.
+- **Predicción 1/2**: cobertura acertada; la latencia NO — por pregunta ambos
+  brazos andan en ~3-5s (la del pasaje corto la domina red/cola, no el tamaño
+  del modelo; el 58s de eval-010 en el brazo gemma es el backoff de throttling
+  de Cerebras ya conocido, no el modelo). **El valor real del flip es
+  capacidad/costo de tokens (31B vs 120B), no latencia.**
+- [ ] **FLIP PENDIENTE (acción de usuario)**: `HYDE_MODEL=gemma-4-31b` en el
+  Space de HF. Con esto y el flip de 2.1, TODOS los flags de Fase 2 quedan
+  resueltos: 2 muertos por gate (2.3, 2.6), 2 vivos flip-ready (2.1, 2.2).
+  Queda 2.5 (streaming SSE), que es feature, no flag.
+
 ### 2.3 ~~Cache semántico~~ ❌ MUERTA POR GATE (2026-07-18)
 El cache exacto es SHA-256, así que toda paráfrasis paga una llamada LLM entera.
 Postgres guarda `embedding → cache_key` (migración 007, HNSW); la RESPUESTA sigue
