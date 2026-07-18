@@ -160,6 +160,29 @@ muestran. No necesita el modelo de respuesta.
 - [x] Setting `hyde_model`; sin setear → cae al modelo principal (byte-idéntico).
 - [x] Test que fija que el modelo barato NO puede filtrarse al camino de respuesta.
 
+**GATE DE FLIP — regla pre-comprometida (2026-07-18, registrada ANTES de correr):**
+Restricción de diseño: `hyde_model` va al MISMO cliente/base_url que el main —
+el candidato debe vivir en Cerebras. Oferta actual del endpoint (verificada por
+`/models`): gpt-oss-120b, gemma-4-31b, zai-glm-4.7. **Candidato: `gemma-4-31b`**
+(el único claramente más chico; zai-glm-4.7 no es "liviano").
+- **Universo**: las no-ruteadas evaluables (con el flip de 2.1, las ruteadas ya
+  no llaman HyDE nunca — el flag solo puede afectar a las no-ruteadas).
+- **Método** (`scripts/hyde_model_probe.py`, cero Gemini, cero judge): por
+  pregunta, pasaje HyDE del main vs de gemma → contexto de producción real con
+  cada uno (`_retrieve`, mismos settings) → cobertura de gold refs por
+  `per_ref_ranks`/`fully_covered` (los helpers de retrieval_probe, no copias).
+- **Regla**: **MATA si el brazo gemma PIERDE la cobertura de algún gold ref que
+  el brazo main cubre** — con confirmación: el pasaje es sampleado, así que una
+  regresión solo cuenta si PERSISTE al re-correr el brazo gemma de esa pregunta
+  una vez. Empates y mejoras → VIVE. Se registran también las mejoras
+  (informacional) y las latencias de ambos brazos (el ahorro esperado).
+- `confidence` en no-ruteadas sí es señal viva — pero la cobertura manda; el
+  delta de confidence se reporta, no gatea (mismo criterio que 2.1 claim 3:
+  revisión humana si alguna cae > 0.2).
+**Predicción registrada**: VIVE con 0 regresiones persistentes (el pasaje HyDE
+es prosa genérica de 2-3 oraciones — un 31B la escribe igual de bien que un
+120B para efectos de embedding), latencia del brazo gemma claramente menor.
+
 ### 2.3 ~~Cache semántico~~ ❌ MUERTA POR GATE (2026-07-18)
 El cache exacto es SHA-256, así que toda paráfrasis paga una llamada LLM entera.
 Postgres guarda `embedding → cache_key` (migración 007, HNSW); la RESPUESTA sigue
