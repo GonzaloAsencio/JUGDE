@@ -160,7 +160,7 @@ muestran. No necesita el modelo de respuesta.
 - [x] Setting `hyde_model`; sin setear → cae al modelo principal (byte-idéntico).
 - [x] Test que fija que el modelo barato NO puede filtrarse al camino de respuesta.
 
-### 2.3 Cache semántico — ✅ IMPLEMENTADO, PERO SÓLO PARA QUERIES NO-HARD (#69, flag off)
+### 2.3 ~~Cache semántico~~ ❌ MUERTA POR GATE (2026-07-18)
 El cache exacto es SHA-256, así que toda paráfrasis paga una llamada LLM entera.
 Postgres guarda `embedding → cache_key` (migración 007, HNSW); la RESPUESTA sigue
 en Redis. Un hit semántico = lookup de puntero + GET normal. Cuesta un embed
@@ -209,6 +209,30 @@ Cleanup obligatorio al final: DELETE de las filas sembradas; los centinelas de
 Redis llevan TTL corto (1h). Predicción registrada: 4/4 paráfrasis hitean (la
 de piso 0.874 con margen fino sobre 0.85), 0 cross-matches (techo no-hard
 medido 0.763 < 0.85), y los near_miss quedan logueados para calibración.
+
+**RESULTADO (2026-07-18, `scripts/semantic_cache_gate_probe.py`): ❌ EL FLAG
+MUERE — la lectura a mano confirmó ruling distinto en el cross-match.**
+- Claim 1: **4/4 paráfrasis** hitearon a SU original con el centinela correcto
+  (sims 0.9742 / 0.8739 / 0.8769 / 0.9801 — la del piso pasó fino, como se
+  predijo). El mecanismo FUNCIONA; no murió por eso.
+- Claim 3: aislamiento OK (las filas del gate son invisibles bajo el pv de prod).
+- Claim 2: **UN par adversarial (simétrico) a 0.9099, DENTRO del subset
+  no-hard**: la original de calibración *"¿Challenge crea showdown? ¿la unidad
+  tiene que poder atacar?"* vs **eval-018** *"¿Challenge crea showdown? ¿el
+  daño se cura después?"*. Rulings DISTINTOS (elegibilidad de ataque vs
+  persistencia de daño) → por regla pre-comprometida, MUERE.
+- **La lección estructural**: preguntas de DOS PARTES que comparten el tallo
+  aplastan el coseno — el mismo mecanismo de eval-013/014, pero del lado
+  "seguro" del clasificador. El techo e2e real (0.9099) queda ARRIBA del piso
+  de paráfrasis (0.8739): **la banda no-hard también es vacía**. Subir el
+  umbral a >0.91 perdería 2 de las 4 paráfrasis — no hay corte defendible.
+- Por qué el probe offline no lo vio: solo comparaba preguntas del eval set
+  entre sí; nunca enfrentó las originales de calibración contra el eval set.
+  El techo 0.763 era un artefacto del universo de comparación, no del dominio.
+- Predicción: 2/3 (paráfrasis y aislamiento acertadas; los 0 cross-matches NO).
+- Un v2 (detector de preguntas multi-parte, otro embedder) sería un lever
+  NUEVO con gate propio. Strip del flag y su maquinaria: mismo trato que
+  relaxed (#75) y concise (#76).
 
 ### 2.4 ~~Paralelizar los brazos de retrieval~~ ❌ DESCARTADA (2026-07-14)
 Mutuamente excluyente con 2.1: paralelizar obliga a llamar SIEMPRE a HyDE
