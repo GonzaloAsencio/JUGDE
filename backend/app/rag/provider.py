@@ -23,6 +23,19 @@ class LLMProvider(ABC):
         to trust a name nobody set.
         """
 
+    @property
+    def hyde_model(self) -> str:
+        """The model hyde() actually calls. Defaults to the answer model.
+
+        Same authority rule as `model`: /health reports THIS, never
+        settings.hyde_model — a typo'd HYDE_MODEL env var fails at the first
+        hyde() call and silently degrades to raw-only retrieval, so the only
+        honest report is what the provider object was actually built with.
+        Non-abstract on purpose: providers without a separate writer (and test
+        doubles) answer with their answer model, which is the truth.
+        """
+        return self.model
+
     @abstractmethod
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str: ...
 
@@ -57,6 +70,10 @@ class GeminiProvider(LLMProvider):
     @property
     def model(self) -> str:
         return self._model
+
+    @property
+    def hyde_model(self) -> str:
+        return self._hyde_model
 
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_gemini, build_prompt
@@ -117,6 +134,10 @@ class OpenAICompatProvider(LLMProvider):
     @property
     def model(self) -> str:
         return self._model
+
+    @property
+    def hyde_model(self) -> str:
+        return self._hyde_model
 
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_openai_compat_raw
