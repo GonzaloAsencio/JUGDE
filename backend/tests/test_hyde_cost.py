@@ -39,7 +39,6 @@ def _settings(*, skip_when_routed: bool, routing: bool = True):
     s = _fake_settings()
     s.skip_hyde_when_routed = skip_when_routed
     s.hard_query_routing = routing
-    s.semantic_cache_enabled = False
     s.hard_gemini_model = "gemini-3.5-flash"
     return s
 
