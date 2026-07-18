@@ -4,9 +4,7 @@ import time
 import uuid
 from dataclasses import dataclass
 
-from app import semantic_cache
-from app.cache import directive_key, get_cached, make_cache_key, set_cached
-from app.cache import is_enabled as cache_is_enabled
+from app.cache import get_cached, make_cache_key, set_cached
 from app.config import Settings
 from app.observability import get_logger
 from app.rag.embedder import Embedder
@@ -22,7 +20,7 @@ from app.rag.provider import LLMProvider
 from app.rag.card_detect import detect_card_mentions, detect_champion_mentions, load_card_names
 from app.rag.reranker import rerank
 from app.rag.retrieval import family_lookup, fuse_results, hybrid_search, tagged_lookup
-from app.rag.routing import RULEBOOK_CHUNK_ID, build_stuffed_chunks, is_hard_query, load_champion_tag_index, should_route
+from app.rag.routing import RULEBOOK_CHUNK_ID, build_stuffed_chunks, load_champion_tag_index, should_route
 from app.rag.rules import extract_rule_codes
 from app.rag.schemas import Citation, QueryResponse
 
@@ -217,10 +215,10 @@ def _try_cached_response(cache_key: str, settings: Settings, query_id: str, t0: 
 class _Entities:
     """Deterministic entity signal for a question — no LLM, no cosine.
 
-    Shared by the semantic-cache gate (which must classify a query BEFORE paying
-    for retrieval) and _retrieve (which needs the same tags to build context).
-    Computed once per query and threaded through so the ~960-pattern card scan
-    doesn't run twice.
+    Shared by the HyDE-skip routing prediction (which must classify a query
+    BEFORE paying for retrieval) and _retrieve (which needs the same tags to
+    build context). Computed once per query and threaded through so the
+    ~960-pattern card scan doesn't run twice.
     """
     auto_card_tags: list[str]
     ambiguous_champion_count: int
@@ -275,90 +273,6 @@ def _detect_entities(
     return _Entities(auto_card_tags=auto_card_tags, ambiguous_champion_count=ambiguous_champion_count)
 
 
-def _semantic_cache_is_safe(*, card_count: int, keyword_count: int) -> bool:
-    """Whether a question may be answered from the SEMANTIC cache (2.3).
-
-    Hard (multi-entity) questions must NEVER be, and this is measured, not
-    cautious. scripts/semantic_cache_probe.py found an adversarial pair inside
-    our own eval set:
-
-        eval-013: "... I play Tideturner DURING MY OPPONENT'S TURN ..." -> YES
-        eval-014: "... I play Tideturner ON MY OWN TURN ..."            -> NO
-
-    Cosine similarity: 0.982. Two words apart, OPPOSITE rulings — because
-    383.3.d.1 hangs the whole answer on who the turn player is. Across the full
-    eval set the highest different-question cosine is that 0.982, while the
-    LOWEST self-paraphrase cosine is 0.874: there is no threshold that both
-    rejects the wrong answer and still catches a reworded question. Globally,
-    this feature cannot be made safe at any threshold.
-
-    Restricted to NON-hard questions the picture inverts: the ceiling drops to
-    0.763 against the same 0.874 floor, leaving a wide safe band. That is not a
-    coincidence — rules questions hinge on discriminative micro-details (whose
-    turn, which zone, ready vs exhausted) that embeddings smooth over, and those
-    details are exactly what makes a question hard in the first place.
-
-    So the gate reuses is_hard_query: the same classifier that routes a question
-    to the thinking model also disqualifies it from the semantic cache.
-    """
-    return not is_hard_query(card_count=card_count, keyword_count=keyword_count)
-
-
-def _try_semantic_response(
-    db_pool,
-    question_embedding: list[float],
-    semantic_key: str,
-    corpus_version: str,
-    cache_prompt_version: str,
-    settings: Settings,
-    query_id: str,
-    t0: float,
-) -> QueryResponse | None:
-    """Return the answer of the nearest already-answered question, or None (2.3).
-
-    Runs only after the exact key missed. The neighbour's answer lives in Redis;
-    this resolves the pointer and reuses it.
-
-    Every hit is logged with the matched question and its cosine — the gate for
-    turning this feature on is "zero false positives, read by hand", and a hit
-    that isn't visible cannot be audited.
-    """
-    match = semantic_cache.lookup(
-        db_pool, question_embedding,
-        corpus_version=corpus_version,
-        prompt_version=cache_prompt_version,
-        directive_key=semantic_key,
-        threshold=settings.semantic_cache_threshold,
-        ttl_s=settings.cache_ttl_s,
-    )
-    if match is None:
-        return None
-    neighbour_key, neighbour_question, similarity = match
-
-    cached_raw = get_cached(neighbour_key)
-    if cached_raw is None:
-        # The pointer outlived its answer (early Redis eviction). Drop the row so
-        # it stops shadowing a real neighbour, and fall through to generation.
-        logger.info("semantic_cache.stale_pointer", query_id=query_id, similarity=similarity)
-        semantic_cache.forget(db_pool, neighbour_key)
-        return None
-    try:
-        cached_data = json.loads(cached_raw)
-        latency_ms = round((time.time() - t0) * 1000)
-        response = QueryResponse(**{**cached_data, "cache_hit": True, "latency_ms": latency_ms})
-    except Exception:
-        return None  # Corrupt entry — regenerate rather than serve garbage.
-
-    logger.info(
-        "semantic_cache.hit",
-        query_id=query_id,
-        similarity=round(similarity, 4),
-        matched_question=neighbour_question,
-        latency_ms=latency_ms,
-    )
-    return response
-
-
 def _retrieve(
     question: str,
     embedder: Embedder,
@@ -377,10 +291,10 @@ def _retrieve(
     Returns (chunks, clean_question, semantic_confidence, has_exact_card_match, card_count).
 
     *question_embedding* and *entities* let the caller hand in work it already
-    did. The semantic cache (2.3) must classify the query and embed it BEFORE
-    this call — recomputing either here would pay bge-m3's CPU cost (~50-100ms)
-    and the ~960-pattern card scan twice for the identical text. None -> compute
-    here, as before.
+    did (the HyDE-skip prediction classifies BEFORE this call; the probes embed
+    once for several searches) — recomputing either here would pay bge-m3's CPU
+    cost (~50-100ms) and the ~960-pattern card scan twice for the identical
+    text. None -> compute here, as before.
     """
     clean_question, explicit_tags = _extract_tags(question)
     base_question = clean_question or question
@@ -626,55 +540,31 @@ def answer_question(
     if cached is not None:
         return cached
 
-    # 2.3 semantic cache (flag off by default). The exact key above is a hash, so
-    # a paraphrase of an already-answered question misses it and pays a full LLM
-    # call. Classify FIRST (deterministic, no LLM), because the cache is only
-    # safe for one half of the traffic — see _semantic_cache_is_safe.
-    tag_stripped, explicit_tags = _extract_tags(question)
-    base_question = tag_stripped or question
-    mention_tags = [m.lower() for m in (card_mentions or [])]
-    semantic_key = directive_key(card_mentions, explicit_tags)
-
-    # Both the semantic cache and the HyDE skip need to know what KIND of query
-    # this is before any retrieval happens, and both read it from the same
-    # deterministic signal — so detect once and share.
+    # 2.1 HyDE skip (flag off by default): a routed query discards its retrieval
+    # (`chunks = stuffed`), so predict the routing decision BEFORE retrieval and
+    # skip the HyDE arm it would throw away. Entity detection is the same
+    # deterministic signal the decision itself reads below.
     routing_possible = hard_provider is not None and settings.hard_query_routing
-    semantic_possible = settings.semantic_cache_enabled and cache_is_enabled()
 
     entities: _Entities | None = None
-    question_embedding: list[float] | None = None
-    semantic_eligible = False
     will_route = False
-    if semantic_possible or (settings.skip_hyde_when_routed and routing_possible):
+    if settings.skip_hyde_when_routed and routing_possible:
+        tag_stripped, _ = _extract_tags(question)
+        base_question = tag_stripped or question
         entities = _detect_entities(base_question, db_pool, corpus_version, query_id)
-        would_route = should_route(
-            routing_enabled=routing_possible,
-            card_count=entities.card_count(mention_tags),
-            keyword_count=len(_detect_keywords(base_question)),
-        )
         # Predicts the routing decision made below. The only way they can
         # disagree is build_stuffed_chunks returning None (a missing data file),
         # in which case that query degrades to raw-only retrieval — acceptable,
         # since a missing rulebook.md is a broken deploy, not a normal path.
-        will_route = settings.skip_hyde_when_routed and would_route
-
-        if semantic_possible:
-            semantic_eligible = _semantic_cache_is_safe(
-                card_count=entities.card_count(mention_tags),
-                keyword_count=len(_detect_keywords(base_question)),
-            )
-            if semantic_eligible:
-                question_embedding = embedder.encode(base_question)
-                semantic = _try_semantic_response(
-                    db_pool, question_embedding, semantic_key, corpus_version,
-                    cache_prompt_version, settings, query_id, t0,
-                )
-                if semantic is not None:
-                    return semantic
+        will_route = should_route(
+            routing_enabled=routing_possible,
+            card_count=entities.card_count([m.lower() for m in (card_mentions or [])]),
+            keyword_count=len(_detect_keywords(base_question)),
+        )
 
     chunks, clean_question, semantic_confidence, has_exact_card_match, card_count = _retrieve(
         question, embedder, db_pool, provider, settings, card_mentions, corpus_version, query_id,
-        question_embedding=question_embedding, entities=entities, skip_hyde=will_route,
+        entities=entities, skip_hyde=will_route,
     )
 
     resolved_question = clean_question or question
@@ -772,22 +662,6 @@ def answer_question(
             json.dumps({"answer": answer, "citations": [c.model_dump() for c in citations], "confidence": confidence}),
             ttl=settings.cache_ttl_s,
         )
-        # Index the question for the semantic cache under the SAME key. Gated on
-        # the same degraded check on purpose: a pointer to an answer Redis was
-        # told not to store would only ever resolve to nothing. Gated on
-        # semantic_eligible too — a hard question must not even be REMEMBERED,
-        # or it becomes the wrong-answer neighbour for the next paraphrase
-        # (see _semantic_cache_is_safe).
-        if semantic_eligible and question_embedding is not None:
-            semantic_cache.remember(
-                db_pool,
-                base_question,
-                question_embedding,
-                cache_key,
-                corpus_version=corpus_version,
-                prompt_version=cache_prompt_version,
-                directive_key=semantic_key,
-            )
 
     logger.info(
         "query.complete",

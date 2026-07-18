@@ -305,7 +305,6 @@ def _fake_settings(routing_on: bool):
     # MagicMock attrs are truthy by default — pin the Phase 2 flags to the real
     # Settings defaults (all off), or they silently enable features these tests
     # are not about.
-    s.semantic_cache_enabled = False
     s.skip_hyde_when_routed = False
     return s
 

@@ -1,0 +1,12 @@
+-- Migración 008: drop del cache semántico (plan de mejoras 2.3 — MUERTA POR GATE).
+--
+-- Motivo: el gate de flip (2026-07-18, scripts/semantic_cache_gate_probe.py en
+-- eeb349c) encontró un par adversarial REAL dentro del subset no-hard: dos
+-- preguntas de dos partes que comparten el tallo ("¿Challenge crea showdown?")
+-- a coseno 0.9099, ARRIBA del piso de paráfrasis 0.8739. La banda segura que
+-- el probe offline midió (techo 0.763) era un artefacto de comparar solo
+-- preguntas del eval set entre sí. No hay umbral defendible; la feature nunca
+-- se prendió (flag off desde #69) y la tabla nunca recibió tráfico real.
+--
+-- La 007 queda en el repo como historia aplicada; esta la revierte.
+DROP TABLE IF EXISTS cached_questions;
