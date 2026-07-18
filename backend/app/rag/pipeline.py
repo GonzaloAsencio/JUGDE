@@ -3,6 +3,7 @@ import re
 import time
 import uuid
 from dataclasses import dataclass
+from typing import Iterator
 
 from app.cache import get_cached, make_cache_key, set_cached
 from app.config import Settings
@@ -11,6 +12,7 @@ from app.rag.embedder import Embedder
 from app.rag.generation import (
     _MULTI_CARD_SCAFFOLD,
     _SAFE_FALLBACK,
+    _leaks_system_prompt,
     has_empty_answer_section,
     needs_scaffold,
     post_gen_validate,
@@ -499,23 +501,35 @@ def _generate_guarded(
     return _INCONCLUSIVE_ANSWER
 
 
-def answer_question(
+@dataclass
+class _GenerationPlan:
+    """Everything the generation step needs, computed once by _prepare_query
+    and shared verbatim by the blocking and streaming paths — so the two can
+    never drift in retrieval, routing, or postprocessing behaviour."""
+    query_id: str
+    t0: float
+    cache_key: str
+    chunks: list
+    resolved_question: str
+    semantic_confidence: float
+    has_exact_card_match: bool
+    extra_system: str
+    provider: LLMProvider  # the ANSWERING provider (hard when routed)
+    model: str
+
+
+def _prepare_query(
     question: str,
     embedder: Embedder,
     db_pool,
     provider: LLMProvider,
     settings: Settings,
-    card_mentions: list[str] | None = None,
-    corpus_version: str | None = None,
-    hard_provider: LLMProvider | None = None,
-) -> QueryResponse:
-    """Orchestrate embed -> retrieve -> generate with cache, tracing, and post-gen validation.
-
-    Synchronous by design: every collaborator (embedder, psycopg2, LLM clients,
-    Upstash cache) is blocking. The endpoint is a sync handler, so FastAPI runs
-    this in its threadpool — real concurrency without an ``async`` facade that
-    would only block the event loop.
-    """
+    card_mentions: list[str] | None,
+    corpus_version: str | None,
+    hard_provider: LLMProvider | None,
+) -> tuple[QueryResponse | None, "_GenerationPlan | None"]:
+    """Cache lookup + retrieve + route. Returns (ready_response, None) when no
+    generation is needed (cache hit, empty context), else (None, plan)."""
     t0 = time.time()
     query_id = str(uuid.uuid4())
 
@@ -538,7 +552,7 @@ def answer_question(
 
     cached = _try_cached_response(cache_key, settings, query_id, t0)
     if cached is not None:
-        return cached
+        return cached, None
 
     # 2.1 HyDE skip (flag off by default): a routed query discards its retrieval
     # (`chunks = stuffed`), so predict the routing decision BEFORE retrieval and
@@ -627,18 +641,31 @@ def answer_question(
             latency_ms=latency_ms,
             cache_hit=False,
             confidence=0.0,
-        )
+        ), None
 
     extra_system = _MULTI_CARD_SCAFFOLD if needs_scaffold(resolved_question, card_count) else ""
-    answer = _generate_guarded(
-        answering_provider,
-        resolved_question, chunks, query_id, extra_system=extra_system,
+    return None, _GenerationPlan(
+        query_id=query_id,
+        t0=t0,
+        cache_key=cache_key,
+        chunks=chunks,
+        resolved_question=resolved_question,
+        semantic_confidence=semantic_confidence,
+        has_exact_card_match=has_exact_card_match,
+        extra_system=extra_system,
+        provider=answering_provider,
+        model=model,
     )
-    citations = _build_citations(chunks)
-    answer = _postprocess_answer(answer, citations, chunks, query_id)
 
-    latency_ms = round((time.time() - t0) * 1000)
-    confidence = _compute_confidence(semantic_confidence, has_exact_card_match, citations)
+
+def _finalize_response(plan: _GenerationPlan, answer: str, settings: Settings) -> QueryResponse:
+    """Postprocess + cache + log a generated *answer* — the single tail shared
+    by the blocking and streaming paths."""
+    citations = _build_citations(plan.chunks)
+    answer = _postprocess_answer(answer, citations, plan.chunks, plan.query_id)
+
+    latency_ms = round((time.time() - plan.t0) * 1000)
+    confidence = _compute_confidence(plan.semantic_confidence, plan.has_exact_card_match, citations)
 
     response = QueryResponse(
         answer=answer,
@@ -655,21 +682,118 @@ def answer_question(
     # frozen for cache_ttl_s and served to every user asking the same question.
     # The next request simply regenerates; rate limiting bounds the retry cost.
     if confidence == 0.0 or answer in _DEGRADED_ANSWERS:
-        logger.info("cache.skip_degraded", query_id=query_id, confidence=confidence)
+        logger.info("cache.skip_degraded", query_id=plan.query_id, confidence=confidence)
     else:
         set_cached(
-            cache_key,
+            plan.cache_key,
             json.dumps({"answer": answer, "citations": [c.model_dump() for c in citations], "confidence": confidence}),
             ttl=settings.cache_ttl_s,
         )
 
     logger.info(
         "query.complete",
-        query_id=query_id,
+        query_id=plan.query_id,
         latency_ms=latency_ms,
         cache_hit=False,
-        model=model,
+        model=plan.model,
         confidence=confidence,
     )
 
     return response
+
+
+def answer_question(
+    question: str,
+    embedder: Embedder,
+    db_pool,
+    provider: LLMProvider,
+    settings: Settings,
+    card_mentions: list[str] | None = None,
+    corpus_version: str | None = None,
+    hard_provider: LLMProvider | None = None,
+) -> QueryResponse:
+    """Orchestrate embed -> retrieve -> generate with cache, tracing, and post-gen validation.
+
+    Synchronous by design: every collaborator (embedder, psycopg2, LLM clients,
+    Upstash cache) is blocking. The endpoint is a sync handler, so FastAPI runs
+    this in its threadpool — real concurrency without an ``async`` facade that
+    would only block the event loop.
+    """
+    ready, plan = _prepare_query(
+        question, embedder, db_pool, provider, settings, card_mentions,
+        corpus_version, hard_provider,
+    )
+    if ready is not None:
+        return ready
+
+    answer = _generate_guarded(
+        plan.provider, plan.resolved_question, plan.chunks, plan.query_id,
+        extra_system=plan.extra_system,
+    )
+    return _finalize_response(plan, answer, settings)
+
+
+def answer_question_stream(
+    question: str,
+    embedder: Embedder,
+    db_pool,
+    provider: LLMProvider,
+    settings: Settings,
+    card_mentions: list[str] | None = None,
+    corpus_version: str | None = None,
+    hard_provider: LLMProvider | None = None,
+) -> Iterator[tuple[str, object]]:
+    """answer_question with progressive delivery (2.5 SSE). Yields events:
+
+    - ``("token", str)``: a text delta to append to the displayed answer.
+    - ``("restart", None)``: the client must clear the partial bubble — an
+      empty-Answer retry, or a prompt-leak cut.
+    - ``("final", QueryResponse)``: always last — the canonical post-validated
+      response the client replaces its displayed text with. Cache hits and
+      empty-context short-circuits emit ONLY this event.
+
+    Same prepare/finalize as answer_question, so streaming can change delivery
+    but never the answer, the cache-write policy, or the telemetry.
+
+    The prompt-leak guard runs INCREMENTALLY on the accumulated buffer: the
+    blocking path sanitizes in post_gen_validate, but by then a streamed leak
+    would already be on screen. On detection the stream is cut mid-flight and
+    the buffered text finalizes through the same sanitizer (-> _SAFE_FALLBACK).
+    """
+    ready, plan = _prepare_query(
+        question, embedder, db_pool, provider, settings, card_mentions,
+        corpus_version, hard_provider,
+    )
+    if ready is not None:
+        yield ("final", ready)
+        return
+
+    answer: str | None = None
+    for attempt in (1, 2):
+        buffer = ""
+        leaked = False
+        for delta in plan.provider.generate_stream(
+            plan.resolved_question, plan.chunks, extra_system=plan.extra_system
+        ):
+            buffer += delta
+            if _leaks_system_prompt(buffer):
+                logger.warning("query.stream_leak_cut", query_id=plan.query_id)
+                leaked = True
+                yield ("restart", None)
+                break
+            yield ("token", delta)
+        if leaked or not has_empty_answer_section(buffer):
+            # post_gen_validate in _finalize_response sanitizes a leaked buffer
+            # to _SAFE_FALLBACK — same treatment as the blocking path.
+            answer = buffer
+            break
+        # Empty Answer section: same single retry as _generate_guarded, but the
+        # client must drop the partial reasoning it already displayed.
+        logger.warning("query.empty_answer_section", query_id=plan.query_id, attempt=attempt)
+        yield ("restart", None)
+
+    if answer is None:
+        logger.warning("query.empty_answer_after_retry", query_id=plan.query_id)
+        answer = _INCONCLUSIVE_ANSWER
+
+    yield ("final", _finalize_response(plan, answer, settings))
