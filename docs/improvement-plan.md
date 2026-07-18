@@ -951,6 +951,31 @@ faltantes `131.4`, `425`).
   2.2, el pasaje de gemma cubrió el 348 de eval-039 que el brazo main no
   cubre — la munición real de los B parece ser el ESCRITOR del pasaje, no FTS.
 
+**RESULTADO (2026-07-18, `scripts/fts_term_probe.py`): ❌ (c) MUERE para
+eval-037 — por la condición de REGRESIÓN, no por la de alcance.**
+
+| config | `131.4` (vec/fts/fused @15) | `425` (vec/fts/fused @15) | regresiones vector@5 |
+|---|---|---|---|
+| `simple` | None / **10** / 5 | None / None / None | eval-002, 007, 008 |
+| `english` | None / **9** / 6 | None / None / None | eval-002, 008, 027 |
+
+- El matiz que la predicción NO vio: **`131.4` SÍ es alcanzable por FTS**
+  (rank 10/9; fusionado lo sube a 5/6) — el perfil no es idéntico al de 039.
+  Pero `425` es inalcanzable en ambas configs, y el arm fusionado **cuesta 3
+  preguntas que el vector hoy acierta @5** — la MISMA forma de pérdida que
+  mató el fusionado de 039 (y el lever (d)). Por regla pre-comprometida, con
+  ≥1 regresión el lever muere aunque el titular mejore.
+- Predicción: media — acertó el veredicto y el mecanismo de `425`; falló en
+  que "ningún término discrimina" (los de `131.4` sí).
+- **Consecuencia estructural (fin de la munición barata de Fase 3):**
+  eval-037 queda reclasificada como puente de vocabulario. El estado final de
+  la cola de 3.13: eval-030/039 curadas por el modelo, eval-037 y eval-020 sin
+  lever barato vivo, eval-016/018 son lever de eval-set (estabilidad), no de
+  retrieval. Munición restante, TODA cara: mejor escritor de pasajes HyDE
+  (lever NUEVO con gate propio — el dato de 2.2/gemma lo sugiere) o 3.9
+  fine-tune (última bala). Ninguna de las dos se arranca sin decisión humana
+  de gastar esa sesión.
+
 **Nota de método:** el número a mover es *presencia del gold en el contexto*, NO
 recall@k del arm. El arm sub-reporta a propósito (producción le suma cartas
 tagueadas y family completion encima). Y ojo con el piso: el probe corre HyDE off
@@ -1355,13 +1380,17 @@ Fase 6 ✅ ── instrumental auditado; 6.5: varianza = generación, no judge;
           universo estable congelado en 7
 Fase 3 ── 3.0/3.3/3.5 ✅; el resto muerto por evidencia salvo la cola de 3.13:
           eval-037 (B:semantic) > eval-020 (A:granularity) > estabilidad 016/018
+Fase 2.5 ✅ SSE EN PROD (2026-07-18) ── #79 backend + #81 frontend mergeadas y
+          verificadas e2e en prod (Vercel pipea, 28 tokens + final); el salto
+          del cache lo mata el reveal client-side
+Fase 3 ── SIN MUNICIÓN BARATA (2026-07-18, gate 3.11.2b): (c) muerto para 037
+          por regresión fusionada; 020 sin lever vivo; 016/018 = lever de
+          eval-set. Restante CARO: escritor HyDE (lever nuevo + gate) o 3.9
+          fine-tune — decisión humana de gastar esa sesión.
 SIGUIENTE RECOMENDADO:
-2.5 Streaming SSE (la mejora de UX más rentable; resolver el salto del cache
-          exacto) y los restos de Fase 3 con gates DETERMINISTAS de cobertura
-          (per_ref_ranks, como el gate 2.2) — no de veredicto: eval-030/037
-          están en la lista inestable. Pendientes menores: flip default
-          keyword_family_extra 0→8 tras soak; 3.9 (fine-tune) última bala.
-Fase 5 ── metering (portfolio), cuando toque una sesión entera
+Fase 5 (metering, el artefacto de portfolio) o la vía cara de Fase 3 si el
+          usuario decide gastarla. Pendiente menor: flip default
+          keyword_family_extra 0→8 tras soak.
 ```
 
 ## Criterio de "listo" por fase (revisado tras medir la varianza del judge)
