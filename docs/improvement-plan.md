@@ -1210,6 +1210,38 @@ mete latencia, no varianza de veredicto).
   citan, no la re-deciden.
 **Predicción registrada**: eval-016/018/030 inestables, las otras 10 estables.
 
+**RESULTADO (2026-07-18, 3 corridas: 170430Z/171345Z/172117Z): la predicción
+quedó CORTA — 6/13 inestables (46%), no 3.**
+
+| eval | run1 | run2 | run3 | estado |
+|------|------|------|------|--------|
+| 001 | partial | correct | correct | INESTABLE |
+| 002 | correct | correct | correct | estable |
+| 004 | correct | partial | wrong | INESTABLE |
+| 005 | correct | correct | correct | estable |
+| 006 | correct | correct | correct | estable |
+| 008 | correct | correct | correct | estable |
+| 010 | correct | correct | correct | estable |
+| 016 | correct | wrong | correct | INESTABLE |
+| 018 | correct | partial | wrong | INESTABLE |
+| 030 | wrong | wrong | correct | INESTABLE |
+| 032 | correct | correct | correct | estable |
+| 037 | partial | correct | wrong | INESTABLE |
+| 040 | correct | correct | correct | estable |
+
+- **Universo congelado por la regla**: gates futuros sobre simples leen SOLO
+  eval-002/005/006/008/010/032/040. Los inestables (001/004/016/018/030/037)
+  quedan excluidos hasta arreglar la fuente de varianza.
+- **Consecuencia honesta #1**: la "regresión real" de eval-001 que mató a
+  `concise_reasoning` es ahora DUDOSA — hoy flippeó partial/correct/correct sin
+  flag alguno. El strip no se revierte (el ahorro no justificaba el riesgo con
+  la evidencia disponible), pero un v2 se gatearía sobre el universo estable.
+- **Consecuencia honesta #2**: eval-037 ("el gap más firme", objetivo de
+  3.11.2b) es inestable — su lectura de gate necesita N corridas, no una.
+- **Ítem nuevo (fuente de varianza)**: separar varianza de GENERACIÓN vs de
+  JUDGE es barato: `eval.py --rejudge` sobre un mismo results file N veces
+  re-scorea las MISMAS respuestas (cero generación, solo judge). Pendiente.
+
 ---
 
 ## Orden de ejecución recomendado (actualizado 2026-07-12)
