@@ -925,6 +925,32 @@ no el que suponíamos.
       antes de tocar (c): el resultado de eval-039 hace sospechar que el perfil
       se repite, pero **sospechar no es medir**.
 
+**GATE 3.11.2b — regla pre-comprometida (2026-07-18, registrada ANTES de correr):**
+(a) murió en generación (0W/2L) y el re-triage 3.13 sacó a eval-030 del universo
+(contesta bien sin su ref bajo gpt-oss). El universo es SOLO **eval-037** (refs
+faltantes `131.4`, `425`).
+- **Método** (`scripts/fts_term_probe.py`, cero LLM, cero código de producto):
+  keywords de `extract_keywords(pregunta)`; arm FTS-OR (el `_FTS_OR_SQL` del
+  probe de 3.6) en configs `simple` Y `english`; medición POR REF
+  (`per_ref_ranks`, la unidad que 6.1 fijó) sobre el top-15 del arm FTS, del
+  vector y del FUSIONADO (RRF, mismos parámetros que producción). Guard de
+  regresión idéntico al gate de 039: preguntas con gold en vector@5 que la
+  fusión pierde.
+- **Regla**: (c) **MUERE para eval-037** si el arm FTS no trae NINGUNO de los
+  dos refs al top-15 en ninguna config, O si el fusionado que sí los trae
+  pierde ≥1 pregunta vector@5 (la forma del lever (d): el titular tapa la
+  regresión). VIVE solo trayendo ≥1 ref sin regresiones — y aun vivo, el paso
+  siguiente es el arm detrás de flag con gate propio, no auto-ship.
+- **Si muere**: eval-037 queda reclasificada como puente de vocabulario
+  (HyDE / 3.9), igual que eval-039. Con eval-020 sin lever barato vivo
+  ((d) muerto por dilución, (a) muerto en generación), la Fase 3 queda
+  formalmente en munición cara: mejor escritor de HyDE o fine-tune (3.9).
+- **Predicción registrada**: MUERE con el perfil de 039 — los términos de la
+  037 son comunes en el rulebook y `ts_rank_cd` entierra chunks gold cortos
+  (el mecanismo que mató a 3.6). Dato a favor de la vía HyDE: en el gate de
+  2.2, el pasaje de gemma cubrió el 348 de eval-039 que el brazo main no
+  cubre — la munición real de los B parece ser el ESCRITOR del pasaje, no FTS.
+
 **Nota de método:** el número a mover es *presencia del gold en el contexto*, NO
 recall@k del arm. El arm sub-reporta a propósito (producción le suma cartas
 tagueadas y family completion encima). Y ojo con el piso: el probe corre HyDE off
