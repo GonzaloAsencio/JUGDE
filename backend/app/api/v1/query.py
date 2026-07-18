@@ -1,13 +1,16 @@
+import json
+
 import psycopg2
 from psycopg2.pool import PoolError
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 
 from app.config import get_settings
 from app.db import resolve_corpus_version
 from app.middleware.rate_limit import limiter
 from app.observability import get_logger
 from app.rag.generation import GenerationError, GenerationTimeout
-from app.rag.pipeline import answer_question
+from app.rag.pipeline import answer_question, answer_question_stream
 from app.rag.provider import LLMProvider
 from app.rag.schemas import QueryRequest, QueryResponse
 
@@ -39,6 +42,87 @@ def get_hard_provider(request: Request) -> LLMProvider | None:
     return getattr(request.app.state, "hard_provider", None)
 
 
+def _resolve_corpus_or_503(request: Request, pool, settings) -> str:
+    """Resolve corpus_version (re-resolving once after an empty-corpus startup),
+    or raise 503 — shared by /query and /query/stream."""
+    corpus_version = request.app.state.corpus_version
+    if corpus_version is None:
+        # Startup found an empty corpus. An ingest may have populated it since —
+        # re-resolve once (and cache it) instead of forcing a restart.
+        corpus_version = resolve_corpus_version(pool, settings)
+        request.app.state.corpus_version = corpus_version
+    if corpus_version is None:
+        raise HTTPException(status_code=503, detail="Corpus not loaded. Run ingest pipeline first.")
+    return corpus_version
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+@router.post("/query/stream")
+@limiter.limit(_query_limits)
+def query_stream(
+    body: QueryRequest,
+    request: Request,
+    embedder=Depends(get_embedder),
+    pool=Depends(get_db_pool),
+    provider: LLMProvider = Depends(get_llm_provider),
+    hard_provider: LLMProvider | None = Depends(get_hard_provider),
+    settings=Depends(get_settings),
+) -> StreamingResponse:
+    """POST /query/stream — /query with SSE delivery (2.5).
+
+    Sync handler + sync generator on purpose (see /query): FastAPI iterates the
+    generator in its threadpool, so the blocking pipeline streams without
+    tying up the event loop.
+
+    Events: ``token`` (text delta), ``restart`` (client clears the partial
+    bubble), ``final`` (the canonical QueryResponse — always last on success),
+    ``error`` (terminal; mid-stream failures cannot change the HTTP status, so
+    the /query error mapping is delivered in-band instead).
+    """
+    corpus_version = _resolve_corpus_or_503(request, pool, settings)
+
+    def event_source():
+        try:
+            for kind, payload in answer_question_stream(
+                body.question, embedder, pool, provider, settings, body.card_mentions,
+                corpus_version=corpus_version, hard_provider=hard_provider,
+            ):
+                if kind == "token":
+                    yield _sse("token", {"text": payload})
+                elif kind == "restart":
+                    yield _sse("restart", {})
+                else:
+                    yield _sse("final", payload.model_dump())
+        except GenerationTimeout as e:
+            logger.warning("LLM timeout", error=str(e))
+            yield _sse("error", {"detail": "Generation timeout"})
+        except GenerationError as e:
+            logger.error("LLM error", error=str(e))
+            yield _sse("error", {"detail": "Generation service error"})
+        except PoolError as e:
+            logger.warning("DB pool exhausted", error=str(e))
+            yield _sse("error", {"detail": "Server busy, please retry shortly."})
+        except psycopg2.OperationalError as e:
+            # Log the exception TYPE, not str(e) — see the /query handler.
+            logger.error("DB unavailable", error_type=type(e).__name__)
+            yield _sse("error", {"detail": "Database unavailable"})
+        except Exception as e:
+            logger.error("Unexpected error in query stream handler", error_type=type(e).__name__)
+            yield _sse("error", {"detail": "Internal server error"})
+
+    return StreamingResponse(
+        event_source(),
+        media_type="text/event-stream",
+        # no-cache for proxies; X-Accel-Buffering opts out of buffering in
+        # nginx-style reverse proxies (the HF Space sits behind one) — a
+        # buffered SSE stream degrades to one big flush, i.e. no streaming.
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.post("/query", response_model=QueryResponse)
 @limiter.limit(_query_limits)
 def query(
@@ -57,14 +141,7 @@ def query(
     concurrently. An ``async`` handler would run the blocking work on the event
     loop and serialize the whole app to one request at a time.
     """
-    corpus_version = request.app.state.corpus_version
-    if corpus_version is None:
-        # Startup found an empty corpus. An ingest may have populated it since —
-        # re-resolve once (and cache it) instead of forcing a restart.
-        corpus_version = resolve_corpus_version(pool, settings)
-        request.app.state.corpus_version = corpus_version
-    if corpus_version is None:
-        raise HTTPException(status_code=503, detail="Corpus not loaded. Run ingest pipeline first.")
+    corpus_version = _resolve_corpus_or_503(request, pool, settings)
     try:
         return answer_question(
             body.question, embedder, pool, provider, settings, body.card_mentions,
