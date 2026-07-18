@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Iterator
 
 from app.rag.retrieval import Chunk
 
@@ -39,6 +40,17 @@ class LLMProvider(ABC):
     @abstractmethod
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str: ...
 
+    def generate_stream(
+        self, question: str, chunks: list[Chunk], *, extra_system: str = ""
+    ) -> Iterator[str]:
+        """Yield answer text deltas as they arrive (2.5 SSE).
+
+        Default: the full generate() output as a single chunk, so providers
+        (and test doubles) that don't implement streaming degrade to the exact
+        same answer — just without progressive delivery.
+        """
+        yield self.generate(question, chunks, extra_system=extra_system)
+
     def rewrite_query(self, question: str) -> str:
         return question
 
@@ -78,6 +90,19 @@ class GeminiProvider(LLMProvider):
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_gemini, build_prompt
         return _call_gemini(
+            self._client,
+            self._model,
+            build_prompt(question, chunks, extra_system=extra_system),
+            temperature=self._temperature,
+            timeout_s=self._timeout_s,
+            max_output_tokens=self._max_output_tokens,
+        )
+
+    def generate_stream(
+        self, question: str, chunks: list[Chunk], *, extra_system: str = ""
+    ) -> Iterator[str]:
+        from app.rag.generation import _stream_gemini, build_prompt
+        yield from _stream_gemini(
             self._client,
             self._model,
             build_prompt(question, chunks, extra_system=extra_system),
@@ -142,6 +167,21 @@ class OpenAICompatProvider(LLMProvider):
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str:
         from app.rag.generation import _call_openai_compat_raw
         return _call_openai_compat_raw(
+            question, chunks,
+            base_url=self._base_url,
+            api_key=self._api_key,
+            model=self._model,
+            temperature=self._temperature,
+            timeout_s=self._timeout_s,
+            extra_system=extra_system,
+            max_output_tokens=self._max_output_tokens,
+        )
+
+    def generate_stream(
+        self, question: str, chunks: list[Chunk], *, extra_system: str = ""
+    ) -> Iterator[str]:
+        from app.rag.generation import _stream_openai_compat_raw
+        yield from _stream_openai_compat_raw(
             question, chunks,
             base_url=self._base_url,
             api_key=self._api_key,

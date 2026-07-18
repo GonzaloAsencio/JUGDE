@@ -487,6 +487,95 @@ def _call_openai_compat_raw(
         raise GenerationError(f"OpenAI-compat API error: {e}") from e
 
 
+def _stream_openai_compat_raw(
+    question: str,
+    chunks: list[Chunk],
+    *,
+    base_url: str,
+    api_key: str,
+    model: str,
+    temperature: float,
+    timeout_s: float,
+    extra_system: str = "",
+    max_output_tokens: int = 1024,
+):
+    """Yield answer text deltas from an OpenAI-compat chat completions stream.
+
+    Same prompt/knobs as _call_openai_compat_raw, with ``stream=True``. The 429
+    retry wraps only the stream CREATION: once a delta has been yielded it
+    cannot be retracted, so a mid-stream failure maps to GenerationError and
+    propagates instead of retrying.
+    """
+    import openai
+
+    client = openai.OpenAI(base_url=base_url, api_key=api_key)
+    try:
+        stream = _completion_with_retry(lambda: client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": _SYSTEM_INSTRUCTION + extra_system},
+                {"role": "user", "content": _build_context_block(question, chunks)},
+            ],
+            temperature=temperature,
+            max_tokens=max_output_tokens,
+            timeout=timeout_s,
+            stream=True,
+        ))
+        for chunk in stream:
+            choices = getattr(chunk, "choices", None)
+            if not choices:
+                continue  # e.g. a trailing usage-only chunk
+            content = getattr(choices[0].delta, "content", None)
+            if content:
+                yield content
+    except Exception as e:
+        error_str = str(e).lower()
+        if "timeout" in error_str or "timed out" in error_str:
+            raise GenerationTimeout("OpenAI-compat API call timed out") from e
+        raise GenerationError(f"OpenAI-compat API error: {e}") from e
+
+
+def _stream_gemini(
+    client: "genai.Client",
+    model: str,
+    prompt: str,
+    *,
+    temperature: float = 0.1,
+    timeout_s: float = 10.0,
+    max_output_tokens: int = 1024,
+):
+    """Yield answer text deltas from a Gemini generate_content stream.
+
+    Same config as _call_gemini. Chunks with no usable text (safety block /
+    empty candidates raise or return None on ``.text``) are skipped rather than
+    failing the stream; an entirely empty stream is the caller's problem (the
+    pipeline's empty-answer guard covers it). Retry wraps only the stream
+    CREATION — see _stream_openai_compat_raw.
+    """
+    from google.genai import types
+
+    config = types.GenerateContentConfig(
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        http_options=types.HttpOptions(timeout=int(timeout_s * 1000)),
+    )
+    try:
+        stream = _completion_with_retry(lambda: client.models.generate_content_stream(
+            model=model,
+            contents=prompt,
+            config=config,
+        ))
+        for chunk in stream:
+            text = _safe_response_text(chunk)
+            if text:
+                yield text
+    except Exception as e:
+        error_str = str(e).lower()
+        if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:
+            raise GenerationTimeout("Gemini API call timed out") from e
+        raise GenerationError(f"Gemini API error: {e}") from e
+
+
 def post_gen_validate(
     answer: str,
     citations: list,
