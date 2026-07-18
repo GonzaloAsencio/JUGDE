@@ -981,6 +981,49 @@ recall@k del arm. El arm sub-reporta a propósito (producción le suma cartas
 tagueadas y family completion encima). Y ojo con el piso: el probe corre HyDE off
 y producción fusiona un arm HyDE en las no-ruteadas.
 
+### 3.14 Lever HyDE-writer: prompt v2 (2026-07-18 — el único lever no-caro que quedó)
+
+Sale de dos datos medidos: (1) el bonus del gate 2.2 — el pasaje de gemma cubrió
+el `348` de eval-039 que el brazo main no cubre: **pasajes distintos embeben
+distinto y pueden cruzar el puente de vocabulario**; (2) el mecanismo desnudo de
+eval-037 leído del corpus — la pregunta dice "**Defy**" (keyword de carta), la
+regla gold dice "**Counter**" (425); la pregunta dice "Power cost", la 131.4
+dice "**printed cost**". El pasaje HyDE actual repite el vocabulario de la
+pregunta; un pasaje escrito en vocabulario FORMAL del rulebook es exactamente el
+puente que los B necesitan.
+
+**GATE — regla pre-comprometida (2026-07-18, registrada ANTES de correr):**
+- **Universo**: no-ruteadas evaluables (post-2.1, las únicas cuyo HyDE corre).
+- **Candidatos fijados ANTES (K=2, no se barren prompts)**:
+  - **V-rulebook**: el pasaje se escribe como EXTRACTO del rulebook (voz formal
+    de regla, terminología definida, sin lenguaje conversacional).
+  - **V-terms**: el pasaje abre nombrando las mecánicas GENERALES involucradas —
+    mapeando cada keyword de carta a la acción genérica que ejecuta — y sigue
+    con la respuesta hipotética en esos términos.
+  - ⚠️ Ningún prompt menciona mapeos específicos (Defy→Counter): eso sería
+    fitear el eval. El prompt pide el mapeo GENÉRICO; el conocimiento lo pone
+    el modelo (gemma-4-31b, el escritor de prod).
+- **Método** (`scripts/hyde_prompt_probe.py`, cero Gemini, cero judge): mismo
+  harness que 2.2 — contexto de producción real (`_retrieve`) por pregunta y
+  por brazo, cobertura POR REF (`per_ref_ranks`); el prompt del brazo se
+  inyecta parcheando `generation._HYDE_PROMPT` para que el camino de código
+  sea byte-idéntico al de prod.
+- **Regla**: una variante **VIVE** si (1) cubre ≥1 ref objetivo de eval-037
+  (`131.4`, `425`) que el control no cubre, CONFIRMADO por re-run (el pasaje es
+  sampleado: un win de una sola corrida no es evidencia), Y (2) CERO
+  regresiones persistentes de cobertura en TODO el universo (pérdida confirmada
+  por re-run mata, estándar de 2.2). Si ninguna variante vive, el lever
+  HyDE-prompt MUERE y los B quedan formalmente en 3.9 (última bala).
+  `383.3.d` (eval-020) se reporta informacional — es clase A (granularidad),
+  no se espera que un pasaje la mueva, y NO gatea.
+- **Si vive**: two-step de la casa — prompt v2 detrás de flag → este mismo
+  probe como gate de flip → flip de usuario en el Space.
+- **Predicción registrada**: V-terms cubre `425` en eval-037 (para un modelo,
+  "counter/negate" es la palabra formal natural para lo que Defy hace);
+  `131.4` plausible ("printed cost" es vocabulario TCG estándar); `383.3.d`
+  NO se mueve. El riesgo real que decide el gate son las REGRESIONES en las
+  otras ~13 (cambiar el prompt mueve el pasaje de TODAS las no-ruteadas).
+
 ### 3.10 Detección de cartas: fix del posesivo + desambiguación (2026-07-15)
 
 Sesión de re-eval sobre `feat/concise-reasoning`. El "57% correct" del primer run
