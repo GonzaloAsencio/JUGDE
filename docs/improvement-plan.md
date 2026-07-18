@@ -169,7 +169,7 @@ mejora de UX más rentable pendiente.
 - [ ] Resolver la pieza bloqueante ya anotada: las respuestas cacheadas también
       deben "streamear" (no aparecer instantáneas) para no generar un salto de UX.
 
-### 2.6 Acotar el Reasoning en preguntas simples — ✅ IMPLEMENTADO (#71, flag off)
+### 2.6 ~~Acotar el Reasoning en preguntas simples~~ ❌ MUERTA POR GATE (2026-07-17, strippeada 2026-07-18)
 El "Reasoning:" obligatorio (regla 7) es lo que levanta el bucket hard, pero en
 un lookup de una sola regla paga tokens de salida — el lado caro — para repetir
 lo obvio. Se tomó la variante que el propio plan sugería como alternativa
@@ -201,9 +201,11 @@ lo obvio. Se tomó la variante que el propio plan sugería como alternativa
         confianza); "si algo cae será eval-005 o eval-030" — eval-030 cayó pero
         resultó inestable; eval-001 NO estaba en la lista. Media predicción.
       **Queda espacio para un v2** (el mecanismo es prompt-fixeable: reforzar la
-      protección del Answer), pero es un lever NUEVO con su propio gate. El flag
-      actual muere; strip pendiente como PR chico (regla de cero código muerto,
-      mismo trato que 3.11.1a).
+      protección del Answer), pero es un lever NUEVO con su propio gate.
+- [x] **Strip ejecutado (2026-07-18)**: `concise_reasoning` fuera de config,
+      `_CONCISE_REASONING` fuera de generation, el `elif` y el sufijo `+concise`
+      fuera de pipeline, `test_concise_reasoning.py` borrado, pins removidos
+      (regla de cero código muerto, mismo trato que 3.11.1a).
 
 ---
 
