@@ -190,6 +190,26 @@ NI se guardan.
 - [x] Frescura + auto-sanación de punteros que Redis evictó antes de tiempo.
 - [ ] Gate de eval: hit rate ↑ con **cero** falsos positivos leídos a mano.
 
+**GATE DE FLIP — regla pre-comprometida (2026-07-18, registrada ANTES de correr):**
+E2E con CERO LLM sobre la infra real compartida (ANN de Supabase + Upstash),
+aislado de prod por namespace: todo corre bajo `prompt_version + "+gate-probe"`
+— el ANN filtra por prompt_version y el hash del cache key lo incluye, así que
+prod no puede matchear filas del gate ni al revés. Se siembran las no-hard con
+respuestas-CENTINELA (el gate mide el matching, no la calidad de respuesta).
+1. **Hit de paráfrasis**: cada una de las 4 paráfrasis de calibración
+   (`semantic_cache_probe._PARAPHRASES`) matchea a SU original con
+   similarity ≥ 0.85 Y el puntero devuelve el centinela correcto desde Redis
+   (round-trip completo). **MATA si alguna no hitea o matchea a OTRA pregunta.**
+2. **Cero falsos positivos**: leave-one-out sobre todas las no-hard sembradas
+   (forget → lookup → re-remember): **cero** matches ≥ 0.85 con una pregunta
+   DISTINTA. Cualquier cross-match se lee a mano; ruling distinto → **MATA**.
+3. **Aislamiento**: spot-check de que un lookup bajo el prompt_version de prod
+   no ve filas del gate.
+Cleanup obligatorio al final: DELETE de las filas sembradas; los centinelas de
+Redis llevan TTL corto (1h). Predicción registrada: 4/4 paráfrasis hitean (la
+de piso 0.874 con margen fino sobre 0.85), 0 cross-matches (techo no-hard
+medido 0.763 < 0.85), y los near_miss quedan logueados para calibración.
+
 ### 2.4 ~~Paralelizar los brazos de retrieval~~ ❌ DESCARTADA (2026-07-14)
 Mutuamente excluyente con 2.1: paralelizar obliga a llamar SIEMPRE a HyDE
 (ahorra ~1s), mientras que el objetivo real es NO llamarlo (ahorra cuota). La
