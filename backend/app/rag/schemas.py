@@ -39,6 +39,9 @@ class Usage(BaseModel):
     output_tokens: int = 0
     total_tokens: int = 0
     estimated: bool = False
+    # The ANSWERING model (provider authority, see LLMProvider.model) — set by
+    # the pipeline at finalize; the usage ledger records it per row.
+    llm_model: Optional[str] = None
 
     def __add__(self, other: "Usage") -> "Usage":
         return Usage(
@@ -46,6 +49,7 @@ class Usage(BaseModel):
             output_tokens=self.output_tokens + other.output_tokens,
             total_tokens=self.total_tokens + other.total_tokens,
             estimated=self.estimated or other.estimated,
+            llm_model=self.llm_model or other.llm_model,
         )
 
 

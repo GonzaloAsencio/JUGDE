@@ -26,6 +26,15 @@ def close_redis() -> None:
     _redis_client = None
 
 
+def get_redis():
+    """The process-wide Upstash client, or None when the cache is disabled.
+
+    Metering (app/usage.py) reuses this client for its counters instead of
+    opening a second HTTP session — one connection config, one failure mode.
+    """
+    return _redis_client
+
+
 def make_cache_key(question: str, corpus_version: str, card_mentions: list[str] | None = None, prompt_version: str = "v1") -> str:
     """Derive a deterministic cache key.
 
