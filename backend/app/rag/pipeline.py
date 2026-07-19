@@ -10,9 +10,12 @@ from app.config import Settings
 from app.observability import get_logger
 from app.rag.embedder import Embedder
 from app.rag.generation import (
+    _HYDE_PROMPT,
     _MULTI_CARD_SCAFFOLD,
     _SAFE_FALLBACK,
     _leaks_system_prompt,
+    build_prompt,
+    estimate_usage,
     has_empty_answer_section,
     needs_scaffold,
     post_gen_validate,
@@ -24,7 +27,7 @@ from app.rag.reranker import rerank
 from app.rag.retrieval import family_lookup, fuse_results, hybrid_search, tagged_lookup
 from app.rag.routing import RULEBOOK_CHUNK_ID, build_stuffed_chunks, load_champion_tag_index, should_route
 from app.rag.rules import extract_rule_codes
-from app.rag.schemas import Citation, QueryResponse
+from app.rag.schemas import Citation, QueryResponse, Usage
 
 logger = get_logger(__name__)
 
@@ -287,6 +290,7 @@ def _retrieve(
     question_embedding: list[float] | None = None,
     entities: "_Entities | None" = None,
     skip_hyde: bool = False,
+    usage_events: list[Usage] | None = None,
 ) -> tuple[list, str, float, bool, int]:
     """Embed + retrieve + assemble the final context.
 
@@ -337,6 +341,12 @@ def _retrieve(
     # so building its HyDE arm would burn an LLM call for nothing. The caller
     # predicts routing before calling us — see answer_question.
     hyde_text = "" if skip_hyde else provider.hyde(base_question)
+    # Metering (Fase 5): the HyDE call spends tokens the provider port doesn't
+    # report (hyde() returns bare text), so it is ESTIMATED — output is capped
+    # at 160 tokens anyway, bounding the error. Appended to the caller's
+    # accumulator instead of the return tuple so the 5-tuple contract holds.
+    if hyde_text and usage_events is not None:
+        usage_events.append(estimate_usage(_HYDE_PROMPT.format(question=base_question), hyde_text))
     arm_top_k = settings.top_k_fetch if hyde_text else pool_k
     base_embedding = (
         question_embedding if question_embedding is not None else embedder.encode(base_question)
@@ -475,7 +485,7 @@ def _compute_confidence(semantic_confidence: float, has_exact_card_match: bool, 
 
 def _generate_guarded(
     provider: LLMProvider, question: str, chunks: list, query_id: str, *, extra_system: str = ""
-) -> str:
+) -> tuple[str, Usage | None]:
     """Generate an answer, retrying ONCE if the Answer section comes back empty.
 
     Gemini occasionally writes a full Reasoning block on an ambiguous question
@@ -487,18 +497,39 @@ def _generate_guarded(
 
     *extra_system* (PR3, hard-bucket-v2) carries the multi-card reasoning
     scaffold decided by the caller and is forwarded unchanged on every attempt.
+
+    Returns ``(answer, usage)``. A retried call sums BOTH attempts — the user
+    spent both. usage is None (caller estimates) unless every attempt reported
+    real counts: mixing a real attempt with a guessed one would produce a
+    number that looks measured but isn't.
     """
-    answer = provider.generate(question, chunks, extra_system=extra_system)
+    answer, usage = _generate_metered_compat(provider, question, chunks, extra_system)
     if not has_empty_answer_section(answer):
-        return answer
+        return answer, usage
 
     logger.warning("query.empty_answer_section", query_id=query_id, attempt=1)
-    answer = provider.generate(question, chunks, extra_system=extra_system)
+    answer, retry_usage = _generate_metered_compat(provider, question, chunks, extra_system)
+    total = usage + retry_usage if usage is not None and retry_usage is not None else None
     if not has_empty_answer_section(answer):
-        return answer
+        return answer, total
 
     logger.warning("query.empty_answer_after_retry", query_id=query_id)
-    return _INCONCLUSIVE_ANSWER
+    return _INCONCLUSIVE_ANSWER, total
+
+
+def _generate_metered_compat(
+    provider: LLMProvider, question: str, chunks: list, extra_system: str
+) -> tuple[str, Usage | None]:
+    """provider.generate_metered, tolerating duck-typed providers without it.
+
+    Doubles that don't subclass LLMProvider (see test_routing._RecordingProvider)
+    only implement generate(); metering must degrade to an estimate for them,
+    never break the query.
+    """
+    metered = getattr(provider, "generate_metered", None)
+    if metered is not None:
+        return metered(question, chunks, extra_system=extra_system)
+    return provider.generate(question, chunks, extra_system=extra_system), None
 
 
 @dataclass
@@ -516,6 +547,9 @@ class _GenerationPlan:
     extra_system: str
     provider: LLMProvider  # the ANSWERING provider (hard when routed)
     model: str
+    # Estimated spend of the HyDE arm (None when HyDE didn't run) — added to
+    # the generation usage in _finalize_response.
+    hyde_usage: Usage | None = None
 
 
 def _prepare_query(
@@ -576,10 +610,12 @@ def _prepare_query(
             keyword_count=len(_detect_keywords(base_question)),
         )
 
+    usage_events: list[Usage] = []
     chunks, clean_question, semantic_confidence, has_exact_card_match, card_count = _retrieve(
         question, embedder, db_pool, provider, settings, card_mentions, corpus_version, query_id,
-        entities=entities, skip_hyde=will_route,
+        entities=entities, skip_hyde=will_route, usage_events=usage_events,
     )
+    hyde_usage = usage_events[0] if usage_events else None
 
     resolved_question = clean_question or question
 
@@ -641,6 +677,8 @@ def _prepare_query(
             latency_ms=latency_ms,
             cache_hit=False,
             confidence=0.0,
+            # No generation happened, but the HyDE arm (if it ran) was spent.
+            usage=hyde_usage,
         ), None
 
     extra_system = _MULTI_CARD_SCAFFOLD if needs_scaffold(resolved_question, card_count) else ""
@@ -655,17 +693,28 @@ def _prepare_query(
         extra_system=extra_system,
         provider=answering_provider,
         model=model,
+        hyde_usage=hyde_usage,
     )
 
 
-def _finalize_response(plan: _GenerationPlan, answer: str, settings: Settings) -> QueryResponse:
+def _finalize_response(
+    plan: _GenerationPlan, answer: str, settings: Settings, gen_usage: Usage | None = None
+) -> QueryResponse:
     """Postprocess + cache + log a generated *answer* — the single tail shared
-    by the blocking and streaming paths."""
+    by the blocking and streaming paths.
+
+    *gen_usage* is the generation spend (real or estimated by the caller); the
+    HyDE arm's estimate from the plan is added here so both paths report the
+    same total."""
     citations = _build_citations(plan.chunks)
     answer = _postprocess_answer(answer, citations, plan.chunks, plan.query_id)
 
     latency_ms = round((time.time() - plan.t0) * 1000)
     confidence = _compute_confidence(plan.semantic_confidence, plan.has_exact_card_match, citations)
+
+    usage = gen_usage
+    if plan.hyde_usage is not None:
+        usage = plan.hyde_usage + usage if usage is not None else plan.hyde_usage
 
     response = QueryResponse(
         answer=answer,
@@ -673,6 +722,7 @@ def _finalize_response(plan: _GenerationPlan, answer: str, settings: Settings) -
         latency_ms=latency_ms,
         cache_hit=False,
         confidence=confidence,
+        usage=usage,
     )
 
     # Store in cache (non-blocking; errors are swallowed in set_cached) — but
@@ -686,7 +736,14 @@ def _finalize_response(plan: _GenerationPlan, answer: str, settings: Settings) -
     else:
         set_cached(
             plan.cache_key,
-            json.dumps({"answer": answer, "citations": [c.model_dump() for c in citations], "confidence": confidence}),
+            json.dumps({
+                "answer": answer,
+                "citations": [c.model_dump() for c in citations],
+                "confidence": confidence,
+                # What this entry cost to produce — every future hit saves this
+                # many tokens. Additive: old entries without it read as 0.
+                "total_tokens": usage.total_tokens if usage is not None else 0,
+            }),
             ttl=settings.cache_ttl_s,
         )
 
@@ -726,11 +783,18 @@ def answer_question(
     if ready is not None:
         return ready
 
-    answer = _generate_guarded(
+    answer, gen_usage = _generate_guarded(
         plan.provider, plan.resolved_question, plan.chunks, plan.query_id,
         extra_system=plan.extra_system,
     )
-    return _finalize_response(plan, answer, settings)
+    if gen_usage is None:
+        # Provider didn't report counts (test double, degraded API): estimate
+        # from what was actually sent/received. A retried first attempt is
+        # under-counted here — acceptable, and marked estimated=True.
+        gen_usage = estimate_usage(
+            build_prompt(plan.resolved_question, plan.chunks, extra_system=plan.extra_system), answer
+        )
+    return _finalize_response(plan, answer, settings, gen_usage=gen_usage)
 
 
 def answer_question_stream(
@@ -768,13 +832,32 @@ def answer_question_stream(
         yield ("final", ready)
         return
 
+    # Metering: real usage arrives via on_usage when the provider supports it;
+    # legacy doubles (and providers whose API omits stream usage) fall back to
+    # an estimate below. Usage capture must never break streaming.
+    stream_usages: list[Usage] = []
+    attempts_run = 0
+
+    def _open_stream():
+        # Older/external providers may not accept on_usage; a generator
+        # function with an unexpected kwarg raises TypeError at CALL time
+        # (before any yield), so the fallback re-call is safe.
+        try:
+            return plan.provider.generate_stream(
+                plan.resolved_question, plan.chunks,
+                extra_system=plan.extra_system, on_usage=stream_usages.append,
+            )
+        except TypeError:
+            return plan.provider.generate_stream(
+                plan.resolved_question, plan.chunks, extra_system=plan.extra_system
+            )
+
     answer: str | None = None
     for attempt in (1, 2):
         buffer = ""
         leaked = False
-        for delta in plan.provider.generate_stream(
-            plan.resolved_question, plan.chunks, extra_system=plan.extra_system
-        ):
+        attempts_run += 1
+        for delta in _open_stream():
             buffer += delta
             if _leaks_system_prompt(buffer):
                 logger.warning("query.stream_leak_cut", query_id=plan.query_id)
@@ -796,4 +879,17 @@ def answer_question_stream(
         logger.warning("query.empty_answer_after_retry", query_id=plan.query_id)
         answer = _INCONCLUSIVE_ANSWER
 
-    yield ("final", _finalize_response(plan, answer, settings))
+    if len(stream_usages) == attempts_run:
+        # Every attempt reported real counts — sum them (a retry spent both).
+        gen_usage = stream_usages[0]
+        for extra in stream_usages[1:]:
+            gen_usage = gen_usage + extra
+    else:
+        # At least one attempt went unmetered (leak cut before the usage
+        # chunk, or a provider without on_usage): estimate the whole thing
+        # rather than mixing measured and guessed attempts.
+        gen_usage = estimate_usage(
+            build_prompt(plan.resolved_question, plan.chunks, extra_system=plan.extra_system), answer
+        )
+
+    yield ("final", _finalize_response(plan, answer, settings, gen_usage=gen_usage))
