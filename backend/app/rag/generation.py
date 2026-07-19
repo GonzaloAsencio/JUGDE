@@ -5,6 +5,7 @@ import time
 from typing import TYPE_CHECKING, Callable, Optional, TypeVar
 
 from app.rag.retrieval import Chunk
+from app.rag.schemas import Usage
 
 if TYPE_CHECKING:
     from google import genai
@@ -71,6 +72,69 @@ def _completion_with_retry(
             delay = min(base_delay * (2 ** attempt), _RATE_LIMIT_MAX_DELAY)
             sleep(delay + random.uniform(0, _RATE_LIMIT_JITTER))
     raise AssertionError("unreachable")  # loop either returns or raises
+
+
+# ~4 chars per token is the standard rough heuristic for English prose. Used
+# only where the API gives no real counts (HyDE, legacy stream doubles); the
+# result is always marked estimated=True so metering can tell it apart.
+_CHARS_PER_TOKEN = 4
+
+
+def estimate_tokens(text: str) -> int:
+    """Rough token count for *text*: ceil(len / 4). Empty text -> 0."""
+    return (len(text) + _CHARS_PER_TOKEN - 1) // _CHARS_PER_TOKEN
+
+
+def estimate_usage(prompt: str, output: str) -> Usage:
+    """Estimated Usage for a prompt/output pair, marked ``estimated=True``."""
+    prompt_tokens = estimate_tokens(prompt)
+    output_tokens = estimate_tokens(output)
+    return Usage(
+        prompt_tokens=prompt_tokens,
+        output_tokens=output_tokens,
+        total_tokens=prompt_tokens + output_tokens,
+        estimated=True,
+    )
+
+
+def _usage_from_openai(response) -> Usage | None:
+    """Real Usage from an OpenAI-compat ``response.usage``, or None.
+
+    Never raises: usage is metering metadata, and a provider returning an
+    unexpected shape must never break the answer that already arrived.
+    """
+    try:
+        u = getattr(response, "usage", None)
+        if u is None:
+            return None
+        prompt = int(getattr(u, "prompt_tokens", None) or 0)
+        output = int(getattr(u, "completion_tokens", None) or 0)
+        total = int(getattr(u, "total_tokens", None) or 0) or (prompt + output)
+        if total <= 0:
+            return None
+        return Usage(prompt_tokens=prompt, output_tokens=output or max(total - prompt, 0), total_tokens=total)
+    except Exception:
+        return None
+
+
+def _usage_from_gemini(response) -> Usage | None:
+    """Real Usage from a Gemini ``usage_metadata``, or None. Never raises.
+
+    output = total - prompt rather than candidates_token_count so thinking
+    tokens (hard model) are billed as output — they are spent quota.
+    """
+    try:
+        meta = getattr(response, "usage_metadata", None)
+        if meta is None:
+            return None
+        prompt = int(getattr(meta, "prompt_token_count", None) or 0)
+        candidates = int(getattr(meta, "candidates_token_count", None) or 0)
+        total = int(getattr(meta, "total_token_count", None) or 0) or (prompt + candidates)
+        if total <= 0:
+            return None
+        return Usage(prompt_tokens=prompt, output_tokens=max(total - prompt, 0), total_tokens=total)
+    except Exception:
+        return None
 
 
 class GenerationTimeout(Exception):
@@ -295,6 +359,21 @@ def _call_gemini(
     timeout_s: float = 10.0,
     max_output_tokens: int = 1024,
 ) -> str:
+    return _call_gemini_metered(
+        client, model, prompt,
+        temperature=temperature, timeout_s=timeout_s, max_output_tokens=max_output_tokens,
+    )[0]
+
+
+def _call_gemini_metered(
+    client: "genai.Client",
+    model: str,
+    prompt: str,
+    *,
+    temperature: float = 0.1,
+    timeout_s: float = 10.0,
+    max_output_tokens: int = 1024,
+) -> tuple[str, Usage | None]:
     from google.genai import types
 
     generation_config = types.GenerateContentConfig(
@@ -324,6 +403,7 @@ def _call_gemini(
         except Exception:
             pass
 
+        usage = _usage_from_gemini(response)
         text = _safe_response_text(response)
         if text is None:
             # No usable text: a safety block, recitation stop, or empty
@@ -331,8 +411,8 @@ def _call_gemini(
             # (answer.lower() in post_gen_validate) and surfaces as a raw 500.
             # Return a controlled, user-facing fallback instead.
             logger.warning("gemini.no_text — safety block or empty candidates; using safe fallback.")
-            return _SAFE_FALLBACK
-        return text
+            return _SAFE_FALLBACK, usage
+        return text, usage
     except Exception as e:
         error_str = str(e).lower()
         if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:
@@ -459,6 +539,25 @@ def _call_openai_compat_raw(
     extra_system: str = "",
     max_output_tokens: int = 1024,
 ) -> str:
+    return _call_openai_compat_raw_metered(
+        question, chunks,
+        base_url=base_url, api_key=api_key, model=model, temperature=temperature,
+        timeout_s=timeout_s, extra_system=extra_system, max_output_tokens=max_output_tokens,
+    )[0]
+
+
+def _call_openai_compat_raw_metered(
+    question: str,
+    chunks: list[Chunk],
+    *,
+    base_url: str,
+    api_key: str,
+    model: str,
+    temperature: float,
+    timeout_s: float,
+    extra_system: str = "",
+    max_output_tokens: int = 1024,
+) -> tuple[str, Usage | None]:
     import openai
 
     client = openai.OpenAI(base_url=base_url, api_key=api_key)
@@ -479,7 +578,7 @@ def _call_openai_compat_raw(
         content = choices[0].message.content
         if content is None:
             raise GenerationError("OpenAI-compat returned null content — model may not support chat completions")
-        return content
+        return content, _usage_from_openai(response)
     except Exception as e:
         error_str = str(e).lower()
         if "timeout" in error_str or "timed out" in error_str:
@@ -498,6 +597,7 @@ def _stream_openai_compat_raw(
     timeout_s: float,
     extra_system: str = "",
     max_output_tokens: int = 1024,
+    on_usage: Optional[Callable[[Usage], None]] = None,
 ):
     """Yield answer text deltas from an OpenAI-compat chat completions stream.
 
@@ -505,6 +605,12 @@ def _stream_openai_compat_raw(
     retry wraps only the stream CREATION: once a delta has been yielded it
     cannot be retracted, so a mid-stream failure maps to GenerationError and
     propagates instead of retrying.
+
+    *on_usage* is called at most once, after the last delta, with the real
+    Usage IF the server attached it to a trailing chunk. We deliberately do
+    NOT send ``stream_options={"include_usage": true}``: not every compat
+    server accepts it, and a rejected request would kill streaming to save a
+    metric — the caller estimates instead when no usage arrives.
     """
     import openai
 
@@ -521,13 +627,18 @@ def _stream_openai_compat_raw(
             timeout=timeout_s,
             stream=True,
         ))
+        usage: Usage | None = None
         for chunk in stream:
+            if on_usage is not None:
+                usage = _usage_from_openai(chunk) or usage
             choices = getattr(chunk, "choices", None)
             if not choices:
                 continue  # e.g. a trailing usage-only chunk
             content = getattr(choices[0].delta, "content", None)
             if content:
                 yield content
+        if on_usage is not None and usage is not None:
+            on_usage(usage)
     except Exception as e:
         error_str = str(e).lower()
         if "timeout" in error_str or "timed out" in error_str:
@@ -543,6 +654,7 @@ def _stream_gemini(
     temperature: float = 0.1,
     timeout_s: float = 10.0,
     max_output_tokens: int = 1024,
+    on_usage: Optional[Callable[[Usage], None]] = None,
 ):
     """Yield answer text deltas from a Gemini generate_content stream.
 
@@ -551,6 +663,10 @@ def _stream_gemini(
     failing the stream; an entirely empty stream is the caller's problem (the
     pipeline's empty-answer guard covers it). Retry wraps only the stream
     CREATION — see _stream_openai_compat_raw.
+
+    *on_usage* is called at most once, after the last chunk, with the last
+    ``usage_metadata`` seen (google-genai reports cumulative counts, so the
+    last one is the total). No metadata -> no call; the caller estimates.
     """
     from google.genai import types
 
@@ -565,10 +681,15 @@ def _stream_gemini(
             contents=prompt,
             config=config,
         ))
+        usage: Usage | None = None
         for chunk in stream:
+            if on_usage is not None:
+                usage = _usage_from_gemini(chunk) or usage
             text = _safe_response_text(chunk)
             if text:
                 yield text
+        if on_usage is not None and usage is not None:
+            on_usage(usage)
     except Exception as e:
         error_str = str(e).lower()
         if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:

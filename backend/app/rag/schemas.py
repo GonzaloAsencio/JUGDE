@@ -30,6 +30,25 @@ class QueryRequest(BaseModel):
         return v
 
 
+class Usage(BaseModel):
+    """Token spend of one query. Additive: components (HyDE arm, generation,
+    retry attempts) sum with ``+``; a single estimated component marks the
+    whole sum estimated, so a consumer can always tell measured from guessed."""
+
+    prompt_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    estimated: bool = False
+
+    def __add__(self, other: "Usage") -> "Usage":
+        return Usage(
+            prompt_tokens=self.prompt_tokens + other.prompt_tokens,
+            output_tokens=self.output_tokens + other.output_tokens,
+            total_tokens=self.total_tokens + other.total_tokens,
+            estimated=self.estimated or other.estimated,
+        )
+
+
 class Citation(BaseModel):
     section: str
     source_type: str
@@ -46,3 +65,5 @@ class QueryResponse(BaseModel):
     latency_ms: int
     cache_hit: bool = False
     confidence: float = 0.0
+    # None on cache hits (nothing was spent) and for pre-usage cached entries.
+    usage: Optional[Usage] = None
