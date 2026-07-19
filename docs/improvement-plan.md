@@ -1024,6 +1024,33 @@ puente que los B necesitan.
   NO se mueve. El riesgo real que decide el gate son las REGRESIONES en las
   otras ~13 (cambiar el prompt mueve el pasaje de TODAS las no-ruteadas).
 
+**RESULTADO (2026-07-18, `scripts/hyde_prompt_probe.py`): ❌ LAS DOS VARIANTES
+MUEREN — cero wins confirmados, cero regresiones; cobertura idéntica al
+control en las 14.**
+- Verificación del brazo ANTES de creer el veredicto (los tres pasajes de
+  eval-037 impresos y leídos): los brazos SÍ produjeron pasajes distintos —
+  el parche del prompt funcionó. El veredicto es real, no un artefacto.
+- **El mecanismo de la muerte, leído de los pasajes**: gemma NO conoce el
+  vocabulario definido de ESTE rulebook. Pedirle términos formales produce
+  vocabulario TCG genérico — "cancel", "negate", "Reaction/Cancellation",
+  "Resource Costs" — nunca "**Counter**" (425) ni "**printed cost**" (131.4),
+  que es exactamente lo que el embedding necesitaba. El prompt no puede
+  extraer conocimiento que el modelo no tiene; y dárselo en el prompt sería
+  fitear el eval (la restricción pre-comprometida).
+- Predicción: 0/1 en lo central (V-terms NO cubrió 425). Acertó que 383.3.d
+  no se movería y que las variantes no romperían nada (cero regresiones).
+- **Consecuencia estructural**: el puente de vocabulario NO puede venir del
+  escritor del pasaje. Munición restante para los B: **3.9 fine-tune**
+  (última bala — aprende el vocabulario del corpus por construcción), o un
+  lever familia NUEVA del lado del CORPUS/contexto (p.ej. sembrar la
+  DEFINICIÓN del keyword de carta — "defy" no está en `_KNOWN_KEYWORDS` — para
+  darle el mapeo al MODELO en contexto; ojo: eso no movería cobertura de
+  131.4/425, gatearía por juicio en una pregunta INESTABLE (6.5) — lead
+  anotado, no barato, no arrancar sin diseño de gate propio).
+- Fase 3 queda formalmente en última bala. Los cuatro levers baratos del año
+  murieron por gate ((a), (c), (d), prompt-v2) — el sistema de gates pagó:
+  cero de ellos shippeó una regresión.
+
 ### 3.10 Detección de cartas: fix del posesivo + desambiguación (2026-07-15)
 
 Sesión de re-eval sobre `feat/concise-reasoning`. El "57% correct" del primer run
@@ -1426,13 +1453,14 @@ Fase 3 ── 3.0/3.3/3.5 ✅; el resto muerto por evidencia salvo la cola de 3.
 Fase 2.5 ✅ SSE EN PROD (2026-07-18) ── #79 backend + #81 frontend mergeadas y
           verificadas e2e en prod (Vercel pipea, 28 tokens + final); el salto
           del cache lo mata el reveal client-side
-Fase 3 ── SIN MUNICIÓN BARATA (2026-07-18, gate 3.11.2b): (c) muerto para 037
-          por regresión fusionada; 020 sin lever vivo; 016/018 = lever de
-          eval-set. Restante CARO: escritor HyDE (lever nuevo + gate) o 3.9
-          fine-tune — decisión humana de gastar esa sesión.
+Fase 3 ── EN ÚLTIMA BALA (2026-07-18): (c) muerto para 037 (gate 3.11.2b,
+          regresión fusionada); prompt-v2 de HyDE muerto (gate 3.14: el
+          escritor no conoce el vocabulario definido del rulebook); 020 sin
+          lever vivo; 016/018 = lever de eval-set. Resta SOLO 3.9 fine-tune
+          (aprende el vocabulario por construcción) o el lead corpus-side de
+          3.14 — ambos con diseño de gate propio y decisión humana.
 SIGUIENTE RECOMENDADO:
-Fase 5 (metering, el artefacto de portfolio) o la vía cara de Fase 3 si el
-          usuario decide gastarla. Pendiente menor: flip default
+Fase 5 (metering, el artefacto de portfolio). Pendiente menor: flip default
           keyword_family_extra 0→8 tras soak.
 ```
 
