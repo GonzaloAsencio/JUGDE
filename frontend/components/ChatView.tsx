@@ -6,6 +6,7 @@ import { useQueryStore } from '@/store/useQueryStore';
 import { Navbar } from './Navbar';
 import { QueryInput } from './QueryInput';
 import { ChatMessage } from './ChatMessage';
+import { UsageBadge } from './UsageBadge';
 
 interface ChatViewProps {
   onReset: () => void;
@@ -46,6 +47,7 @@ export function ChatView({ onReset }: ChatViewProps) {
                 loading={isAnyLoading}
                 placeholder="Describe the game situation..."
               />
+              <UsageBadge />
             </div>
             {/* Suggestion chips: kept mounted (space reserved so the centered
                 layout never jumps) and cross-faded as the input fills/empties. */}
@@ -106,6 +108,7 @@ export function ChatView({ onReset }: ChatViewProps) {
             loading={isAnyLoading}
             placeholder="Describe the game situation..."
           />
+          <UsageBadge />
         </div>
       </div>
     </div>

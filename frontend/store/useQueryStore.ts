@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { ApiErrorInstance, pingHealth } from '@/lib/api';
 import { postQueryStream } from '@/lib/streamQuery';
+import { useUsageStore } from '@/store/useUsageStore';
 import type { ApiError, Citation } from '@/lib/types';
 
 const COLD_START_POLL_MS = 5_000;
@@ -89,6 +90,9 @@ async function runQuery(set: SetState, id: string, question: string): Promise<vo
       loading: false,
       error: null,
     });
+    // Refresh the token meter now that this answer spent quota. Fire-and-forget:
+    // the badge is ambient, so a failed refresh never touches the chat flow.
+    void useUsageStore.getState().refresh();
   } catch (err: unknown) {
     const error: ApiError = err instanceof ApiErrorInstance
       ? { type: err.type, message: err.message, retryAfter: err.retryAfter }
