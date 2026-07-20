@@ -57,6 +57,12 @@ def health_shallow(request: Request) -> dict:
             "model": getattr(provider, "hyde_model", None) if provider is not None else None,
             "skip_when_routed": getattr(settings, "skip_hyde_when_routed", None),
         },
+        # Same rule as the hyde flags (#78): a flip whose failure mode is
+        # silent must be verifiable from outside. The metering flag's two-step
+        # deploy checks this field before and after setting the env.
+        "metering": {
+            "enabled": getattr(settings, "metering_enabled", None),
+        },
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 

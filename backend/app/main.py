@@ -5,6 +5,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1.query import router as query_router
+from app.api.v1.usage import router as usage_router
 from app.cache import close_redis, init_redis
 from app.config import get_settings
 from app.db import close_pool, init_pool, resolve_corpus_version
@@ -155,4 +156,5 @@ app.add_middleware(ProxySecretMiddleware)
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.include_router(query_router, prefix="/api/v1")
+app.include_router(usage_router, prefix="/api/v1")
 app.include_router(health_router)
