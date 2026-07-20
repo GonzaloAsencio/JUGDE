@@ -46,6 +46,29 @@ deploy that hasn't configured Supabase Auth is not broken, it just has no login.
   forwards `X-User-Id: auth:{sub}` instead, which the backend maps to the higher
   tier. Sign out clears the session and the next request is anonymous again.
 
+## Token-count accuracy (`estimated` flag)
+
+Each `usage` reports an `estimated` boolean. Counts are **real** when the LLM
+API returns a usage object (`response.usage` for OpenAI-compat, `usage_metadata`
+for Gemini); otherwise the pipeline falls back to a `chars/4` estimate and marks
+`estimated: true`. Estimation never blocks or breaks a query — an accurate meter
+is not worth failing an answer over.
+
+Verified locally against the real backend: **Cerebras (`gpt-oss-120b`) does not
+return a `usage` object on non-streaming `/query` calls**, so those land as
+`estimated: true`. The number is a reasonable approximation, not exact. Two ways
+to get real counts for Cerebras if precision ever matters:
+
+- Prefer the **streaming** path (`/query/stream`) and confirm Cerebras emits a
+  trailing usage chunk — the streamers already capture it via `on_usage`.
+- Send `stream_options={"include_usage": true}` on the stream request. It is
+  deliberately **off** today because not every OpenAI-compat server accepts it,
+  and a rejected request would kill streaming just to obtain a metric. Enable it
+  only after confirming the live provider accepts it (see PR #82).
+
+Gemini (the hard-routed model) returns `usage_metadata`, so routed queries are
+counted for real, thinking tokens included.
+
 ## Privacy / data retention
 
 With real login there is now an email in **Supabase Auth**. The **usage ledger
