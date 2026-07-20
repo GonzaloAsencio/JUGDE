@@ -18,9 +18,13 @@ export function ChatView({ onReset }: ChatViewProps) {
   const hasMessages = messages.length > 0;
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Scroll on a NEW message, not on every streamed token: the store swaps the
+  // messages array on each token, so keying on `messages` re-fired the smooth
+  // scroll ~30×/sec (jank). Message count changes only when a bubble is added.
+  const messageCount = messages.length;
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messageCount]);
 
   if (!hasMessages) {
     return (
