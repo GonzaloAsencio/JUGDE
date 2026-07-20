@@ -31,12 +31,17 @@ export function UsageBadge() {
   if (!usage) return null;
 
   const remaining = Math.max(usage.remaining, 0);
+  // Nudge anonymous users toward the higher limit only when it's relevant —
+  // once they're under 20% of their daily quota. A logged-in user (or a user
+  // with plenty left) sees just the count, no sales pitch.
+  const low = usage.tier === 'anon' && remaining <= usage.quota * 0.2;
   return (
     <p
       className="mt-2 text-center text-[11px] tracking-wide text-brand-ink-faint"
       title={resetsLabel(usage.resets_at)}
     >
       ~{compact.format(remaining)} tokens left today
+      {low && <span className="text-brand-accent"> · sign in to raise your limit</span>}
     </p>
   );
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ArrowUpRight, Menu, X } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
+import { AuthButton } from './AuthButton';
 
 interface NavbarProps {
   /** When provided, the home control is a button (e.g. reset chat) instead of a link. */
@@ -88,6 +89,7 @@ export function Navbar({
       >
         {homeControl()}
         {rulesLink()}
+        <AuthButton />
         <ThemeToggle />
       </nav>
 
