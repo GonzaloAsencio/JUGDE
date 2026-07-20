@@ -2,7 +2,7 @@ import logging
 import random
 import re
 import time
-from typing import TYPE_CHECKING, Callable, Optional, TypeVar
+from typing import TYPE_CHECKING, Callable, NoReturn, Optional, TypeVar
 
 from app.rag.retrieval import Chunk
 from app.rag.schemas import Usage
@@ -350,6 +350,44 @@ def _safe_response_text(response) -> str | None:
         return None
 
 
+def _gemini_config(*, temperature: float, max_output_tokens: int, timeout_s: float):
+    """The GenerateContentConfig shared by every Gemini call.
+
+    max_output_tokens is the expensive side — the one call that once lacked a
+    ceiling is why it is always set now; a MAX_TOKENS cut is surfaced by the
+    caller. HttpOptions.timeout is in MILLISECONDS and lives inside the config
+    (not as a generate_content kwarg) in google-genai >=1.0.
+    """
+    from google.genai import types
+
+    return types.GenerateContentConfig(
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        http_options=types.HttpOptions(timeout=int(timeout_s * 1000)),
+    )
+
+
+def _openai_messages(question: str, chunks: list[Chunk], extra_system: str) -> list[dict]:
+    """The system+user message pair shared by the blocking and streaming
+    OpenAI-compat calls."""
+    return [
+        {"role": "system", "content": _SYSTEM_INSTRUCTION + extra_system},
+        {"role": "user", "content": _build_context_block(question, chunks)},
+    ]
+
+
+def _raise_provider_error(e: Exception, *, provider: str) -> NoReturn:
+    """Single home for LLM-exception classification (was copy-pasted at 4 call
+    sites). Substring-based because the SDKs don't expose a stable timeout type
+    here; ``deadline`` matches google-genai's DEADLINE_EXCEEDED wording and is a
+    harmless superset for OpenAI-compat.
+    """
+    error_str = str(e).lower()
+    if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:
+        raise GenerationTimeout(f"{provider} API call timed out") from e
+    raise GenerationError(f"{provider} API error: {e}") from e
+
+
 def _call_gemini(
     client: "genai.Client",
     model: str,
@@ -374,16 +412,8 @@ def _call_gemini_metered(
     timeout_s: float = 10.0,
     max_output_tokens: int = 1024,
 ) -> tuple[str, Usage | None]:
-    from google.genai import types
-
-    generation_config = types.GenerateContentConfig(
-        temperature=temperature,
-        # Output tokens are the expensive side and this was the only LLM call
-        # without a ceiling. A MAX_TOKENS cut is surfaced by the warning below.
-        max_output_tokens=max_output_tokens,
-        # HttpOptions.timeout va en MILISEGUNDOS y vive dentro del config (no como
-        # kwarg de generate_content) en google-genai >=1.0.
-        http_options=types.HttpOptions(timeout=int(timeout_s * 1000)),
+    generation_config = _gemini_config(
+        temperature=temperature, max_output_tokens=max_output_tokens, timeout_s=timeout_s,
     )
 
     try:
@@ -414,10 +444,7 @@ def _call_gemini_metered(
             return _SAFE_FALLBACK, usage
         return text, usage
     except Exception as e:
-        error_str = str(e).lower()
-        if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:
-            raise GenerationTimeout("Gemini API call timed out") from e
-        raise GenerationError(f"Gemini API error: {e}") from e
+        _raise_provider_error(e, provider="Gemini")
 
 
 _HYDE_PROMPT = """\
@@ -475,14 +502,8 @@ def _hyde_gemini(
     the generation call's config — because a full-length answer here would be
     wasted tokens/latency on a passage only used for embedding.
     """
-    from google.genai import types
-
     try:
-        config = types.GenerateContentConfig(
-            max_output_tokens=160,
-            temperature=0.0,
-            http_options=types.HttpOptions(timeout=int(timeout_s * 1000)),
-        )
+        config = _gemini_config(max_output_tokens=160, temperature=0.0, timeout_s=timeout_s)
         response = client.models.generate_content(
             model=model,
             contents=_HYDE_PROMPT.format(question=question),
@@ -533,10 +554,7 @@ def _call_openai_compat_raw_metered(
     try:
         response = _completion_with_retry(lambda: client.chat.completions.create(
             model=model,
-            messages=[
-                {"role": "system", "content": _SYSTEM_INSTRUCTION + extra_system},
-                {"role": "user", "content": _build_context_block(question, chunks)},
-            ],
+            messages=_openai_messages(question, chunks, extra_system),
             temperature=temperature,
             max_tokens=max_output_tokens,
             timeout=timeout_s,
@@ -549,10 +567,7 @@ def _call_openai_compat_raw_metered(
             raise GenerationError("OpenAI-compat returned null content — model may not support chat completions")
         return content, _usage_from_openai(response)
     except Exception as e:
-        error_str = str(e).lower()
-        if "timeout" in error_str or "timed out" in error_str:
-            raise GenerationTimeout("OpenAI-compat API call timed out") from e
-        raise GenerationError(f"OpenAI-compat API error: {e}") from e
+        _raise_provider_error(e, provider="OpenAI-compat")
 
 
 def _stream_openai_compat_raw(
@@ -587,10 +602,7 @@ def _stream_openai_compat_raw(
     try:
         stream = _completion_with_retry(lambda: client.chat.completions.create(
             model=model,
-            messages=[
-                {"role": "system", "content": _SYSTEM_INSTRUCTION + extra_system},
-                {"role": "user", "content": _build_context_block(question, chunks)},
-            ],
+            messages=_openai_messages(question, chunks, extra_system),
             temperature=temperature,
             max_tokens=max_output_tokens,
             timeout=timeout_s,
@@ -609,10 +621,7 @@ def _stream_openai_compat_raw(
         if on_usage is not None and usage is not None:
             on_usage(usage)
     except Exception as e:
-        error_str = str(e).lower()
-        if "timeout" in error_str or "timed out" in error_str:
-            raise GenerationTimeout("OpenAI-compat API call timed out") from e
-        raise GenerationError(f"OpenAI-compat API error: {e}") from e
+        _raise_provider_error(e, provider="OpenAI-compat")
 
 
 def _stream_gemini(
@@ -637,12 +646,8 @@ def _stream_gemini(
     ``usage_metadata`` seen (google-genai reports cumulative counts, so the
     last one is the total). No metadata -> no call; the caller estimates.
     """
-    from google.genai import types
-
-    config = types.GenerateContentConfig(
-        temperature=temperature,
-        max_output_tokens=max_output_tokens,
-        http_options=types.HttpOptions(timeout=int(timeout_s * 1000)),
+    config = _gemini_config(
+        temperature=temperature, max_output_tokens=max_output_tokens, timeout_s=timeout_s,
     )
     try:
         stream = _completion_with_retry(lambda: client.models.generate_content_stream(
@@ -660,10 +665,7 @@ def _stream_gemini(
         if on_usage is not None and usage is not None:
             on_usage(usage)
     except Exception as e:
-        error_str = str(e).lower()
-        if "timeout" in error_str or "deadline" in error_str or "timed out" in error_str:
-            raise GenerationTimeout("Gemini API call timed out") from e
-        raise GenerationError(f"Gemini API error: {e}") from e
+        _raise_provider_error(e, provider="Gemini")
 
 
 def post_gen_validate(

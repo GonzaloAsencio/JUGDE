@@ -74,14 +74,17 @@ Nota: `npm run lint` tiene 1 error preexistente en `SystemNotice.tsx:76` (`Date.
 
 ---
 
-## Fase 2 — HIGH #1: consolidar `generation.py`  `[ ]`
+## Fase 2 — HIGH #1: consolidar `generation.py`  `[x]`
 
 El de mayor impacto. Boilerplate LLM duplicado 4×.
 
-- [ ] Extraer helper único para el mapeo `timeout/deadline → GenerationTimeout else GenerationError` (hoy en `:416-420, :582-586, :642-646, :693-697`).
-- [ ] Unificar construcción de `GenerateContentConfig` (Gemini ×3) y del bloque `messages=[system,user]` (OpenAI ×2).
+- [x] Helper único `_raise_provider_error(e, provider=...)` para el mapeo `timeout/deadline → GenerationTimeout else GenerationError` (era 4×). Unifica las 2 variantes; `deadline` queda como superset inofensivo para OpenAI-compat.
+- [x] `_gemini_config(...)` unifica el `GenerateContentConfig` (era Gemini ×3) — bonus: elimina el `import types` local de las 3.
+- [x] `_openai_messages(...)` unifica el bloque `messages=[system,user]` (era OpenAI ×2).
 
-**Gate:** `pytest` verde, especialmente los tests de clasificación de error/timeout.
+**Resultado:** `GenerateContentConfig` 3→1, `error_str` 4→1, `messages=[system,user]` 2→1. Un cambio de clasificación ahora se hace en UN lugar.
+
+**Gate:** ✅ 200 tests (generation/provider/pipeline) verdes; F-clean (sin imports huérfanos); import smoke OK. Los 11 BLE001 restantes son preexistentes (Fase 6).
 
 ---
 
@@ -131,7 +134,7 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 |------|--------|-----------|
 | 0 — Enforcement backend | ✅ hecho | refactor/phase-0-backend-linting |
 | 1 — Código muerto | ✅ hecho | refactor/phase-1-dead-code |
-| 2 — generation.py | ⬜ pendiente | — |
+| 2 — generation.py | ✅ hecho | refactor/phase-2-generation-dedup |
 | 3 — lifespan | ⬜ pendiente | — |
 | 4 — Ineficiencias BD | ⬜ pendiente | — |
 | 5 — Config + scripts | ⬜ pendiente | — |
