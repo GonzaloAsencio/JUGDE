@@ -5,13 +5,17 @@ import { useUsageStore } from '@/store/useUsageStore';
 
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 
-function resetsLabel(isoResetsAt: string): string {
+// Local wall-clock reset time (the backend counts in UTC, but the reader cares
+// about their own clock). Returns null on an unparseable timestamp.
+function resetsClock(isoResetsAt: string): string | null {
   const when = new Date(isoResetsAt);
-  if (Number.isNaN(when.getTime())) return 'Resets daily.';
-  // Local time so the tooltip is meaningful to the reader; the backend counts
-  // in UTC but the wall-clock reset is what the user cares about.
-  const time = when.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  return `Resets at ${time}.`;
+  if (Number.isNaN(when.getTime())) return null;
+  return when.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+function resetsLabel(isoResetsAt: string): string {
+  const time = resetsClock(isoResetsAt);
+  return time ? `Resets at ${time}.` : 'Resets daily.';
 }
 
 /**
@@ -29,6 +33,20 @@ export function UsageBadge() {
   }, [refresh]);
 
   if (!usage) return null;
+
+  // Global budget spent: the personal remainder is still full but querying is
+  // blocked, so showing "~20K left" contradicts the notice. State the block.
+  if (usage.available === false) {
+    const time = resetsClock(usage.resets_at);
+    return (
+      <p
+        className="mt-2 text-center text-[11px] tracking-wide text-brand-ink-faint"
+        title={resetsLabel(usage.resets_at)}
+      >
+        Demo limit reached{time ? ` · resets ${time}` : ''}
+      </p>
+    );
+  }
 
   const remaining = Math.max(usage.remaining, 0);
   return (
