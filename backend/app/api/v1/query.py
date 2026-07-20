@@ -13,6 +13,7 @@ from app.rag.generation import GenerationError, GenerationTimeout
 from app.rag.pipeline import answer_question, answer_question_stream
 from app.rag.provider import LLMProvider
 from app.rag.schemas import QueryRequest, QueryResponse
+from app.usage import Identity, enforce_quota, record_query_usage
 
 logger = get_logger(__name__)
 
@@ -65,6 +66,10 @@ def _sse(event: str, data: dict) -> str:
 def query_stream(
     body: QueryRequest,
     request: Request,
+    # Quota gate BEFORE the stream starts: over-quota must be a clean 429
+    # status, never an in-band error event (plan §5.3). The dependency also
+    # resolves the identity used for post-response bookkeeping below.
+    identity: Identity = Depends(enforce_quota),
     embedder=Depends(get_embedder),
     pool=Depends(get_db_pool),
     provider: LLMProvider = Depends(get_llm_provider),
@@ -95,6 +100,10 @@ def query_stream(
                 elif kind == "restart":
                     yield _sse("restart", {})
                 else:
+                    # Book the spend when the final response exists, BEFORE
+                    # yielding it: a client that disconnects right after the
+                    # last token must not produce an unmetered query.
+                    record_query_usage(pool, identity, payload)
                     yield _sse("final", payload.model_dump())
         except GenerationTimeout as e:
             logger.warning("LLM timeout", error=str(e))
@@ -128,6 +137,8 @@ def query_stream(
 def query(
     body: QueryRequest,
     request: Request,
+    # See query_stream: gate + identity resolution in one dependency.
+    identity: Identity = Depends(enforce_quota),
     embedder=Depends(get_embedder),
     pool=Depends(get_db_pool),
     provider: LLMProvider = Depends(get_llm_provider),
@@ -143,10 +154,15 @@ def query(
     """
     corpus_version = _resolve_corpus_or_503(request, pool, settings)
     try:
-        return answer_question(
+        response = answer_question(
             body.question, embedder, pool, provider, settings, body.card_mentions,
             corpus_version=corpus_version, hard_provider=hard_provider,
         )
+        # Post-response bookkeeping (Redis counters + ledger) lives HERE, not
+        # in the pipeline — the pipeline never learns identity. Best-effort:
+        # record_query_usage swallows every infrastructure failure.
+        record_query_usage(pool, identity, response)
+        return response
     except GenerationTimeout as e:
         logger.warning("LLM timeout", error=str(e))
         raise HTTPException(status_code=504, detail="Generation timeout") from e
