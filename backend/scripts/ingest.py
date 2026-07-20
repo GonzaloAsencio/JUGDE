@@ -14,10 +14,10 @@ import time
 import uuid
 from pathlib import Path
 
-import psycopg2
 from dotenv import load_dotenv
-from pgvector.psycopg2 import register_vector
 from psycopg2.extras import Json, execute_values
+
+from scripts._common import get_connection, load_embedder
 
 load_dotenv()
 
@@ -312,10 +312,8 @@ def build_chunks(source_path: str, source_type: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def embed_chunks(chunks: list[dict]) -> list[dict]:
-    from sentence_transformers import SentenceTransformer
-
     print(f"  Cargando modelo {EMBED_MODEL}...")
-    model = SentenceTransformer(EMBED_MODEL)
+    model = load_embedder(EMBED_MODEL)
 
     texts = [c["content"] for c in chunks]
     print(f"  Generando {len(texts)} embeddings...")
@@ -332,14 +330,6 @@ def embed_chunks(chunks: list[dict]) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Base de datos
 # ---------------------------------------------------------------------------
-
-def get_connection():
-    if not DATABASE_URL:
-        raise ValueError("DATABASE_URL no configurada en .env")
-    conn = psycopg2.connect(DATABASE_URL)
-    register_vector(conn)
-    return conn
-
 
 def delete_all_chunks(conn):
     with conn.cursor() as cur:

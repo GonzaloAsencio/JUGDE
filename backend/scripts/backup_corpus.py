@@ -17,8 +17,9 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import psycopg2
 from dotenv import load_dotenv
+
+from scripts._common import get_connection
 
 load_dotenv()
 
@@ -35,7 +36,7 @@ def main():
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_path = BACKUP_DIR / f"corpus_chunks_{ts}.csv"
 
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = get_connection(register_vectors=False)
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM corpus_chunks")

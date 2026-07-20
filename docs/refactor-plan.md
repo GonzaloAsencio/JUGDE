@@ -121,13 +121,20 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 
 ---
 
-## Fase 5 — Config + scripts  `[~]` SALTEADA (decisión informada)
+## Fase 5a — Unificar config en `Settings`  `[~]` SALTEADA (empeora el código)
 
-Investigada a fondo, es mayormente un no-problema o churn riesgoso:
-- **Config "scatter" = excepciones justificadas y YA documentadas.** `rate_limit.py:53` lee `os.getenv` porque el `limiter` se construye en import-time, antes de que exista `Settings` (el docstring lo explica). `ingest.py` lee `DATABASE_URL`/`CORPUS_VERSION` directo a propósito: forzar `Settings` haría que el script de build falle sin `GEMINI_API_KEY`. Unificar acá AGREGA fragilidad.
-- **Helper de scripts = duplicación real pero en scripts muertos.** Los 26 son mayormente probes/experiments de una vez ("zombie-adjacent"), sin tests. Migrar a ciegas = churn/riesgo por bajo valor.
+Excepciones justificadas y YA documentadas, no deuda:
+- `rate_limit.py:53` lee `os.getenv` porque el `limiter` se construye en import-time, antes de que exista `Settings` (el docstring lo explica). Forzar Settings exige hacer el limiter lazy — más riesgo por nada.
+- `ingest.py` lee `DATABASE_URL`/`CORPUS_VERSION` directo a propósito: forzar `Settings` haría que el script de build falle sin `GEMINI_API_KEY`. Unificar AGREGA fragilidad.
 
-Decisión (Opción A): saltear. No hacemos trabajo que empeora el código por estar en una lista.
+## Fase 5b — Helper `scripts/_common.py`  `[x]`
+
+- [x] Creado `scripts/_common.py` con `get_connection()` (psycopg2 + register_vector) y `load_embedder()`, centralizando lo que 6 scripts reimplementaban.
+- [x] **Test de integración del helper** contra Postgres real (`test_common_db.py`) → el código compartido queda cubierto, no como las copias anteriores (ninguna testeada).
+- [x] Migrados los 3 scripts activos e importables: `ingest.py`, `validate_query.py`, `backup_corpus.py`.
+- [~] Dejados sin migrar los one-shots muertos que conectan a nivel-módulo (`migrate_corpus_version`, `add_corpus_v1_2_0`) y los probes — bajo valor, riesgo sin red.
+
+**Gate:** ✅ import smoke de los 4; ruff F/I limpio; 16 integración verdes (helper + ingest); 10 ingest mockeados.
 
 ---
 
@@ -161,7 +168,8 @@ Hecho el subconjunto con valor real; salteado el cosmético (no metemos churn po
 | 3 — lifespan | ✅ hecho | refactor/phase-3-lifespan |
 | 4a — Red integración BD | ✅ hecho | refactor/phase-4a-db-integration-harness |
 | 4b — Ineficiencias BD | ✅ hecho | refactor/phase-4b-db-efficiency |
-| 5 — Config + scripts | ⏭️ salteada | decisión informada (ver arriba) |
+| 5a — Unificar config | ⏭️ salteada | empeora el código (ver arriba) |
+| 5b — Helper scripts/_common | ✅ hecho | refactor/phase-5b-scripts-common |
 | 6a — Frontend perf/correctness | ✅ hecho | refactor/phase-6a-frontend |
 | 6b — Higiene backend | ✅ hecho | refactor/phase-6b-hygiene |
 
