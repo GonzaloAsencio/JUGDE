@@ -1,6 +1,4 @@
-import type { ApiError, ErrorType, QueryResponse } from './types';
-
-const CLIENT_TIMEOUT_MS = 60_000;
+import type { ApiError, ErrorType } from './types';
 
 export class ApiErrorInstance extends Error {
   type: ErrorType;
@@ -54,41 +52,5 @@ export async function pingHealth(): Promise<boolean> {
     return false;
   } finally {
     clearTimeout(timer);
-  }
-}
-
-export async function postQuery(question: string, cardMentions: string[] = []): Promise<QueryResponse> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), CLIENT_TIMEOUT_MS);
-
-  try {
-    const res = await fetch('/api/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, card_mentions: cardMentions }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timer);
-
-    if (res.ok) {
-      return res.json() as Promise<QueryResponse>;
-    }
-
-    const body = await res.json().catch(() => ({})) as Record<string, unknown>;
-    const err = mapError(res, body);
-    throw new ApiErrorInstance(err.type, err.message, err.retryAfter);
-  } catch (err: unknown) {
-    clearTimeout(timer);
-
-    if (err instanceof ApiErrorInstance) {
-      throw err;
-    }
-
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new ApiErrorInstance('timeout', 'This is taking too long. Try again.');
-    }
-
-    throw new ApiErrorInstance('network', 'Connection error. Check your internet.');
   }
 }
