@@ -36,7 +36,9 @@ extend-immutable-calls = [
 
 [tool.ruff.lint.per-file-ignores]
 # Tests and one-off scripts get a looser leash on blind-except / bugbear.
-"tests/**" = ["BLE", "B"]
+# Tests mirror the app's nested-with connection idiom (get_conn + cursor);
+# SIM117 is a deferred Phase 6 call across the whole codebase, not a test-only one.
+"tests/**" = ["BLE", "B", "SIM117"]
 # Scripts legitimately load_dotenv()/patch sys.path before importing (E402),
 # and are throwaway probes re: blind-except.
 "scripts/**" = ["BLE", "E402"]

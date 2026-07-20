@@ -100,12 +100,23 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 
 ---
 
-## Fase 4 — Ineficiencias de BD  `[ ]`
+## Fase 4a — Red de integración BD (prerequisito)  `[x]`
 
-- [ ] `retrieval.tagged_lookup:301-318`: colapsar el N+1 (un round-trip por tag) en una query, espejando `family_lookup:346-358` (`= ANY(%s)`).
-- [ ] `scripts/ingest.py`: filtrar `get_existing_ids` por `corpus_version` (`:352-355`); filtrar ANTES de embeder en `--update` (`:315-330,439,456`); upsert con `execute_values` en vez de row-by-row (`:377-390`).
+**Hallazgo que forzó esto:** toda la Fase 4 cambia SQL, pero TODOS los tests mockean el cursor → cero verificación de correctitud del SQL. Cambiar SQL de retrieval sin red viola la disciplina de medición del proyecto. Decisión del usuario: **red de integración primero.**
 
-**Gate:** `pytest` verde + un `ingest --update` de humo local sin regresión de conteos.
+- [x] Harness `tests/integration/` con `testcontainers` + imagen `pgvector/pgvector:pg16`, migraciones en orden, pool real vía `app.db.init_pool`. Marker `integration` + skip si no hay Docker.
+- [x] Caracterización de `tagged_lookup` (LIMIT-2-por-tag, dedup, orden card>rulebook, scope de version, similarity 0.0) contra Postgres real.
+- [x] Caracterización de `family_lookup` (match exacto, sin límite, scope de version).
+- [x] Caracterización de `upsert_chunks` (ON CONFLICT DO UPDATE, metadata) y `get_existing_ids` — incluyendo el comportamiento cross-version ACTUAL, para que la 4b lo cambie visiblemente.
+
+**Gate:** ✅ 14 tests de integración verdes contra Postgres real; 813 colectan sin error; ruff limpio. CI (ubuntu tiene Docker) los corre solo con la dep agregada.
+
+## Fase 4b — Ineficiencias de BD (con la red puesta)  `[ ]`
+
+- [ ] `retrieval.tagged_lookup`: colapsar el N+1 preservando LIMIT-2-por-tag (`LATERAL`/`UNION ALL`, NO un `ANY` ingenuo). La caracterización 4a es el árbitro.
+- [ ] `scripts/ingest.py`: `get_existing_ids` con `WHERE corpus_version` (actualizar el test de caracterización deliberadamente); filtrar ANTES de embeder en `--update`; upsert con `execute_values`.
+
+**Gate:** tests de integración 4a verdes ANTES y DESPUÉS + `ingest --update` de humo.
 
 ---
 
@@ -137,7 +148,8 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 | 1 — Código muerto | ✅ hecho | refactor/phase-1-dead-code |
 | 2 — generation.py | ✅ hecho | refactor/phase-2-generation-dedup |
 | 3 — lifespan | ✅ hecho | refactor/phase-3-lifespan |
-| 4 — Ineficiencias BD | ⬜ pendiente | — |
+| 4a — Red integración BD | ✅ hecho | refactor/phase-4a-db-integration-harness |
+| 4b — Ineficiencias BD | ⬜ pendiente | — |
 | 5 — Config + scripts | ⬜ pendiente | — |
 | 6 — Frontend + higiene | ⬜ pendiente | — |
 
