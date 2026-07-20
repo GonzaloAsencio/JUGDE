@@ -94,7 +94,11 @@ def _detect_keywords(question: str) -> list[str]:
     'equipment' does not match 'equip'. Also resolves community aliases to their
     official rulebook section names.
     """
-    found = [kw for kw in _KNOWN_KEYWORDS if _KEYWORD_PATTERNS[kw].search(question)]
+    # sorted() because _KNOWN_KEYWORDS is a frozenset: raw iteration order varies
+    # with the process hash seed, and this list feeds tag order into tagged_lookup
+    # and the leftover-budget fill in _assemble_context — non-determinism there
+    # produces different context on ties across restarts. Stable order = stable evals.
+    found = sorted(kw for kw in _KNOWN_KEYWORDS if _KEYWORD_PATTERNS[kw].search(question))
     for alias, canonical in _KEYWORD_ALIASES.items():
         if _ALIAS_PATTERNS[alias].search(question) and canonical not in found:
             found.append(canonical)
