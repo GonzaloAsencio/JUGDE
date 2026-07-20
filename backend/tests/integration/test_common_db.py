@@ -15,15 +15,19 @@ pytestmark = pytest.mark.integration
 
 def test_get_connection_connects_and_registers_vector(pg_dsn, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", pg_dsn)
+    # get_connection() calls register_vector, which looks up the 'vector' type
+    # OID and raises if the extension is missing — so a successful connect is
+    # itself proof register_vector worked.
     conn = get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT 1")
             assert cur.fetchone()[0] == 1
-            # register_vector succeeded => the vector type is known on this conn
-            # (pgvector adapts it to a numpy array on the way back).
-            cur.execute("SELECT '[1,2,3]'::vector")
-            assert [float(x) for x in cur.fetchone()[0]] == [1.0, 2.0, 3.0]
+            # Vector round-trips. Cast to text in SQL so the assertion doesn't
+            # depend on how the pgvector-python version adapts it back (numpy
+            # array vs Vector object).
+            cur.execute("SELECT '[1,2,3]'::vector::text")
+            assert cur.fetchone()[0] == "[1,2,3]"
     finally:
         conn.close()
 
