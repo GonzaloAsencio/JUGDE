@@ -47,7 +47,38 @@ describe('SystemNotice', () => {
     expect(screen.queryByRole('button', { name: /^try again$/i })).toBeNull();
   });
 
-  it('counts down and disables retry during a rate-limit window', () => {
+  it('surfaces the backend message for a rate limit, not generic throttle copy', () => {
+    render(
+      <SystemNotice
+        error={{
+          type: 'rate_limit',
+          message: "The demo exhausted today's shared token budget. Resets at midnight UTC.",
+          retryAfter: 23912,
+        }}
+        onRetry={noop}
+      />
+    );
+    expect(screen.getByText(/shared token budget/i)).toBeInTheDocument();
+    expect(screen.queryByText(/consulting the judge again/i)).toBeNull();
+  });
+
+  it('shows a fixed reset time, not a ticking countdown, for a daily-reset window', () => {
+    render(
+      <SystemNotice
+        error={{
+          type: 'rate_limit',
+          message: "The demo exhausted today's shared token budget.",
+          retryAfter: 23912,
+        }}
+        onRetry={noop}
+      />
+    );
+    // The wait is hours away: a per-second countdown is nonsense — show a clock.
+    expect(screen.getByText(/try again after \d/i)).toBeInTheDocument();
+    expect(screen.queryByText(/try again in \d+s/i)).toBeNull();
+  });
+
+  it('counts down and disables retry during a short rate-limit window', () => {
     jest.useFakeTimers();
     try {
       render(<SystemNotice error={{ type: 'rate_limit', message: '', retryAfter: 3 }} onRetry={noop} />);
