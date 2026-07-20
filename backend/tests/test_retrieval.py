@@ -494,9 +494,11 @@ def test_tagged_lookup_multiple_tags_merges_distinct_chunks(monkeypatch):
     cur = MagicMock()
     cur.__enter__ = lambda s: s
     cur.__exit__ = MagicMock(return_value=False)
-    cur.fetchall.side_effect = [
-        [("id1", "c1", "Accelerate", None, "rulebook", None)],
-        [("id2", "c2", "Action", None, "rulebook", None)],
+    # One round-trip now (LATERAL over the tag array): a single fetchall returns
+    # every tag's rows at once and the Python loop dedups — was one execute per tag.
+    cur.fetchall.return_value = [
+        ("id1", "c1", "Accelerate", None, "rulebook", None),
+        ("id2", "c2", "Action", None, "rulebook", None),
     ]
     conn = MagicMock()
     conn.cursor.return_value = cur
