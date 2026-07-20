@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Iterator
+from typing import Callable, Iterator, Optional
 
 from app.rag.retrieval import Chunk
+from app.rag.schemas import Usage
 
 
 class LLMProvider(ABC):
@@ -40,16 +41,35 @@ class LLMProvider(ABC):
     @abstractmethod
     def generate(self, question: str, chunks: list[Chunk], *, extra_system: str = "") -> str: ...
 
-    def generate_stream(
+    def generate_metered(
         self, question: str, chunks: list[Chunk], *, extra_system: str = ""
+    ) -> tuple[str, Optional[Usage]]:
+        """generate() plus the real token Usage when the API reports it.
+
+        Default: ``(generate(...), None)`` so providers (and test doubles) that
+        don't meter keep working — a None usage tells the pipeline to estimate.
+        """
+        return self.generate(question, chunks, extra_system=extra_system), None
+
+    def generate_stream(
+        self,
+        question: str,
+        chunks: list[Chunk],
+        *,
+        extra_system: str = "",
+        on_usage: Optional[Callable[[Usage], None]] = None,
     ) -> Iterator[str]:
         """Yield answer text deltas as they arrive (2.5 SSE).
 
-        Default: the full generate() output as a single chunk, so providers
-        (and test doubles) that don't implement streaming degrade to the exact
-        same answer — just without progressive delivery.
+        Default: the full generate_metered() output as a single chunk, so
+        providers (and test doubles) that don't implement streaming degrade to
+        the exact same answer — just without progressive delivery. *on_usage*
+        receives the real Usage when the provider has one; never required.
         """
-        yield self.generate(question, chunks, extra_system=extra_system)
+        answer, usage = self.generate_metered(question, chunks, extra_system=extra_system)
+        if on_usage is not None and usage is not None:
+            on_usage(usage)
+        yield answer
 
     def rewrite_query(self, question: str) -> str:
         return question
@@ -98,8 +118,26 @@ class GeminiProvider(LLMProvider):
             max_output_tokens=self._max_output_tokens,
         )
 
-    def generate_stream(
+    def generate_metered(
         self, question: str, chunks: list[Chunk], *, extra_system: str = ""
+    ) -> tuple[str, Optional[Usage]]:
+        from app.rag.generation import _call_gemini_metered, build_prompt
+        return _call_gemini_metered(
+            self._client,
+            self._model,
+            build_prompt(question, chunks, extra_system=extra_system),
+            temperature=self._temperature,
+            timeout_s=self._timeout_s,
+            max_output_tokens=self._max_output_tokens,
+        )
+
+    def generate_stream(
+        self,
+        question: str,
+        chunks: list[Chunk],
+        *,
+        extra_system: str = "",
+        on_usage: Optional[Callable[[Usage], None]] = None,
     ) -> Iterator[str]:
         from app.rag.generation import _stream_gemini, build_prompt
         yield from _stream_gemini(
@@ -109,6 +147,7 @@ class GeminiProvider(LLMProvider):
             temperature=self._temperature,
             timeout_s=self._timeout_s,
             max_output_tokens=self._max_output_tokens,
+            on_usage=on_usage,
         )
 
     def hyde(self, question: str) -> str:
@@ -177,8 +216,28 @@ class OpenAICompatProvider(LLMProvider):
             max_output_tokens=self._max_output_tokens,
         )
 
-    def generate_stream(
+    def generate_metered(
         self, question: str, chunks: list[Chunk], *, extra_system: str = ""
+    ) -> tuple[str, Optional[Usage]]:
+        from app.rag.generation import _call_openai_compat_raw_metered
+        return _call_openai_compat_raw_metered(
+            question, chunks,
+            base_url=self._base_url,
+            api_key=self._api_key,
+            model=self._model,
+            temperature=self._temperature,
+            timeout_s=self._timeout_s,
+            extra_system=extra_system,
+            max_output_tokens=self._max_output_tokens,
+        )
+
+    def generate_stream(
+        self,
+        question: str,
+        chunks: list[Chunk],
+        *,
+        extra_system: str = "",
+        on_usage: Optional[Callable[[Usage], None]] = None,
     ) -> Iterator[str]:
         from app.rag.generation import _stream_openai_compat_raw
         yield from _stream_openai_compat_raw(
@@ -190,6 +249,7 @@ class OpenAICompatProvider(LLMProvider):
             timeout_s=self._timeout_s,
             extra_system=extra_system,
             max_output_tokens=self._max_output_tokens,
+            on_usage=on_usage,
         )
 
     def rewrite_query(self, question: str) -> str:
