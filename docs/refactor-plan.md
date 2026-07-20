@@ -88,14 +88,15 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 
 ---
 
-## Fase 3 — HIGH #2: descomponer `lifespan`  `[ ]`
+## Fase 3 — HIGH #2: descomponer `lifespan`  `[x]`
 
-`app/main.py:40-146`, ~100 líneas, 10 responsabilidades.
+`app/main.py`, ~100 líneas, 10 responsabilidades.
 
-- [ ] Cortar en helpers nombrados (`_init_observability`, `_init_db`, `_init_embedder`, `_init_llm`, `_init_cache`, …) siguiendo los propios comentarios `# 1.`…`# 10.`.
-- [ ] De paso: matar el `__import__(...)` hackeado (`:32-34`, ya importado en `:15`) y el import incondicional de `google.genai` (`:16`).
+- [x] Cortar en helpers nombrados: `_init_llm_client` (Gemini client + ping), `_init_cache` (Redis), `_wire_app_state` (providers + app.state). `lifespan` queda como orquestador legible top-to-bottom. C901 ya no lo marca.
+- [x] Matar el `__import__(...)` hackeado (`:32-34`) → import normal `from app.observability import _before_send_filter`. Ordenado el import de `google` (arregla un I001).
+- [x] ⚠️ **NO** se removió el import top-level de `google.genai`: los tests hacen `patch("app.main.genai.Client")` — es un seam de testing deliberado. Removerlo rompía 14 tests por ningún beneficio real (genai ya es dependencia dura). Decisión: mantenerlo.
 
-**Gate:** `pytest` verde + arranque local del backend sin error.
+**Gate:** ✅ 68 tests (health/query/usage/main/startup) verdes; ruff F/I/C901 limpio; import smoke OK. Baseline restaurado tras detectar y corregir la ruptura del seam.
 
 ---
 
@@ -135,7 +136,7 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 | 0 — Enforcement backend | ✅ hecho | refactor/phase-0-backend-linting |
 | 1 — Código muerto | ✅ hecho | refactor/phase-1-dead-code |
 | 2 — generation.py | ✅ hecho | refactor/phase-2-generation-dedup |
-| 3 — lifespan | ⬜ pendiente | — |
+| 3 — lifespan | ✅ hecho | refactor/phase-3-lifespan |
 | 4 — Ineficiencias BD | ⬜ pendiente | — |
 | 5 — Config + scripts | ⬜ pendiente | — |
 | 6 — Frontend + higiene | ⬜ pendiente | — |
