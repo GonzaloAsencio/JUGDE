@@ -175,6 +175,12 @@ function makeComponents(): Components {
   };
 }
 
+// Stable across renders — makeComponents closes over nothing component-scoped,
+// so building it once avoids handing react-markdown a fresh components object
+// (new closures) on every reveal tick (~30/sec while streaming), which forced a
+// full re-parse each time.
+const MARKDOWN_COMPONENTS = makeComponents();
+
 export function AnswerDisplay({ answer, loading }: AnswerDisplayProps) {
   // Smooths delivery: streamed deltas AND at-once answers (cache hits, burst
   // providers) reveal at reading pace instead of flashing in. While streaming,
@@ -192,7 +198,7 @@ export function AnswerDisplay({ answer, loading }: AnswerDisplayProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         className="prose prose-neutral dark:prose-invert max-w-none"
-        components={makeComponents()}
+        components={MARKDOWN_COMPONENTS}
       >
         {cleaned}
       </ReactMarkdown>

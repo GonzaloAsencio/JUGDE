@@ -121,23 +121,28 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 
 ---
 
-## Fase 5 — Config + scripts (más invasivo, al final)  `[ ]`
+## Fase 5 — Config + scripts  `[~]` SALTEADA (decisión informada)
 
-- [ ] Unificar config en `Settings`: `rate_limit.py:53` y `scripts/ingest.py:25-26` que hoy leen `os.getenv` directo (o documentar explícitamente la excepción del limiter en import-time).
-- [ ] Extraer `scripts/_common.py` (conexión DB + carga de embedder) y migrar los 26/43 scripts que reimplementan la infra.
+Investigada a fondo, es mayormente un no-problema o churn riesgoso:
+- **Config "scatter" = excepciones justificadas y YA documentadas.** `rate_limit.py:53` lee `os.getenv` porque el `limiter` se construye en import-time, antes de que exista `Settings` (el docstring lo explica). `ingest.py` lee `DATABASE_URL`/`CORPUS_VERSION` directo a propósito: forzar `Settings` haría que el script de build falle sin `GEMINI_API_KEY`. Unificar acá AGREGA fragilidad.
+- **Helper de scripts = duplicación real pero en scripts muertos.** Los 26 son mayormente probes/experiments de una vez ("zombie-adjacent"), sin tests. Migrar a ciegas = churn/riesgo por bajo valor.
 
-**Gate:** `pytest` verde + humo de los scripts migrados más usados (`build_corpus`, `ingest`, `parse_cards`).
+Decisión (Opción A): saltear. No hacemos trabajo que empeora el código por estar en una lista.
 
 ---
 
-## Fase 6 — Frontend perf/correctness + higiene  `[ ]`
+## Fase 6a — Frontend perf/correctness  `[x]`
 
-- [ ] `ChatView.tsx:21-23`: throttle/keyear el `scrollIntoView` para no re-disparar por token.
-- [ ] `AnswerDisplay.tsx:195`: hoist `makeComponents()` a constante de módulo / `useMemo`.
-- [ ] `SystemNotice.tsx:84-86`: reinicializar `remaining` cuando llega un 429 nuevo con `retryAfter` distinto.
-- [ ] Higiene (barrido único): determinismo de `frozenset` (`_detect_keywords:97`), bare-excepts sin log, comentarios que restan valor, timers sin cleanup, `img` sin `eslint-disable` consistente.
+- [x] `ChatView`: `scrollIntoView` keyed en `messages.length` (no por token) → mata el jank de ~30 scroll/seg durante streaming.
+- [x] `AnswerDisplay`: `makeComponents()` hoisteado a constante de módulo `MARKDOWN_COMPONENTS` (no cierra sobre props) → react-markdown deja de re-parsear por tick.
+- [x] `SystemNotice`: 3 fixes — (1) `Date.now()` fuera de render vía lazy initializer (resuelve el error de lint `react-hooks/purity`); (2) `remaining` reinicia ante un 429 nuevo (ajuste-en-render, patrón documentado); (3) interval creado una vez por ventana, no por tick.
 
-**Gate:** `npm test` (incl. jest-axe) + `npm run lint` verdes.
+**Gate:** ✅ 230/230 Jest verdes; `npm run lint` **exit 0** (antes rojo en main por el `Date.now` — desbloqueado). Los 2 warnings restantes son `<img>` preexistentes.
+
+## Fase 6b — Higiene backend (pendiente, con cuidado)  `[ ]`
+
+- [ ] Determinismo de `frozenset` en `_detect_keywords:97` → **sensible al retrieval**, va con la red de integración/eval, NO como higiene trivial.
+- [ ] bare-excepts sin log (BLE001), comentarios que restan valor, timers frontend sin cleanup, `img` sin `eslint-disable` consistente.
 
 ---
 
@@ -151,8 +156,9 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 | 3 — lifespan | ✅ hecho | refactor/phase-3-lifespan |
 | 4a — Red integración BD | ✅ hecho | refactor/phase-4a-db-integration-harness |
 | 4b — Ineficiencias BD | ✅ hecho | refactor/phase-4b-db-efficiency |
-| 5 — Config + scripts | ⬜ pendiente | — |
-| 6 — Frontend + higiene | ⬜ pendiente | — |
+| 5 — Config + scripts | ⏭️ salteada | decisión informada (ver arriba) |
+| 6a — Frontend perf/correctness | ✅ hecho | refactor/phase-6a-frontend |
+| 6b — Higiene backend | ⬜ pendiente | — |
 
 > Detalle completo de cada hallazgo con `archivo:línea`:
 > `C:\Users\gonch\.claude\plans\act-a-como-un-ingeniero-federated-popcorn.md`

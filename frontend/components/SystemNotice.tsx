@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { ApiError } from '@/lib/types';
 
@@ -69,26 +69,45 @@ export function SystemNotice({ error, onRetry, retrying = false }: SystemNoticeP
   const isDailyReset =
     error.type === 'rate_limit' && (error.retryAfter ?? 0) > SHORT_THROTTLE_MAX_S;
 
-  // Daily reset: compute the wall-clock moment once and show it in the viewer's
-  // local time — "midnight UTC" is meaningless to someone in another zone.
-  const resetLabel = useMemo(() => {
-    if (!isDailyReset || error.retryAfter == null) return null;
-    return new Date(Date.now() + error.retryAfter * 1000).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  }, [isDailyReset, error.retryAfter]);
+  // Daily reset: show the reopen moment in the viewer's local time ("midnight
+  // UTC" is meaningless in another zone). Capture the clock ONCE in a lazy
+  // initializer (Date.now() is impure — keep render pure) and derive the label
+  // from that fixed instant.
+  const [seenAt] = useState(() => Date.now());
+  const resetLabel =
+    isDailyReset && error.retryAfter != null
+      ? new Date(seenAt + error.retryAfter * 1000).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null;
 
-  // Short-throttle countdown: block the retry until the server's window elapses.
-  // Skipped for a daily reset — a per-second timer over hours is pure noise.
-  const [remaining, setRemaining] = useState(
-    error.type === 'rate_limit' && !isDailyReset ? error.retryAfter ?? 0 : 0
-  );
+  // Short-throttle countdown: block retry until the server's window elapses.
+  // Skipped for a daily reset (a per-second timer over hours is noise). Re-init
+  // when a fresh 429 changes the target via render-time adjustment (React's
+  // documented pattern — no setState-in-effect cascade); one interval per
+  // window, created on target change rather than per tick.
+  const countdownFrom =
+    error.type === 'rate_limit' && !isDailyReset ? error.retryAfter ?? 0 : 0;
+  const [remaining, setRemaining] = useState(countdownFrom);
+  const [countdownTarget, setCountdownTarget] = useState(countdownFrom);
+  if (countdownTarget !== countdownFrom) {
+    setCountdownTarget(countdownFrom);
+    setRemaining(countdownFrom);
+  }
   useEffect(() => {
-    if (remaining <= 0) return;
-    const t = setInterval(() => setRemaining((s) => Math.max(0, s - 1)), 1000);
+    if (countdownFrom <= 0) return;
+    const t = setInterval(() => {
+      setRemaining((s) => {
+        if (s <= 1) {
+          clearInterval(t);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
     return () => clearInterval(t);
-  }, [remaining]);
+  }, [countdownFrom]);
 
   const waiting = remaining > 0;
 
