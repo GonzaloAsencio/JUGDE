@@ -25,3 +25,13 @@ export interface ApiError {
 }
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low';
+
+// The caller's daily token meter (GET /api/usage). `tier` is "anon" | "auth";
+// the anon badge nudges the user to sign in for a higher limit.
+export interface UsageInfo {
+  used: number;
+  quota: number;
+  remaining: number;
+  resets_at: string;
+  tier: string;
+}
