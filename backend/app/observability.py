@@ -87,5 +87,10 @@ def observe_or_noop(fn: Any, name: str = "") -> Any:
 
         label = name or fn.__name__
         return observe(name=label)(fn)
-    except Exception:
+    except Exception as e:
+        # Fail-open, but not silent: a swallowed error here means spans stop
+        # being recorded with no other symptom. Log so the degradation is visible.
+        logging.getLogger(__name__).warning(
+            "observe_or_noop: langfuse instrumentation failed, running un-traced: %s", e
+        )
         return fn

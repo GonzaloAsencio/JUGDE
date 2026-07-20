@@ -139,10 +139,15 @@ Decisión (Opción A): saltear. No hacemos trabajo que empeora el código por es
 
 **Gate:** ✅ 230/230 Jest verdes; `npm run lint` **exit 0** (antes rojo en main por el `Date.now` — desbloqueado). Los 2 warnings restantes son `<img>` preexistentes.
 
-## Fase 6b — Higiene backend (pendiente, con cuidado)  `[ ]`
+## Fase 6b — Higiene backend  `[x]`
 
-- [ ] Determinismo de `frozenset` en `_detect_keywords:97` → **sensible al retrieval**, va con la red de integración/eval, NO como higiene trivial.
-- [ ] bare-excepts sin log (BLE001), comentarios que restan valor, timers frontend sin cleanup, `img` sin `eslint-disable` consistente.
+Hecho el subconjunto con valor real; salteado el cosmético (no metemos churn por estar en una lista).
+
+- [x] **Determinismo de `frozenset`** en `_detect_keywords:97` → `sorted()`. La iteración cruda variaba con el hash seed y alimentaba el orden de tags a `tagged_lookup` + el fill de budget en `_assemble_context` → contexto no reproducible en empates. Orden estable = evals estables. Tests de `_detect_keywords` usan membership, no orden → intactos.
+- [x] **`observe_or_noop`** (`observability.py:90`): el bare-except silencioso ahora loguea — un fallo ahí frenaba los spans sin ningún síntoma.
+- [~] **Salteado (cosmético de bajo valor):** timer de `page.tsx` (React 18 lo tolera, LOW), comentarios triviales (`# 1-based`), `img` sin `eslint-disable` consistente. Churn en varios archivos por cero valor real.
+
+**Gate:** ✅ 285 tests (pipeline/routing/retrieval/observability) verdes; ruff F limpio; import smoke OK.
 
 ---
 
@@ -158,7 +163,7 @@ Decisión (Opción A): saltear. No hacemos trabajo que empeora el código por es
 | 4b — Ineficiencias BD | ✅ hecho | refactor/phase-4b-db-efficiency |
 | 5 — Config + scripts | ⏭️ salteada | decisión informada (ver arriba) |
 | 6a — Frontend perf/correctness | ✅ hecho | refactor/phase-6a-frontend |
-| 6b — Higiene backend | ⬜ pendiente | — |
+| 6b — Higiene backend | ✅ hecho | refactor/phase-6b-hygiene |
 
 > Detalle completo de cada hallazgo con `archivo:línea`:
 > `C:\Users\gonch\.claude\plans\act-a-como-un-ingeniero-federated-popcorn.md`
