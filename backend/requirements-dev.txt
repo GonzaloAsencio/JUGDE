@@ -9,6 +9,9 @@ pytest-asyncio>=0.23.7
 ruff>=0.9.1
 mypy>=1.14.0
 
+# Integration tests (real Postgres + pgvector via Docker; skip if Docker absent)
+testcontainers[postgres]>=4.0
+
 # Corpus build (parseo PDF/HTML en scripts/)
 pymupdf>=1.25.0
 beautifulsoup4>=4.12.3
