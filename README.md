@@ -1,11 +1,4 @@
----
-title: RiftWard Judge AI
-colorFrom: blue
-colorTo: purple
-sdk: docker
-app_port: 7860
-pinned: false
----
+
 
 # Riftbound Judge AI
 
