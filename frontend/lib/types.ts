@@ -34,4 +34,7 @@ export interface UsageInfo {
   remaining: number;
   resets_at: string;
   tier: string;
+  // False when EITHER ceiling is spent (personal or the shared global budget).
+  // Optional so an older backend without the field is treated as available.
+  available?: boolean;
 }

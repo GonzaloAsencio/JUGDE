@@ -41,6 +41,26 @@ describe('UsageBadge', () => {
     expect(badge).toHaveAttribute('title', expect.stringMatching(/resets at/i));
   });
 
+  it('shows a demo-limit state instead of a token count when unavailable', async () => {
+    const resetsAt = new Date('2026-07-20T00:00:00Z').toISOString();
+    mockUsageFetch({ used: 0, quota: 20000, remaining: 20000, resets_at: resetsAt, tier: 'anon', available: false });
+
+    render(<UsageBadge />);
+
+    // No contradiction: the shared budget is spent, so the badge must not brag
+    // about the still-full personal remainder.
+    expect(await screen.findByText(/demo limit reached/i)).toBeInTheDocument();
+    expect(screen.queryByText(/tokens left today/i)).toBeNull();
+  });
+
+  it('shows the token count when available is true', async () => {
+    mockUsageFetch({ used: 1500, quota: 20000, remaining: 18500, resets_at: new Date().toISOString(), tier: 'anon', available: true });
+
+    render(<UsageBadge />);
+
+    expect(await screen.findByText(/tokens left today/i)).toHaveTextContent(/18\.5K/i);
+  });
+
   it('renders nothing on a 503 (fail-open, no broken badge)', async () => {
     mockUsageFetch({ detail: 'usage unavailable' }, false);
     const { container } = render(<UsageBadge />);

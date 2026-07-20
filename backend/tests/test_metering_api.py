@@ -219,3 +219,22 @@ def test_usage_endpoint_fails_open_to_zero_used(metered_client):
 
     assert body["used"] == 0
     assert body["remaining"] == body["quota"]
+
+
+def test_usage_endpoint_reports_available_true_when_under_quota(metered_client):
+    body = metered_client.get("/api/v1/usage").json()
+
+    assert body["available"] is True
+
+
+def test_usage_endpoint_available_false_when_global_budget_exhausted(metered_client):
+    # Personal bucket has room (used=0) but the shared global pool is spent.
+    metered_client.fake_redis.values[global_key(_now())] = str(99_999_999)
+
+    body = metered_client.get("/api/v1/usage").json()
+
+    assert body["available"] is False
+    # Only the boolean crosses the wire — never the global remainder (the
+    # docstring's drain-gauge concern). A blocked caller already knows via 429.
+    assert "global_used" not in body
+    assert "global_remaining" not in body
