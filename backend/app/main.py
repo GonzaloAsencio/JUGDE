@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from google import genai
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -12,9 +13,7 @@ from app.db import close_pool, init_pool, resolve_corpus_version
 from app.health import router as health_router
 from app.middleware.auth import ProxySecretMiddleware
 from app.middleware.rate_limit import limiter, rate_limit_exceeded_handler
-from app.observability import get_logger, init_observability
-from google import genai
-
+from app.observability import _before_send_filter, get_logger, init_observability
 from app.rag.embedder import Embedder
 from app.rag.provider import create_hard_provider, create_provider
 
@@ -29,74 +28,62 @@ if _settings.sentry_dsn:
         integrations=[FastApiIntegration()],
         traces_sample_rate=0.0,
         sample_rate=_settings.sentry_sample_rate,
-        before_send=lambda event, hint: __import__(
-            "app.observability", fromlist=["_before_send_filter"]
-        )._before_send_filter(event, hint),
+        before_send=_before_send_filter,
     )
 
 logger = get_logger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 1. Load settings
-    settings = get_settings()
-    init_observability(settings)
-    logger.info("Settings loaded.")
+def _init_llm_client(settings, pool):
+    """Build the main LLM client and fail fast on a bad Gemini key.
 
-    # 2. Init DB pool
-    pool = init_pool(settings.database_url, minconn=settings.db_pool_min, maxconn=settings.db_pool_max)
-    logger.info("DB pool initialized.")
+    openai_compat needs no client (-> None). For Gemini, a startup ping
+    validates the key: a 429/quota/rate error is a valid key under throttle
+    (warn, continue), anything else tears down *pool* and aborts boot.
+    """
+    if settings.llm_provider != "gemini":
+        logger.info(
+            "LLM provider: openai_compat — skipping Gemini init.",
+            base_url=settings.llm_base_url,
+            model=settings.llm_model,
+        )
+        return None
 
-    # 3. Resolve corpus_version. If the corpus is empty at startup we don't fail:
-    #    the query endpoint re-resolves on demand, so an ingest run afterwards is
-    #    picked up without a restart.
-    corpus_version = resolve_corpus_version(pool, settings)
-    if corpus_version is None:
-        logger.warning("corpus_chunks is empty -- queries 503 until ingest runs, then re-resolve on demand.")
-    else:
-        logger.info("corpus_version resolved", corpus_version=corpus_version)
+    from google.genai import types as genai_types
 
-    # 4. Load embedder (~5-10s intentional)
-    logger.info("Loading embedder (this takes ~5-10s)...")
-    embedder = Embedder.load(settings.model_name)
-    logger.info("Embedder loaded.")
+    llm_client = genai.Client(api_key=settings.gemini_api_key)
+    logger.info("Gemini client initialized.")
+    try:
+        llm_client.models.generate_content(
+            model=settings.gemini_model,
+            contents="ping",
+            config=genai_types.GenerateContentConfig(max_output_tokens=5),
+        )
+        logger.info("Gemini ping successful.")
+    except Exception as e:
+        if "429" in str(e) or "quota" in str(e).lower() or "rate" in str(e).lower():
+            logger.warning("Gemini ping hit rate limit (429) -- API key is valid, continuing.")
+        else:
+            close_pool(pool)
+            raise RuntimeError(
+                f"Gemini ping failed -- invalid API key or unreachable: {e}"
+            ) from e
+    return llm_client
 
-    # 5. Init LLM client
-    if settings.llm_provider == "gemini":
-        from google.genai import types as genai_types
-        llm_client = genai.Client(api_key=settings.gemini_api_key)
-        logger.info("Gemini client initialized.")
 
-        # 6. Ping Gemini to validate API key (rate limit errors are warnings, not fatal)
-        try:
-            llm_client.models.generate_content(
-                model=settings.gemini_model,
-                contents="ping",
-                config=genai_types.GenerateContentConfig(max_output_tokens=5),
-            )
-            logger.info("Gemini ping successful.")
-        except Exception as e:
-            if "429" in str(e) or "quota" in str(e).lower() or "rate" in str(e).lower():
-                logger.warning("Gemini ping hit rate limit (429) -- API key is valid, continuing.")
-            else:
-                close_pool(pool)
-                raise RuntimeError(
-                    f"Gemini ping failed -- invalid API key or unreachable: {e}"
-                ) from e
-    else:
-        llm_client = None
-        logger.info("LLM provider: openai_compat — skipping Gemini init.", base_url=settings.llm_base_url, model=settings.llm_model)
-
-    # 7. Init Redis cache (optional -- skipped if env vars absent)
+def _init_cache(settings):
+    """Wire the optional Redis cache. Absent env vars -> disabled, loudly:
+    with the client unset get/set_cached no-op silently, so a missing var
+    otherwise looks identical to a cache bug from the outside."""
     if settings.upstash_redis_url and settings.upstash_redis_token:
         init_redis(settings.upstash_redis_url, settings.upstash_redis_token)
     else:
-        # Loud on purpose: with the client unset, get/set_cached no-op silently,
-        # so a missing env var looks identical to a cache bug from the outside.
         logger.warning("Cache disabled — UPSTASH_REDIS_URL/UPSTASH_REDIS_TOKEN not set.")
 
-    # 8-9. Store everything on app.state
+
+def _wire_app_state(app, settings, *, llm_client, embedder, pool, corpus_version):
+    """Assemble the providers and stash everything the request path reads off
+    app.state."""
     app.state.embedder = embedder
     app.state.db_pool = pool
     app.state.llm_provider = create_provider(settings, llm_client)
@@ -136,11 +123,40 @@ async def lifespan(app: FastAPI):
     # lru_cache'd Settings singleton here — that shared, cached object would leak
     # the mutation into every get_settings() consumer and across tests.
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings = get_settings()
+    init_observability(settings)
+    logger.info("Settings loaded.")
+
+    pool = init_pool(settings.database_url, minconn=settings.db_pool_min, maxconn=settings.db_pool_max)
+    logger.info("DB pool initialized.")
+
+    # If the corpus is empty at startup we don't fail: the query endpoint
+    # re-resolves on demand, so an ingest run afterwards is picked up without a
+    # restart.
+    corpus_version = resolve_corpus_version(pool, settings)
+    if corpus_version is None:
+        logger.warning("corpus_chunks is empty -- queries 503 until ingest runs, then re-resolve on demand.")
+    else:
+        logger.info("corpus_version resolved", corpus_version=corpus_version)
+
+    logger.info("Loading embedder (this takes ~5-10s)...")
+    embedder = Embedder.load(settings.model_name)
+    logger.info("Embedder loaded.")
+
+    llm_client = _init_llm_client(settings, pool)
+    _init_cache(settings)
+    _wire_app_state(
+        app, settings,
+        llm_client=llm_client, embedder=embedder, pool=pool, corpus_version=corpus_version,
+    )
+
     logger.info("Startup complete.", corpus_version=corpus_version)
 
     yield
 
-    # 10. Teardown
     close_redis()
     close_pool(app.state.db_pool)
     logger.info("DB pool closed.")
