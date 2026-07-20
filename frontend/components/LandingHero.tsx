@@ -6,7 +6,6 @@ import { useMounted } from '@/lib/useMounted';
 
 interface LandingHeroProps {
   onCallJudge: (x: number, y: number) => void;
-  leaving?: boolean;
 }
 
 const FACTIONS = [
@@ -54,7 +53,7 @@ const FACTIONS = [
   },
 ];
 
-export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
+export function LandingHero({ onCallJudge }: LandingHeroProps) {
   const { resolvedTheme } = useTheme();
   const mounted = useMounted();
   const isDark = mounted && resolvedTheme === 'dark';
@@ -67,7 +66,7 @@ export function LandingHero({ onCallJudge, leaving }: LandingHeroProps) {
     : { filter: 'grayscale(0.35) saturate(1.15)', mixBlendMode: 'multiply', opacity: 0.22 };
 
   return (
-    <div className={`min-h-screen bg-brand-surface text-brand-ink overflow-hidden relative font-sans${leaving ? ' landing-fade-out' : ''}`}>
+    <div className="min-h-screen bg-brand-surface text-brand-ink overflow-hidden relative font-sans">
       {/* Faction icons — each with its own centered glow */}
       {FACTIONS.map(({ src, wrapperClass, rotate, blobColor, blobSize }) => (
         <div

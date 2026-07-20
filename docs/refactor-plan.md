@@ -58,16 +58,19 @@ Fase 0 no tocó runtime → resultado de pytest idéntico al baseline.
 
 ---
 
-## Fase 1 — Código muerto: borrados seguros  `[ ]`
+## Fase 1 — Código muerto: borrados seguros  `[x]`
 
 Los tests confirman que nada de esto se usa. Máximo valor, mínimo riesgo.
 
-- [ ] Frontend: borrar `components/ExampleQueries.tsx`, `components/CitationsList.tsx`, `components/JudgeIntroAnimation.tsx` (+ sus tests huérfanos).
-- [ ] Frontend: borrar `postQuery` + `CLIENT_TIMEOUT_MS` (`lib/api.ts:60-94, :3`).
-- [ ] Frontend: quitar prop muerta `leaving` de `LandingHero.tsx:9,57,70`.
-- [ ] Backend: borrar la cadena `rewrite_query` muerta (`provider.py:255-262`, `generation._rewrite_openai_compat:434-451`, `_REWRITE_PROMPT:423-431`) + sus tests.
+- [x] Frontend: borrar `components/ExampleQueries.tsx`, `components/CitationsList.tsx`, `components/JudgeIntroAnimation.tsx` (+ su test huérfano).
+- [x] Frontend: borrar `postQuery` + `CLIENT_TIMEOUT_MS` de `lib/api.ts` (+ el import `QueryResponse` que quedó huérfano).
+- [x] Frontend: quitar prop muerta `leaving` de `LandingHero.tsx` (verificado: `page.tsx:39` no la pasa).
+- [x] Backend: borrar la cadena `rewrite_query` muerta — base ABC `LLMProvider.rewrite_query`, override `OpenAICompatProvider.rewrite_query`, `_rewrite_openai_compat`, `_REWRITE_PROMPT`.
 
-**Gate:** ambas suites verdes. Si un borrado rompe un test que NO sea el del propio huérfano → ese código no estaba muerto, revertir y re-evaluar.
+**Verificación previa:** grep confirmó cero callers en producción; `rewrite_experiment.py` menciona `_REWRITE_PROMPT` solo en el docstring (no lo importa).
+
+**Gate:** ✅ backend 200 tests (provider/generation/pipeline) verdes + imports OK; frontend 31 suites / 230 tests verdes.
+Nota: `npm run lint` tiene 1 error preexistente en `SystemNotice.tsx:76` (`Date.now` en render) — NO introducido acá, ya es target de Fase 6.
 
 ---
 
@@ -127,7 +130,7 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 | Fase | Estado | Rama / PR |
 |------|--------|-----------|
 | 0 — Enforcement backend | ✅ hecho | refactor/phase-0-backend-linting |
-| 1 — Código muerto | ⬜ pendiente | — |
+| 1 — Código muerto | ✅ hecho | refactor/phase-1-dead-code |
 | 2 — generation.py | ⬜ pendiente | — |
 | 3 — lifespan | ⬜ pendiente | — |
 | 4 — Ineficiencias BD | ⬜ pendiente | — |

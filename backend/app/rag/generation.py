@@ -420,37 +420,6 @@ def _call_gemini_metered(
         raise GenerationError(f"Gemini API error: {e}") from e
 
 
-_REWRITE_PROMPT = """\
-You help retrieve rules from the Riftbound card game rulebook.
-Rewrite the question using official game terminology (exhausted, ready, attack, combat, unit, keyword, ability, enter the board, etc.).
-Preserve any keyword names mentioned in the question verbatim (e.g., Accelerate, Action, Shield).
-Apply these specific term translations: "Action Phase" → "Main Phase", "Domain Identity" → "Domain".
-Output only the rewritten question, 1-2 sentences max.
-
-Question: {question}
-Rewritten:"""
-
-
-def _rewrite_openai_compat(question: str, *, base_url: str, api_key: str, model: str) -> str:
-    """Rewrite question via OpenAI-compat LLM. Falls back to original on any error."""
-    try:
-        import openai
-        client = openai.OpenAI(base_url=base_url, api_key=api_key)
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": _REWRITE_PROMPT.format(question=question)}],
-            temperature=0.0,
-            max_tokens=120,
-            timeout=5.0,
-        )
-        rewritten = response.choices[0].message.content
-        if rewritten:
-            return rewritten.strip()
-    except Exception:
-        pass
-    return question
-
-
 _HYDE_PROMPT = """\
 You answer rules questions about the Riftbound trading card game.
 Write a short, confident hypothetical answer (2-3 sentences) to the question
