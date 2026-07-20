@@ -56,4 +56,19 @@ describe('UsageBadge', () => {
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('nudges anon users to sign in only when the balance is low', async () => {
+    mockUsageFetch({ used: 17000, quota: 20000, remaining: 3000, resets_at: new Date().toISOString(), tier: 'anon' });
+    render(<UsageBadge />);
+
+    expect(await screen.findByText(/sign in to raise your limit/i)).toBeInTheDocument();
+  });
+
+  it('does not nudge a logged-in user', async () => {
+    mockUsageFetch({ used: 99000, quota: 100000, remaining: 1000, resets_at: new Date().toISOString(), tier: 'auth' });
+    render(<UsageBadge />);
+
+    await screen.findByText(/tokens left today/i);
+    expect(screen.queryByText(/sign in to raise/i)).toBeNull();
+  });
 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FASTAPI_URL, buildProxyHeaders, ensureJudgeUid, withUidCookie } from '@/lib/proxy';
+import { FASTAPI_URL, buildProxyHeaders, resolveIdentity, withUidCookie } from '@/lib/proxy';
 
 const TIMEOUT_MS = 5_000;
 
@@ -12,7 +12,7 @@ const TIMEOUT_MS = 5_000;
  * blocking dependency.
  */
 export async function GET(req: NextRequest) {
-  const uid = ensureJudgeUid(req);
+  const uid = await resolveIdentity(req);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

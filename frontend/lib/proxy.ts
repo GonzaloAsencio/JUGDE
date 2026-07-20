@@ -90,6 +90,25 @@ export function withUidCookie<T extends NextResponse | Response>(res: T, uid: Ju
   return res;
 }
 
+/**
+ * Resolve the caller's identity for a request: a valid Supabase session wins
+ * (forward `auth:{sub}`, no anon cookie needed), otherwise the signed anon
+ * cookie (minted if absent).
+ *
+ * The auth id is validated SERVER-SIDE via getUser() — never taken from a
+ * client-set value — so a logged-in user's tier can't be forged. When no
+ * session exists we fall through to the anonymous identity, so logout and
+ * un-configured deploys keep metering by anon cookie / IP.
+ */
+export async function resolveIdentity(req: NextRequest): Promise<JudgeUid> {
+  // Lazy import keeps @supabase/ssr out of routes that only ever run anon
+  // (and out of the unit tests that mock it explicitly).
+  const { getAuthUserId } = await import('@/lib/supabase/server');
+  const authUserId = await getAuthUserId(req);
+  if (authUserId) return { userId: authUserId };
+  return ensureJudgeUid(req);
+}
+
 export interface ParsedQueryBody {
   question: string;
   cardMentions: string[];

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FASTAPI_URL, buildProxyHeaders, ensureJudgeUid, mapUpstreamError, parseQueryBody, withUidCookie } from '@/lib/proxy';
+import { FASTAPI_URL, buildProxyHeaders, mapUpstreamError, parseQueryBody, resolveIdentity, withUidCookie } from '@/lib/proxy';
 
 const TIMEOUT_MS = Number(process.env.FASTAPI_TIMEOUT_MS ?? 30_000);
 
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ detail: 'question is required' }, { status: 400 });
   }
 
-  const uid = ensureJudgeUid(req);
+  const uid = await resolveIdentity(req);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
