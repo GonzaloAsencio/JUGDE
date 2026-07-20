@@ -178,6 +178,18 @@ class Settings(BaseSettings):
     # Cache
     cache_ttl_s: int = 86400
 
+    # Fase 5 metering: per-user daily token quotas + a GLOBAL daily budget.
+    # The flag is OFF by default (two-step flip: merge dark -> env -> verify ->
+    # flip). The personal ceilings shape fairness; the global budget is what
+    # actually protects the free tier — a hundred users each under their
+    # personal limit can still exhaust the provider. Counters live in Redis
+    # (shared across workers) and everything fails OPEN: metering must never
+    # take the product down. anon ~= 4-6 queries/day.
+    metering_enabled: bool = False
+    anon_daily_token_quota: int = 20_000
+    auth_daily_token_quota: int = 100_000
+    global_daily_token_budget: int = 500_000
+
     # v7: added a third few-shot example teaching chain placement-order vs
     # LIFO resolution-order (383.3.d.1) — the model was inverting these.
     # Bumping invalidates the response cache — the version is part of the key.

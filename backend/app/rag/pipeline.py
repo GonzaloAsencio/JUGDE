@@ -715,6 +715,11 @@ def _finalize_response(
     usage = gen_usage
     if plan.hyde_usage is not None:
         usage = plan.hyde_usage + usage if usage is not None else plan.hyde_usage
+    if usage is not None:
+        # The answering provider is the authority on the model name (see
+        # LLMProvider.model) — stamped here so the usage ledger records the
+        # model that actually generated, hard-routed queries included.
+        usage = usage.model_copy(update={"llm_model": plan.model})
 
     response = QueryResponse(
         answer=answer,

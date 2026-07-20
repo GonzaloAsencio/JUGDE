@@ -153,7 +153,7 @@ def test_generate_metered_default_returns_answer_without_usage():
 def test_answer_question_reports_real_usage_when_provider_meters():
     response, _ = _ask(_MeteredProvider())
 
-    assert response.usage == _REAL_USAGE
+    assert response.usage == _REAL_USAGE.model_copy(update={"llm_model": "fake-model"})
 
 
 def test_answer_question_estimates_usage_when_provider_does_not_meter():
@@ -170,7 +170,7 @@ def test_empty_answer_retry_sums_both_attempts():
     response, _ = _ask(provider)
 
     assert provider.calls == 2
-    assert response.usage == _REAL_USAGE + _REAL_USAGE
+    assert response.usage == (_REAL_USAGE + _REAL_USAGE).model_copy(update={"llm_model": "fake-model"})
 
 
 def test_hyde_usage_is_estimated_and_added_to_real_generation_usage():
@@ -229,7 +229,7 @@ def test_stream_final_reports_real_usage_when_provider_delivers_it():
     final = events[-1][1]
 
     assert isinstance(final, QueryResponse)
-    assert final.usage == Usage(prompt_tokens=50, output_tokens=5, total_tokens=55)
+    assert final.usage == Usage(prompt_tokens=50, output_tokens=5, total_tokens=55, llm_model="fake-model")
 
 
 def test_stream_final_estimates_usage_for_legacy_providers_without_on_usage():
