@@ -3,16 +3,14 @@ Valida el pipeline de retrieval: embebe una pregunta y consulta pgvector.
 Uso: python scripts/validate_query.py "tu pregunta aquí"
 """
 import sys
-import os
+
 from dotenv import load_dotenv
-import psycopg2
-from pgvector.psycopg2 import register_vector
-from sentence_transformers import SentenceTransformer
+
+from scripts._common import get_connection, load_embedder
 
 load_dotenv()
 
 EMBED_MODEL = "BAAI/bge-m3"
-DATABASE_URL = os.getenv("DATABASE_URL")
 TOP_K = 5
 
 def main():
@@ -21,12 +19,11 @@ def main():
     print(f"\nPregunta: {question}\n")
 
     print("Cargando modelo...")
-    model = SentenceTransformer(EMBED_MODEL)
+    model = load_embedder(EMBED_MODEL)
     embedding = model.encode(question, normalize_embeddings=True).tolist()
 
     print("Conectando a Supabase...")
-    conn = psycopg2.connect(DATABASE_URL)
-    register_vector(conn)
+    conn = get_connection()
 
     with conn.cursor() as cur:
         cur.execute(
