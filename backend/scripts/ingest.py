@@ -7,7 +7,6 @@ Modos:
   --update  : solo inserta chunks nuevos (detecta por hash de contenido)
 """
 import argparse
-import hashlib
 import os
 import re
 import sys
@@ -18,7 +17,7 @@ from pathlib import Path
 import psycopg2
 from dotenv import load_dotenv
 from pgvector.psycopg2 import register_vector
-from psycopg2.extras import Json
+from psycopg2.extras import Json, execute_values
 
 load_dotenv()
 
@@ -349,9 +348,13 @@ def delete_all_chunks(conn):
     print(f"  Chunks de {CORPUS_VERSION} eliminados.")
 
 
-def get_existing_ids(conn) -> set[str]:
+def get_existing_ids(conn, corpus_version: str) -> set[str]:
+    # Scoped to corpus_version: chunk ids are version-namespaced (uuid5 over
+    # CORPUS_VERSION:doc:content), so other versions' ids can never match this
+    # run's chunks anyway — filtering keeps the set from growing unbounded as
+    # versions accumulate.
     with conn.cursor() as cur:
-        cur.execute("SELECT id FROM corpus_chunks")
+        cur.execute("SELECT id FROM corpus_chunks WHERE corpus_version = %s", (corpus_version,))
         return {row[0] for row in cur.fetchall()}
 
 
@@ -365,8 +368,7 @@ def upsert_chunks(conn, chunks: list[dict], dry_run: bool = False):
     sql = """
         INSERT INTO corpus_chunks
             (id, content, embedding, source_type, source_document, section, parent_section, corpus_version, metadata, ingested_at)
-        VALUES
-            (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+        VALUES %s
         ON CONFLICT (id) DO UPDATE SET
             content = EXCLUDED.content,
             embedding = EXCLUDED.embedding,
@@ -374,19 +376,24 @@ def upsert_chunks(conn, chunks: list[dict], dry_run: bool = False):
             metadata = EXCLUDED.metadata,
             ingested_at = NOW()
     """
+    rows = [
+        (
+            chunk["id"],
+            chunk["content"],
+            chunk["embedding"],
+            chunk["source_type"],
+            chunk["source_document"],
+            chunk["section"],
+            chunk["parent_section"],
+            chunk["corpus_version"],
+            Json(chunk.get("metadata") or {}),
+        )
+        for chunk in chunks
+    ]
+    # One round-trip (batched) instead of one INSERT per chunk. The template
+    # carries NOW() as the 10th column so ingested_at stays set-on-insert.
     with conn.cursor() as cur:
-        for chunk in chunks:
-            cur.execute(sql, (
-                chunk["id"],
-                chunk["content"],
-                chunk["embedding"],
-                chunk["source_type"],
-                chunk["source_document"],
-                chunk["section"],
-                chunk["parent_section"],
-                chunk["corpus_version"],
-                Json(chunk.get("metadata") or {}),
-            ))
+        execute_values(cur, sql, rows, template="(%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())")
     conn.commit()
     print(f"  {len(chunks)} chunks insertados/actualizados.")
 
@@ -434,16 +441,14 @@ def main():
         applied, missing = apply_context_lines(all_chunks, context_map)
         print(f"Context lines aplicadas: {applied} ({missing} chunks rulebook sin línea)")
 
-    # 2. Embeddings
-    print("\nGenerando embeddings...")
-    all_chunks = embed_chunks(all_chunks)
-
+    # Dry-run touches neither the DB nor the (expensive) embedder.
     if args.dry_run:
         print("\n[dry-run] Resultado:")
         upsert_chunks(None, all_chunks, dry_run=True)
         return
 
-    # 3. Conectar a BD
+    # 2. Conectar a BD — antes de embeder, para que --update descarte lo ya
+    #    presente y NO paguemos embeddings de chunks que vamos a tirar.
     print("\nConectando a Supabase...")
     conn = get_connection()
 
@@ -452,9 +457,13 @@ def main():
         delete_all_chunks(conn)
 
     if args.update:
-        existing = get_existing_ids(conn)
+        existing = get_existing_ids(conn, CORPUS_VERSION)
         all_chunks = [c for c in all_chunks if c["id"] not in existing]
         print(f"Modo --update: {len(all_chunks)} chunks nuevos a insertar")
+
+    # 3. Embeddings — solo de los chunks que realmente se insertan.
+    print("\nGenerando embeddings...")
+    all_chunks = embed_chunks(all_chunks)
 
     # 4. Upsert
     print("\nInsertando en pgvector...")

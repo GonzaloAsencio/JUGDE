@@ -111,12 +111,13 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 
 **Gate:** ✅ 14 tests de integración verdes contra Postgres real; 813 colectan sin error; ruff limpio. CI (ubuntu tiene Docker) los corre solo con la dep agregada.
 
-## Fase 4b — Ineficiencias de BD (con la red puesta)  `[ ]`
+## Fase 4b — Ineficiencias de BD (con la red puesta)  `[x]`
 
-- [ ] `retrieval.tagged_lookup`: colapsar el N+1 preservando LIMIT-2-por-tag (`LATERAL`/`UNION ALL`, NO un `ANY` ingenuo). La caracterización 4a es el árbitro.
-- [ ] `scripts/ingest.py`: `get_existing_ids` con `WHERE corpus_version` (actualizar el test de caracterización deliberadamente); filtrar ANTES de embeder en `--update`; upsert con `execute_values`.
+- [x] `retrieval.tagged_lookup`: N+1 colapsado a UN round-trip con `unnest(...) WITH ORDINALITY` + `LATERAL`, preservando LIMIT-2-por-tag y orden por tag. La caracterización 4a fue el árbitro (9/9 verdes tras el cambio).
+- [x] `scripts/ingest.py`: `get_existing_ids` con `WHERE corpus_version` (test de caracterización actualizado deliberadamente a scoped); `--update` filtra ANTES de embeder (dry-run ya no embebe tampoco); `upsert_chunks` con `execute_values` (batch en un round-trip). Drive-by: quitado import muerto `hashlib`.
+- [x] Tests mockeados acoplados a la estructura vieja: actualizado el de merge de tags (1 execute ahora); removidos los 2 de upsert mockeado (incompatibles con `execute_values` + ya cubiertos por integración).
 
-**Gate:** tests de integración 4a verdes ANTES y DESPUÉS + `ingest --update` de humo.
+**Gate:** ✅ integración 14/14 verdes ANTES y DESPUÉS; barrido amplio 304 tests (retrieval/pipeline/routing/ingest) verde. Nota: `main()` de ingest no tiene test (orquestación CLI) — el reorden es verificable a ojo y dry-run/output quedan idénticos.
 
 ---
 
@@ -149,7 +150,7 @@ El de mayor impacto. Boilerplate LLM duplicado 4×.
 | 2 — generation.py | ✅ hecho | refactor/phase-2-generation-dedup |
 | 3 — lifespan | ✅ hecho | refactor/phase-3-lifespan |
 | 4a — Red integración BD | ✅ hecho | refactor/phase-4a-db-integration-harness |
-| 4b — Ineficiencias BD | ⬜ pendiente | — |
+| 4b — Ineficiencias BD | ✅ hecho | refactor/phase-4b-db-efficiency |
 | 5 — Config + scripts | ⬜ pendiente | — |
 | 6 — Frontend + higiene | ⬜ pendiente | — |
 

@@ -71,18 +71,19 @@ def test_upsert_persists_metadata(clean_corpus):
 def test_get_existing_ids_sees_upserted(clean_corpus):
     cid = str(uuid.uuid4())
     with get_conn(clean_corpus) as conn:
-        upsert_chunks(conn, [_chunk(id=cid)])
-        existing = get_existing_ids(conn)
+        upsert_chunks(conn, [_chunk(id=cid, corpus_version="v1")])
+        existing = get_existing_ids(conn, "v1")
     assert cid in {str(x) for x in existing}
 
 
-def test_get_existing_ids_returns_all_versions(clean_corpus):
-    """CURRENT behavior: get_existing_ids has no WHERE corpus_version, so it
-    returns ids across ALL versions. Phase 4 will scope it — update this test
-    then, deliberately."""
+def test_get_existing_ids_scoped_to_version(clean_corpus):
+    """Phase 4b behavior: get_existing_ids is scoped to corpus_version, so a
+    query for v1 sees v1's ids only — not v2's. (Was cross-version before 4b;
+    changed deliberately — chunk ids are version-namespaced so this is safe.)"""
     v1, v2 = str(uuid.uuid4()), str(uuid.uuid4())
     with get_conn(clean_corpus) as conn:
         upsert_chunks(conn, [_chunk(id=v1, corpus_version="v1")])
         upsert_chunks(conn, [_chunk(id=v2, corpus_version="v2")])
-        existing = {str(x) for x in get_existing_ids(conn)}
-    assert {v1, v2} <= existing
+        existing = {str(x) for x in get_existing_ids(conn, "v1")}
+    assert v1 in existing
+    assert v2 not in existing

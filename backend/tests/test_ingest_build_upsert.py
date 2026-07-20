@@ -1,7 +1,10 @@
-"""TDD: build_chunks propaga set por documento/carta + upsert persiste metadata."""
-from unittest.mock import MagicMock
+"""build_chunks propaga `set` por documento/carta.
 
-from scripts.ingest import build_chunks, upsert_chunks
+El comportamiento de upsert_chunks (metadata, ON CONFLICT) se verifica ahora
+contra Postgres real en tests/integration/test_ingest_db.py — los mocks no
+pueden ejercitar execute_values (necesita mogrify real).
+"""
+from scripts.ingest import build_chunks
 
 
 def test_build_chunks_errata_assigns_set_from_filename(tmp_path):
@@ -31,44 +34,3 @@ def test_build_chunks_cards_set_is_per_card(tmp_path):
     by_section = {c["section"]: c["metadata"].get("set") for c in chunks}
     assert by_section["Yasuo"] == "origins"
     assert by_section["Rell"] == "spiritforged"
-
-
-# ---------------------------------------------------------------------------
-# upsert_chunks — metadata column
-# ---------------------------------------------------------------------------
-
-def _mock_conn():
-    cur = MagicMock()
-    cur.__enter__ = lambda s: s
-    cur.__exit__ = MagicMock(return_value=False)
-    conn = MagicMock()
-    conn.cursor.return_value = cur
-    return conn, cur
-
-
-def test_upsert_sql_includes_metadata_column():
-    conn, cur = _mock_conn()
-    chunk = {
-        "id": "abc", "content": "c", "embedding": [0.0],
-        "source_type": "errata", "source_document": "errata_origins",
-        "section": "Dune Drake", "parent_section": "p",
-        "corpus_version": "v2.0.0", "metadata": {"set": "origins"},
-    }
-    upsert_chunks(conn, [chunk])
-    sql_used = cur.execute.call_args[0][0]
-    assert "metadata" in sql_used
-
-
-def test_upsert_passes_metadata_value():
-    conn, cur = _mock_conn()
-    chunk = {
-        "id": "abc", "content": "c", "embedding": [0.0],
-        "source_type": "errata", "source_document": "errata_origins",
-        "section": "Dune Drake", "parent_section": "p",
-        "corpus_version": "v2.0.0", "metadata": {"set": "origins"},
-    }
-    upsert_chunks(conn, [chunk])
-    params = cur.execute.call_args[0][1]
-    # psycopg2.extras.Json envuelve el dict; .adapted recupera el original.
-    flat = [getattr(p, "adapted", p) for p in params]
-    assert {"set": "origins"} in flat

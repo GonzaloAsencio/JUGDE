@@ -273,14 +273,27 @@ def _hybrid_search_impl(
 hybrid_search = observe_or_noop(_hybrid_search_impl, name="retrieval")
 
 
+# One round-trip for every tag (was N: one execute per tag). The per-tag
+# LIMIT 2 + card>rulebook ordering is preserved with a LATERAL over the tag
+# array; WITH ORDINALITY keeps the outer result in tag order so a chunk matched
+# by an earlier tag still wins the Python-side dedup below. A naive
+# ILIKE ANY(...) would collapse the LIMIT to 2 TOTAL — a behavior change the
+# integration tests (tests/integration/test_retrieval_db.py) guard against.
 _TAGGED_SQL = """
-SELECT id, content, section, parent_section, source_type, metadata
-FROM corpus_chunks
-WHERE corpus_version = %s
-  AND LOWER(section) ILIKE LOWER(%s)
-ORDER BY (source_type = 'card') DESC,
-         (source_type = 'rulebook') DESC
-LIMIT 2
+SELECT c.id, c.content, c.section, c.parent_section, c.source_type, c.metadata
+FROM unnest(%s::text[]) WITH ORDINALITY AS t(tag, ord)
+CROSS JOIN LATERAL (
+    SELECT id, content, section, parent_section, source_type, metadata
+    FROM corpus_chunks
+    WHERE corpus_version = %s
+      AND LOWER(section) ILIKE '%%' || LOWER(t.tag) || '%%'
+    ORDER BY (source_type = 'card') DESC,
+             (source_type = 'rulebook') DESC
+    LIMIT 2
+) c
+ORDER BY t.ord,
+         (c.source_type = 'card') DESC,
+         (c.source_type = 'rulebook') DESC
 """
 
 
@@ -300,21 +313,20 @@ def tagged_lookup(
     seen_ids: set[str] = set()
     with get_conn(pool) as conn:
         with conn.cursor() as cur:
-            for tag in tags:
-                cur.execute(_TAGGED_SQL, (corpus_version, f"%{tag}%"))
-                for row in cur.fetchall():
-                    chunk_id = str(row[0])
-                    if chunk_id not in seen_ids:
-                        seen_ids.add(chunk_id)
-                        results.append(Chunk(
-                            id=chunk_id,
-                            content=row[1],
-                            section=row[2],
-                            parent_section=row[3],
-                            source_type=row[4],
-                            metadata=row[5],
-                            similarity=0.0,
-                        ))
+            cur.execute(_TAGGED_SQL, (list(tags), corpus_version))
+            for row in cur.fetchall():
+                chunk_id = str(row[0])
+                if chunk_id not in seen_ids:
+                    seen_ids.add(chunk_id)
+                    results.append(Chunk(
+                        id=chunk_id,
+                        content=row[1],
+                        section=row[2],
+                        parent_section=row[3],
+                        source_type=row[4],
+                        metadata=row[5],
+                        similarity=0.0,
+                    ))
     return results
 
 
