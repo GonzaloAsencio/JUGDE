@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FASTAPI_URL, buildProxyHeaders, mapUpstreamError, parseQueryBody } from '@/lib/proxy';
+import { FASTAPI_URL, buildProxyHeaders, ensureJudgeUid, mapUpstreamError, parseQueryBody, withUidCookie } from '@/lib/proxy';
 
 const CONNECT_TIMEOUT_MS = Number(process.env.FASTAPI_TIMEOUT_MS ?? 30_000);
 
@@ -14,13 +14,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ detail: 'question is required' }, { status: 400 });
   }
 
+  const uid = ensureJudgeUid(req);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), CONNECT_TIMEOUT_MS);
 
   try {
     const upstream = await fetch(`${FASTAPI_URL}/api/v1/query/stream`, {
       method: 'POST',
-      headers: buildProxyHeaders(req),
+      headers: buildProxyHeaders(req, uid.userId),
       body: JSON.stringify({ question: parsed.question, card_mentions: parsed.cardMentions }),
       signal: controller.signal,
     });
@@ -31,18 +32,21 @@ export async function POST(req: NextRequest) {
     clearTimeout(timer);
 
     if (!upstream.ok || !upstream.body) {
-      return mapUpstreamError(upstream);
+      return withUidCookie(await mapUpstreamError(upstream), uid);
     }
 
     // Hand the upstream ReadableStream straight to the Response: buffering it
     // here would collapse the SSE stream into one flush, undoing the feature.
-    return new Response(upstream.body, {
+    // Set-Cookie rides the response HEADERS, set before the body streams — HTTP
+    // forbids setting cookies once streaming has started, so this is the only
+    // correct place for it (see Next route docs).
+    return withUidCookie(new Response(upstream.body, {
       status: 200,
       headers: {
         'Content-Type': 'text/event-stream; charset=utf-8',
         'Cache-Control': 'no-cache',
       },
-    });
+    }), uid);
   } catch (err: unknown) {
     clearTimeout(timer);
     if (err instanceof Error && err.name === 'AbortError') {

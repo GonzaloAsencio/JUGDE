@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { FASTAPI_URL, buildProxyHeaders, mapUpstreamError, parseQueryBody } from '@/lib/proxy';
+import { FASTAPI_URL, buildProxyHeaders, ensureJudgeUid, mapUpstreamError, parseQueryBody, withUidCookie } from '@/lib/proxy';
 
 const TIMEOUT_MS = Number(process.env.FASTAPI_TIMEOUT_MS ?? 30_000);
 
@@ -10,13 +10,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ detail: 'question is required' }, { status: 400 });
   }
 
+  const uid = ensureJudgeUid(req);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
     const upstream = await fetch(`${FASTAPI_URL}/api/v1/query`, {
       method: 'POST',
-      headers: buildProxyHeaders(req),
+      headers: buildProxyHeaders(req, uid.userId),
       body: JSON.stringify({ question: parsed.question, card_mentions: parsed.cardMentions }),
       signal: controller.signal,
     });
@@ -25,10 +26,10 @@ export async function POST(req: NextRequest) {
 
     if (upstream.ok) {
       const data = await upstream.json();
-      return NextResponse.json(data);
+      return withUidCookie(NextResponse.json(data), uid);
     }
 
-    return mapUpstreamError(upstream);
+    return withUidCookie(await mapUpstreamError(upstream), uid);
   } catch (err: unknown) {
     clearTimeout(timer);
     if (err instanceof Error && err.name === 'AbortError') {
