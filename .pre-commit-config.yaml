@@ -1,0 +1,13 @@
+# Pre-commit hooks for the Judge backend (refactor Phase 0 — see docs/refactor-plan.md).
+# Opt in locally with:  pip install pre-commit && pre-commit install
+# Config for ruff lives in backend/pyproject.toml.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.1
+    hooks:
+      - id: ruff        # lint (does not auto-fix in the hook; run `ruff check --fix` manually)
+        args: [--config, backend/pyproject.toml]
+        files: ^backend/
+      - id: ruff-format
+        args: [--config, backend/pyproject.toml]
+        files: ^backend/
